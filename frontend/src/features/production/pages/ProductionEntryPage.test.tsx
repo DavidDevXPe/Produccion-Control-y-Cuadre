@@ -77,6 +77,72 @@ function addClosingBalanceProduct(query: string) {
   fireEvent.click(within(closingSection).getByRole('button', { name: 'Agregar saldo' }))
 }
 
+function addTunnelProduct(query: string) {
+  const tunnelSection = screen
+    .getByRole('heading', { name: 'Túnel' })
+    .closest('section')!
+
+  fireEvent.change(
+    within(tunnelSection).getByRole('searchbox', {
+      name: 'Buscar producto de Túnel',
+    }),
+    {
+      target: { value: query },
+    },
+  )
+
+  const productSelect = within(tunnelSection).getByRole('combobox', {
+    name: 'Producto exacto del catálogo',
+  })
+
+  const product = within(productSelect).getAllByRole(
+    'option',
+  )[1] as HTMLOptionElement
+
+  fireEvent.change(productSelect, {
+    target: { value: product.value },
+  })
+
+  fireEvent.click(
+    within(tunnelSection).getByRole('button', {
+      name: 'Agregar a Túnel',
+    }),
+  )
+}
+
+function addTreatmentProduct(query: string) {
+  const treatmentSection = screen
+    .getByRole('heading', { name: 'Tratamiento' })
+    .closest('section')!
+
+  fireEvent.change(
+    within(treatmentSection).getByRole('searchbox', {
+      name: 'Buscar producto de tratamiento',
+    }),
+    {
+      target: { value: query },
+    },
+  )
+
+  const productSelect = within(treatmentSection).getByRole('combobox', {
+    name: 'Producto exacto del catálogo',
+  })
+
+  const product = within(productSelect).getAllByRole(
+    'option',
+  )[1] as HTMLOptionElement
+
+  fireEvent.change(productSelect, {
+    target: { value: product.value },
+  })
+
+  fireEvent.click(
+    within(treatmentSection).getByRole('button', {
+      name: 'Agregar tratamiento',
+    }),
+  )
+}
+
 describe('ProductionEntryPage product selector', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -373,6 +439,8 @@ describe('ProductionEntryPage product selector', () => {
     completeShiftReport()
     fireEvent.click(screen.getByLabelText('Existe producto para Túnel'))
 
+    addTunnelProduct('recorte crudo manto')
+
     const tunnelSection = screen
       .getByRole('heading', { name: 'Túnel' })
       .closest('section')!
@@ -399,6 +467,9 @@ describe('ProductionEntryPage product selector', () => {
     completeShiftReport()
     const tunnelCheckbox = screen.getByLabelText('Existe producto para Túnel')
     fireEvent.click(tunnelCheckbox)
+
+    addTunnelProduct('recorte crudo manto')
+
     const tunnelSection = screen.getByRole('heading', { name: 'Túnel' }).closest('section')!
     const dayInput = within(tunnelSection).getByLabelText(/^Kg Día/)
     fireEvent.change(dayInput, { target: { value: '5' } })
@@ -418,6 +489,9 @@ describe('ProductionEntryPage product selector', () => {
     const firstRender = renderNewEntry()
     completeShiftReport()
     fireEvent.click(screen.getByLabelText('Existe producto para Túnel'))
+
+    addTunnelProduct('recorte crudo manto')
+
     const tunnelSection = screen.getByRole('heading', { name: 'Túnel' }).closest('section')!
     fireEvent.change(within(tunnelSection).getByLabelText(/^Kg Día/), {
       target: { value: '5' },
@@ -443,6 +517,9 @@ describe('ProductionEntryPage product selector', () => {
       dayReport: '15.6',
       productSearch: 'aleta 1000 2000',
     })
+
+    addTreatmentProduct('aleta 1000 2000')
+
     const treatmentInput = screen.getByLabelText(/^Kg tratamiento/)
     fireEvent.change(treatmentInput, { target: { value: '1.2' } })
 

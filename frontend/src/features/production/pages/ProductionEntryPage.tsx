@@ -312,6 +312,23 @@ export function ProductionEntryPage() {
 
   const [tunnelSearch, setTunnelSearch] = useState('')
   const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
+  const [tunnelProductIds, setTunnelProductIds] =
+  useState<Set<string>>(() => new Set())
+
+  const effectiveTunnelProductIds = useMemo(() => {
+    const ids = new Set(tunnelProductIds)
+
+    for (const row of draft.rows) {
+      if (
+        captureQuantityKg100(row.tunnelDayKg) > 0 ||
+        captureQuantityKg100(row.tunnelNightKg) > 0
+      ) {
+        ids.add(row.product.productId)
+      }
+    }
+
+    return ids
+  }, [draft.rows, tunnelProductIds])
   const [closingSearch, setClosingSearch] = useState('')
   const [selectedClosingProductId, setSelectedClosingProductId] = useState('')
   const [closingProductIds, setClosingProductIds] = useState<Set<string>>(
@@ -485,9 +502,13 @@ export function ProductionEntryPage() {
     () =>
       filterCaptureCatalogItems(tunnelSearch, catalogItems).filter(
         (product) =>
-          !draft.rows.some((row) => row.product.productId === product.productId),
+          !effectiveTunnelProductIds.has(product.productId),
       ),
-    [catalogItems, draft.rows, tunnelSearch],
+    [
+      catalogItems,
+      effectiveTunnelProductIds,
+      tunnelSearch,
+    ],
   )
   const closingCatalogItems = useMemo(
     () =>
@@ -511,6 +532,13 @@ export function ProductionEntryPage() {
       effectiveTreatmentProductIds.has(row.product.productId),
     ),
   [draft.rows, effectiveTreatmentProductIds],
+  )
+  const tunnelRows = useMemo(
+    () =>
+      draft.rows.filter((row) =>
+        effectiveTunnelProductIds.has(row.product.productId),
+      ),
+    [draft.rows, effectiveTunnelProductIds],
   )
   const availableBalances = useMemo(() => {
     const selectedKeys = new Set(
@@ -2127,12 +2155,22 @@ export function ProductionEntryPage() {
             <button
               type="button"
               disabled={!selectedTunnelProductId}
-              onClick={() =>
-                addMovementProduct(selectedTunnelProductId, () => {
+              onClick={() => {
+                const productId = selectedTunnelProductId
+
+                if (!productId) return
+
+                addMovementProduct(productId, () => {
+                  setTunnelProductIds((current) => {
+                    const next = new Set(current)
+                    next.add(productId)
+                    return next
+                  })
+                
                   setTunnelSearch('')
                   setSelectedTunnelProductId('')
                 })
-              }
+              }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-4" aria-hidden="true" />
@@ -2140,13 +2178,13 @@ export function ProductionEntryPage() {
             </button>
           </div>
 
-          {treatmentRows.length === 0 ? (
+          {tunnelRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
-              No hay productos de tratamiento registrados.
+              No hay productos de Túnel registrados.
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {treatmentRows.map((row) => {
+              {tunnelRows.map((row) => {
                 const tunnelTotalKg100 = sumKg100([
                   captureQuantityKg100(row.tunnelDayKg),
                   captureQuantityKg100(row.tunnelNightKg),
