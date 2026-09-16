@@ -298,6 +298,17 @@ export function ProductionEntryPage() {
   const [selectedProductId, setSelectedProductId] = useState('')
   const [treatmentSearch, setTreatmentSearch] = useState('')
   const [selectedTreatmentProductId, setSelectedTreatmentProductId] = useState('')
+  const [treatmentProductIds, setTreatmentProductIds] = useState<Set<string>>(() => new Set() )
+  const effectiveTreatmentProductIds = useMemo(() => {
+  const ids = new Set(treatmentProductIds)
+  for (const row of draft.rows) {
+    if (captureQuantityKg100(row.treatmentKg) > 0) {
+        ids.add(row.product.productId)
+      }
+    }
+    return ids
+  }, [draft.rows, treatmentProductIds])
+
   const [tunnelSearch, setTunnelSearch] = useState('')
   const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
   const [closingSearch, setClosingSearch] = useState('')
@@ -461,9 +472,13 @@ export function ProductionEntryPage() {
     () =>
       filterCaptureCatalogItems(treatmentSearch, catalogItems).filter(
         (product) =>
-          !draft.rows.some((row) => row.product.productId === product.productId),
+          !effectiveTreatmentProductIds.has(product.productId),
       ),
-    [catalogItems, draft.rows, treatmentSearch],
+    [
+      catalogItems,
+      effectiveTreatmentProductIds,
+      treatmentSearch,
+    ],
   )
   const tunnelCatalogItems = useMemo(
     () =>
