@@ -51,7 +51,7 @@ const seedIds = [
     'rejos-seccionados-1-2-corona-tratamiento',
     'rejos-seccionados-1-2-media-tratamiento',
     'rejos-seccionados-1-2-terminal-tratamiento',
-    'boton-usa-sm-cp-st-tratamiento',
+    'boton-usa-sm-cp-tratamiento',
     'rejo-bailarina-500-1000',
     'anillas-espana-polar-mixta',
     'anillas-espana-segunda-mixta',

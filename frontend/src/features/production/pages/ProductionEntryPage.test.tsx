@@ -95,25 +95,39 @@ function addTunnelProduct(query: string) {
     name: 'Producto exacto del catálogo',
   })
 
-  const product = within(productSelect).getAllByRole(
-    'option',
-  )[1] as HTMLOptionElement
+  const productOptions = within(productSelect)
+    .getAllByRole('option')
+    .filter((option) => (option as HTMLOptionElement).value !== '')
+
+  expect(productOptions.length).toBeGreaterThan(0)
+
+  const product = productOptions[0] as HTMLOptionElement
 
   fireEvent.change(productSelect, {
     target: { value: product.value },
   })
 
-  fireEvent.click(
-    within(tunnelSection).getByRole('button', {
-      name: 'Agregar a Túnel',
-    }),
-  )
+  expect(productSelect).toHaveValue(product.value)
+
+  const addButton = within(tunnelSection).getByRole('button', {
+    name: 'Agregar a Túnel',
+  })
+
+  expect(addButton).toBeEnabled()
+
+  fireEvent.click(addButton)
+
+  return tunnelSection
 }
 
 function addTreatmentProduct(query: string) {
-  const treatmentSection = screen
-    .getByRole('heading', { name: 'Tratamiento' })
-    .closest('section')!
+  const treatmentSearch = screen.getByLabelText(
+    'Buscar producto de tratamiento',
+  )
+
+  const treatmentSection = treatmentSearch.closest('section')!
+
+  expect(treatmentSection).not.toBeNull()
 
   fireEvent.change(
     within(treatmentSection).getByRole('searchbox', {
@@ -141,6 +155,7 @@ function addTreatmentProduct(query: string) {
       name: 'Agregar tratamiento',
     }),
   )
+  return treatmentSection
 }
 
 describe('ProductionEntryPage product selector', () => {
@@ -437,13 +452,15 @@ describe('ProductionEntryPage product selector', () => {
   it('updates Tunnel Day, Night and total reactively after reports reconcile', () => {
     renderNewEntry()
     completeShiftReport()
+
     fireEvent.click(screen.getByLabelText('Existe producto para Túnel'))
 
-    addTunnelProduct('recorte crudo manto')
+    const tunnelSection = addTunnelProduct('recorte crudo manto')
+    const dayInputs = within(tunnelSection).queryAllByLabelText(/^Kg Día/)
+    const nightInputs = within(tunnelSection).queryAllByLabelText(/^Kg Noche/)
 
-    const tunnelSection = screen
-      .getByRole('heading', { name: 'Túnel' })
-      .closest('section')!
+    expect(dayInputs).toHaveLength(1)
+    expect(nightInputs).toHaveLength(1)
     fireEvent.change(within(tunnelSection).getByLabelText(/^Kg Día/), {
       target: { value: '5' },
     })
@@ -511,41 +528,69 @@ describe('ProductionEntryPage product selector', () => {
   })
 
   it('preserves later-stage values when an earlier report becomes unbalanced', () => {
-    renderNewEntry()
-    completeShiftReport({
-      rawMaterial: '100',
-      dayReport: '15.6',
-      productSearch: 'aleta 1000 2000',
-    })
+  renderNewEntry()
 
-    fireEvent.click(
+  completeShiftReport({
+    rawMaterial: '100',
+    dayReport: '15.6',
+    productSearch: 'aleta 1000 2000',
+  })
+
+  fireEvent.click(
     screen.getByLabelText('Existe producto para Túnel'),
-    )
+  )
 
-    addTunnelProduct('aleta 1000 2000')
+  addTunnelProduct('aleta 1000 2000')
+
+  const treatmentSection =
     addTreatmentProduct('aleta 1000 2000')
 
-    const treatmentSection = screen
-      .getByRole('heading', { name: 'Tratamiento' })
-      .closest('section')!
+  const treatmentInputs =
+    within(treatmentSection).getAllByLabelText(/^Kg tratamiento/)
 
-    const treatmentInput =
-    within(treatmentSection).getByLabelText(/^Kg tratamiento/)
-    fireEvent.change(treatmentInput, { target: { value: '1.2' } })
+  expect(treatmentInputs).toHaveLength(1)
 
-    const reportInput = within(
-      screen.getByRole('region', { name: 'Captura por producto y turno' }),
-    ).getAllByRole('spinbutton')[0]!
-    fireEvent.change(reportInput, { target: { value: '14.6' } })
+  const treatmentInput = treatmentInputs[0]!
 
-    expect(treatmentInput).toHaveValue(1.2)
-    expect(treatmentInput).toBeDisabled()
-    expect(screen.getByText('ESPERANDO CUADRE DE TURNOS')).toBeInTheDocument()
-
-    fireEvent.change(reportInput, { target: { value: '15.6' } })
-    expect(screen.getByLabelText(/^Kg tratamiento/)).toHaveValue(1.2)
-    expect(screen.getByLabelText(/^Kg tratamiento/)).not.toBeDisabled()
+  fireEvent.change(treatmentInput, {
+    target: { value: '1.2' },
   })
+
+  const reportInput = within(
+    screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    }),
+  ).getAllByRole('spinbutton')[0]!
+
+  // Rompemos temporalmente el cuadre.
+  fireEvent.change(reportInput, {
+    target: { value: '14.6' },
+  })
+
+  // El valor de Tratamiento debe conservarse.
+  expect(treatmentInput).toHaveValue(1.2)
+
+  // Mientras los turnos no cuadren, Tratamiento queda bloqueado.
+  expect(treatmentInput).toBeDisabled()
+
+  expect(
+    screen.getByText('ESPERANDO CUADRE DE TURNOS'),
+  ).toBeInTheDocument()
+
+  // Recuperamos el cuadre.
+  fireEvent.change(reportInput, {
+    target: { value: '15.6' },
+  })
+
+  const restoredTreatmentInput =
+    within(treatmentSection).getByLabelText(/^Kg tratamiento/)
+
+  // El valor no debe haberse perdido.
+  expect(restoredTreatmentInput).toHaveValue(1.2)
+
+  // Y Tratamiento vuelve a quedar disponible.
+  expect(restoredTreatmentInput).not.toBeDisabled()
+})
 
   it('asks for confirmation instead of blocking when only family targets are low', () => {
     renderNewEntry()
