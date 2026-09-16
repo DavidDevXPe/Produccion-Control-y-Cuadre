@@ -2267,13 +2267,13 @@ export function ProductionEntryPage() {
             </button>
           </div>
 
-          {draft.rows.length === 0 ? (
+          {treatmentRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
-              Primero concilia los productos de Día y Noche.
+            No hay productos de tratamiento registrados.
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {draft.rows.map((row) => (
+              {treatmentRows.map((row) => (
                 <div
                   key={`treatment-${row.key}`}
                   className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center sm:px-5"
