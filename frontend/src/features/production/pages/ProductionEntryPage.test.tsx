@@ -518,13 +518,17 @@ describe('ProductionEntryPage product selector', () => {
       productSearch: 'aleta 1000 2000',
     })
 
+    fireEvent.click(
+    screen.getByLabelText('Existe producto para Túnel'),
+    )
+
     addTunnelProduct('aleta 1000 2000')
     addTreatmentProduct('aleta 1000 2000')
-      
+
     const treatmentSection = screen
       .getByRole('heading', { name: 'Tratamiento' })
       .closest('section')!
-      
+
     const treatmentInput =
     within(treatmentSection).getByLabelText(/^Kg tratamiento/)
     fireEvent.change(treatmentInput, { target: { value: '1.2' } })
