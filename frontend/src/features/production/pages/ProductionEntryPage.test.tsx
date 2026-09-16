@@ -606,11 +606,6 @@ describe('ProductionEntryPage product selector', () => {
     fireEvent.change(screen.getByLabelText(/^Reporte Noche/), {
       target: { value: '0' },
     })
-    const reportInputs = within(
-      screen.getByRole('region', { name: 'Captura por producto y turno' }),
-    ).getAllByRole('spinbutton')
-    fireEvent.change(reportInputs[0]!, { target: { value: processedKg } })
-    fireEvent.change(reportInputs[1]!, { target: { value: '0' } })
 
     const ownProduction = screen
       .getByRole('heading', { name: 'Producción productiva atribuida' })

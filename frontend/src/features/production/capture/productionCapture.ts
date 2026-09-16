@@ -472,6 +472,37 @@ export function buildProductionDayFromCapture(
     quantityFor,
     errors,
   )
+
+  const balanceOnlyReportsByProduct = new Map<
+  string,
+  { DAY: Kg100; NIGHT: Kg100 }
+>()
+
+if (isBalanceOnly) {
+  for (const lot of receivedBalanceLots) {
+    const current = balanceOnlyReportsByProduct.get(lot.productId) ?? {
+      DAY: ZERO_KG100,
+      NIGHT: ZERO_KG100,
+    }
+
+    let dayKg100 = current.DAY
+    let nightKg100 = current.NIGHT
+
+    for (const use of lot.uses) {
+      if (use.shift === 'DAY') {
+        dayKg100 = kg100(dayKg100 + use.kg100)
+      } else {
+        nightKg100 = kg100(nightKg100 + use.kg100)
+      }
+    }
+
+    balanceOnlyReportsByProduct.set(lot.productId, {
+      DAY: dayKg100,
+      NIGHT: nightKg100,
+    })
+  }
+}
+
   const inferredReports =
     draft.shiftAllocationMode === 'RECONCILED_INFERENCE'
       ? getInferredReports(draft.rows, declaredDay, quantityFor)
@@ -479,6 +510,7 @@ export function buildProductionDayFromCapture(
 
   const preliminaryLines = draft.rows.map((row, index) => {
     const inferred = inferredReports.get(row.key)
+    const balanceOnlyReport = balanceOnlyReportsByProduct.get(row.product.productId)
     return {
       familyId: row.product.familyId,
       familyName: row.product.familyName,
@@ -500,20 +532,26 @@ export function buildProductionDayFromCapture(
           : ('RECONCILED_INFERENCE' as const),
       shifts: {
         DAY: {
-          reportedKg100:
-            inferred?.DAY ??
-            quantityFor(
-              row.dayReportedKg,
-              `${row.product.productName}: reporte Día`,
+        reportedKg100: isBalanceOnly
+          ? (balanceOnlyReport?.DAY ?? ZERO_KG100)
+          : (
+              inferred?.DAY ??
+              quantityFor(
+                row.dayReportedKg,
+                `${row.product.productName}: reporte Día`,
+              )
             ),
           adjustments: [],
         },
         NIGHT: {
-          reportedKg100:
-            inferred?.NIGHT ??
-            quantityFor(
-              row.nightReportedKg,
-              `${row.product.productName}: reporte Noche`,
+        reportedKg100: isBalanceOnly
+          ? (balanceOnlyReport?.NIGHT ?? ZERO_KG100)
+          : (
+              inferred?.NIGHT ??
+              quantityFor(
+                row.nightReportedKg,
+                `${row.product.productName}: reporte Noche`,
+              )
             ),
           adjustments: [],
         },
