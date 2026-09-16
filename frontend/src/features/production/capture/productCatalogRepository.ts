@@ -30,7 +30,34 @@ function persist() {
 
 export function getActiveProducts(): ProductionCatalogItem[] {
   const byId = new Map<string, ProductionCatalogItem>()
-  for (const item of [...SEED_CAPTURE_PRODUCTS, ...dynamicProducts]) byId.set(item.productId, item)
+
+  // El catálogo seed es la definición oficial actual.
+  for (const seedProduct of SEED_CAPTURE_PRODUCTS) {
+    byId.set(seedProduct.productId, seedProduct)
+  }
+
+  // Los productos dinámicos nuevos sí se agregan.
+  // Si existe el mismo ID en seed, solo combinamos aliases
+  // y conservamos los datos oficiales del seed.
+  for (const dynamicProduct of dynamicProducts) {
+    const seedProduct = byId.get(dynamicProduct.productId)
+
+    if (!seedProduct) {
+      byId.set(dynamicProduct.productId, dynamicProduct)
+      continue
+    }
+
+    byId.set(dynamicProduct.productId, {
+      ...seedProduct,
+      aliases: [
+        ...new Set([
+          ...(seedProduct.aliases ?? []),
+          ...(dynamicProduct.aliases ?? []),
+        ]),
+      ],
+    })
+  }
+
   return [...byId.values()]
 }
 

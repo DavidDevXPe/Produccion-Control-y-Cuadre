@@ -45,7 +45,7 @@ import {
   type ProductionCatalogItem,
 } from '../capture/productionCatalog'
 import { normalizeProductName } from '../capture/productNormalizer'
-import { addAliasToActiveProduct } from '../capture/productCatalogRepository'
+import {addAliasToActiveProduct, getActiveProducts } from '../capture/productCatalogRepository'
 import type { ParsedProductionSheet } from '../capture/parseProductionWorkbook'
 import {
   buildBalanceShiftDiagnostics,
@@ -324,9 +324,7 @@ export function ProductionEntryPage() {
   const [screenshotShift, setScreenshotShift] = useState<'DAY' | 'NIGHT'>('DAY')
   const [screenshotWarnings, setScreenshotWarnings] = useState<readonly string[]>([])
   const [pendingProducts, setPendingProducts] = useState<ProductionCatalogItem[]>([])
-  const [catalogItems, setCatalogItems] = useState<ProductionCatalogItem[]>(
-    () => [...CAPTURE_CATALOG_ITEMS],
-  )
+  const [catalogItems, setCatalogItems] = useState<ProductionCatalogItem[]>(() => getActiveProducts() )
   const [possibleMatches, setPossibleMatches] = useState<readonly { sourceText: string; product: ProductionCatalogItem; date: string | null; totalKg: number }[]>([])
   const [otherDateRows, setOtherDateRows] = useState<readonly { product: ProductionCatalogItem; date: string | null; totalKg: number }[]>([])
   const [captureSummary, setCaptureSummary] = useState<{ sourceGrandTotalKg: number | null; reconstructedGrandTotalKg: number; selectedDateTotalKg: number } | null>(null)
