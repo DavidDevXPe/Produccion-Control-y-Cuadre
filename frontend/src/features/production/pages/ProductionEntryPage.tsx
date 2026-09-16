@@ -860,17 +860,66 @@ export function ProductionEntryPage() {
 }
 
   const updateBalanceUse = (
-    key: string,
-    field: 'dayKg' | 'nightKg',
-    value: string,
-  ) => {
-    setDraft((current) => ({
+  key: string,
+  field: 'dayKg' | 'nightKg',
+  value: string,
+) => {
+  setDraft((current) => {
+    const nextBalanceUses = current.balanceUses.map((balance) =>
+      balance.key === key
+        ? { ...balance, [field]: value }
+        : balance,
+    )
+
+    // En jornadas normales y Congelamiento mantenemos
+    // el comportamiento actual.
+    if (!isBalanceOnly) {
+      return {
+        ...current,
+        balanceUses: nextBalanceUses,
+      }
+    }
+
+    // En domingo BALANCE_ONLY no existe una segunda captura
+    // manual por producto. Los kg físicos del producto se
+    // derivan de los saldos realmente procesados.
+    const nextRows = current.rows.map((row) => {
+      const productBalanceUses = nextBalanceUses.filter(
+        (balance) =>
+          balance.productId === row.product.productId &&
+          balance.requiresProductDistribution !== true,
+      )
+
+      if (productBalanceUses.length === 0) {
+        return row
+      }
+
+      const dayKg100 = sumKg100(
+        productBalanceUses.map((balance) =>
+          captureQuantityKg100(balance.dayKg),
+        ),
+      )
+
+      const nightKg100 = sumKg100(
+        productBalanceUses.map((balance) =>
+          captureQuantityKg100(balance.nightKg),
+        ),
+      )
+
+      return {
+        ...row,
+        dayReportedKg: String(dayKg100 / 100),
+        nightReportedKg: String(nightKg100 / 100),
+      }
+    })
+
+    return {
       ...current,
-      balanceUses: current.balanceUses.map((balance) =>
-        balance.key === key ? { ...balance, [field]: value } : balance,
-      ),
-    }))
-  }
+      balanceUses: nextBalanceUses,
+      rows: nextRows,
+    }
+  })
+}
 
   const distributeLegacyBalance = (key: string, productId: string) => {
     const product = PRODUCTION_CATALOG_ITEMS.find(

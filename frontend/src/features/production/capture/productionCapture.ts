@@ -510,7 +510,6 @@ if (isBalanceOnly) {
 
   const preliminaryLines = draft.rows.map((row, index) => {
     const inferred = inferredReports.get(row.key)
-    const balanceOnlyReport = balanceOnlyReportsByProduct.get(row.product.productId)
     return {
       familyId: row.product.familyId,
       familyName: row.product.familyName,
@@ -532,26 +531,20 @@ if (isBalanceOnly) {
           : ('RECONCILED_INFERENCE' as const),
       shifts: {
         DAY: {
-        reportedKg100: isBalanceOnly
-          ? (balanceOnlyReport?.DAY ?? ZERO_KG100)
-          : (
-              inferred?.DAY ??
-              quantityFor(
-                row.dayReportedKg,
-                `${row.product.productName}: reporte Día`,
-              )
+          reportedKg100:
+            inferred?.DAY ??
+            quantityFor(
+              row.dayReportedKg,
+              `${row.product.productName}: reporte Día`,
             ),
           adjustments: [],
         },
         NIGHT: {
-        reportedKg100: isBalanceOnly
-          ? (balanceOnlyReport?.NIGHT ?? ZERO_KG100)
-          : (
-              inferred?.NIGHT ??
-              quantityFor(
-                row.nightReportedKg,
-                `${row.product.productName}: reporte Noche`,
-              )
+          reportedKg100:
+            inferred?.NIGHT ??
+            quantityFor(
+              row.nightReportedKg,
+              `${row.product.productName}: reporte Noche`,
             ),
           adjustments: [],
         },
