@@ -922,7 +922,7 @@ export function ProductionEntryPage() {
 }
 
   const distributeLegacyBalance = (key: string, productId: string) => {
-    const product = PRODUCTION_CATALOG_ITEMS.find(
+    const product = catalogItems.find(
       (candidate) => candidate.productId === productId,
     )
     if (!product) return
@@ -2414,10 +2414,13 @@ export function ProductionEntryPage() {
                               className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
                             >
                               <option value="">Seleccionar producto…</option>
-                              {PRODUCTION_CATALOG_ITEMS.filter(
-                                (product) =>
-                                  product.familyId === balance.familyId,
-                              ).map((product) => (
+                              {catalogItems
+                                .filter(
+                                  (product) =>
+                                    product.familyId === balance.familyId &&
+                                    product.active !== false,
+                                )
+                                .map((product) => (
                                 <option
                                   key={product.productId}
                                   value={product.productId}

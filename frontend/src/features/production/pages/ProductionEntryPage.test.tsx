@@ -591,18 +591,54 @@ describe('ProductionEntryPage product selector', () => {
     const balanceOption = within(balanceSelect).getAllByRole(
       'option',
     )[1] as HTMLOptionElement
-    fireEvent.change(balanceSelect, { target: { value: balanceOption.value } })
-    fireEvent.click(within(balancesSection).getByRole('button', { name: 'Usar saldo' }))
+    fireEvent.change(balanceSelect, {
+      target: { value: balanceOption.value },
+    })
 
-    const processedDayInput = within(balancesSection).getByLabelText(/^Procesado Día/)
-    const processedNightInput = within(balancesSection).getByLabelText(/^Procesado Noche/)
+    fireEvent.click(
+      within(balancesSection).getByRole('button', {
+        name: 'Usar saldo',
+      }),
+    )
+
+    // El primer saldo disponible es una Aleta histórica genérica.
+    // Ahora debe reclasificarse antes de consumirse.
+    const exactProductSelect = within(balancesSection).getByRole(
+      'combobox',
+      { name: 'Producto exacto' },
+    )
+
+    const exactProductOption = within(exactProductSelect)
+      .getAllByRole('option')
+      .find((option) =>
+        option.textContent?.includes('1000 g - 2000 g'),
+      ) as HTMLOptionElement
+    
+    expect(exactProductOption).toBeDefined()
+    
+    fireEvent.change(exactProductSelect, {
+      target: { value: exactProductOption.value },
+    })
+
+    const processedDayInput =
+      within(balancesSection).getByLabelText(/^Procesado Día/)
+
+    const processedNightInput =
+      within(balancesSection).getByLabelText(/^Procesado Noche/)
+
     expect(processedDayInput).toHaveValue(0)
     expect(processedNightInput).toHaveValue(0)
+
     const processedKg = '100'
-    fireEvent.change(processedDayInput, { target: { value: processedKg } })
+
+    fireEvent.change(processedDayInput, {
+      target: { value: processedKg },
+    })
+
     fireEvent.change(screen.getByLabelText(/^Reporte Día/), {
       target: { value: processedKg },
     })
+
     fireEvent.change(screen.getByLabelText(/^Reporte Noche/), {
       target: { value: '0' },
     })
