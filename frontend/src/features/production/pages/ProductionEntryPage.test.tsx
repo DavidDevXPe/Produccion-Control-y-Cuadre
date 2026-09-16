@@ -518,7 +518,7 @@ describe('ProductionEntryPage product selector', () => {
       productSearch: 'aleta 1000 2000',
     })
 
-    addTreatmentProduct('aleta 1000 2000')
+    addTunnelProduct('aleta 1000 2000')
 
     const treatmentInput = screen.getByLabelText(/^Kg tratamiento/)
     fireEvent.change(treatmentInput, { target: { value: '1.2' } })
