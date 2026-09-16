@@ -472,37 +472,6 @@ export function buildProductionDayFromCapture(
     quantityFor,
     errors,
   )
-
-  const balanceOnlyReportsByProduct = new Map<
-  string,
-  { DAY: Kg100; NIGHT: Kg100 }
->()
-
-if (isBalanceOnly) {
-  for (const lot of receivedBalanceLots) {
-    const current = balanceOnlyReportsByProduct.get(lot.productId) ?? {
-      DAY: ZERO_KG100,
-      NIGHT: ZERO_KG100,
-    }
-
-    let dayKg100 = current.DAY
-    let nightKg100 = current.NIGHT
-
-    for (const use of lot.uses) {
-      if (use.shift === 'DAY') {
-        dayKg100 = kg100(dayKg100 + use.kg100)
-      } else {
-        nightKg100 = kg100(nightKg100 + use.kg100)
-      }
-    }
-
-    balanceOnlyReportsByProduct.set(lot.productId, {
-      DAY: dayKg100,
-      NIGHT: nightKg100,
-    })
-  }
-}
-
   const inferredReports =
     draft.shiftAllocationMode === 'RECONCILED_INFERENCE'
       ? getInferredReports(draft.rows, declaredDay, quantityFor)

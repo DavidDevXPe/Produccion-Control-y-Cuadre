@@ -519,8 +519,14 @@ describe('ProductionEntryPage product selector', () => {
     })
 
     addTunnelProduct('aleta 1000 2000')
-
-    const treatmentInput = screen.getByLabelText(/^Kg tratamiento/)
+    addTreatmentProduct('aleta 1000 2000')
+      
+    const treatmentSection = screen
+      .getByRole('heading', { name: 'Tratamiento' })
+      .closest('section')!
+      
+    const treatmentInput =
+    within(treatmentSection).getByLabelText(/^Kg tratamiento/)
     fireEvent.change(treatmentInput, { target: { value: '1.2' } })
 
     const reportInput = within(

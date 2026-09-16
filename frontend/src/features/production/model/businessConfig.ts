@@ -34,9 +34,10 @@ const ANILLA_YIELD_CLASS_BY_PRODUCT_ID: Readonly<
 }
 
 const ANILLAS_PROCESS_ORIGIN_PRODUCT_IDS = new Set([
-  'boton-espana-sm-sp-tratamiento',
-  'boton-usa-sm-cp-tratamiento',
-  'boton-usa-cm-sp-tratamiento',
+  'boton-espana-sm-sp-st-tratamiento',
+  'boton-usa-sm-cp-st-tratamiento',
+  'boton-usa-cm-sp-st-tratamiento',
+  'boton-usa-sm-sp-st-tratamiento',
   'recorte-crudo-anillas-sm-sp-st',
   'recorte-crudo-anillas-cm-sp-st',
   'membranas-cocidas',
