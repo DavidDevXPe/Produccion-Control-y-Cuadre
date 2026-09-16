@@ -768,84 +768,96 @@ export function ProductionEntryPage() {
 }
 
   const addSelectedBalance = () => {
-    const position = availableBalances.find(
-      (balance) =>
-        `${balance.originDayId}|${balance.productId}` === selectedBalanceKey,
+  const position = availableBalances.find(
+    (balance) =>
+      `${balance.originDayId}|${balance.productId}` === selectedBalanceKey,
+  )
+
+  if (!position) return
+
+  const normalizedBalanceName = normalizeProductName(position.productName)
+
+  const reportProduct = draft.rows.find(
+    (row) =>
+      row.product.familyId === position.familyId &&
+      normalizeProductName(row.product.productName) === normalizedBalanceName,
+  )?.product
+
+  const catalogProduct =
+    reportProduct ??
+    catalogItems.find(
+      (product) => product.productId === position.productId,
+    ) ??
+    catalogItems.find(
+      (product) =>
+        product.familyId === position.familyId &&
+        (
+          normalizeProductName(product.productName) === normalizedBalanceName ||
+          normalizeProductName(product.canonicalName ?? '') === normalizedBalanceName ||
+          (product.aliases ?? []).some(
+            (alias) =>
+              normalizeProductName(alias) === normalizedBalanceName,
+          )
+        ),
     )
-    if (!position) return
-    const normalizedBalanceName = normalizeProductName(position.productName)
 
-    const reportProduct = draft.rows.find(
-      (row) =>
-        row.product.familyId === position.familyId &&
-        normalizeProductName(row.product.productName) === normalizedBalanceName,
-    )?.product
+  const requiresProductDistribution = !catalogProduct
 
-    const catalogProduct =
-      reportProduct ??
-      catalogItems.find(
-        (product) => product.productId === position.productId,
-      ) ??
-      catalogItems.find(
-        (product) =>
-          product.familyId === position.familyId &&
-          (
-            normalizeProductName(product.productName) === normalizedBalanceName ||
-            normalizeProductName(product.canonicalName ?? '') === normalizedBalanceName ||
-            (product.aliases ?? []).some(
-              (alias) =>
-                normalizeProductName(alias) === normalizedBalanceName,
-            )
-          ),
-      )
-    
-    const requiresProductDistribution = !catalogProduct
-
-    const balanceUse: ProductionCaptureBalanceUse = {
-      key: `balance-${position.originDayId}-${position.productId}`,
-      originDayId: position.originDayId,
-      originDate: position.originDate,
-
-      familyId: catalogProduct?.familyId ?? position.familyId,
-      familyName: catalogProduct?.familyName ?? position.familyName,
-
-      productId: catalogProduct?.productId ?? position.productId,
-      productName:
-        catalogProduct?.productName ?? 'Producto exacto no identificado',
-
-      availableKg100: position.pendingKg100,
-      dayKg: '0',
-      nightKg: '0',
-
-      // Conservamos el ID histórico original.
-      sourceProductId: position.productId,
-
-      requiresProductDistribution,
-    }
-    const resolvedProductId =
+  const resolvedProductId =
     catalogProduct?.productId ?? position.productId
 
-    const productExists = draft.rows.some(
-      (row) => row.product.productId === resolvedProductId,
-    )
-    const row = !catalogProduct || productExists
-    ? null
-    : createRow(resolvedProductId, draft.rows.length)
+  const balanceUse: ProductionCaptureBalanceUse = {
+    key: `balance-${position.originDayId}-${position.productId}`,
+    originDayId: position.originDayId,
+    originDate: position.originDate,
 
-    setDraft((current) => ({
-      ...current,
-      rows:
-        row === null
-          ? current.rows
-          : [
-              ...current.rows,
-              { ...row, dayReportedKg: '0', nightReportedKg: '0' },
-            ],
-      balanceUses: [...current.balanceUses, balanceUse],
-    }))
-    setSelectedBalanceKey('')
-    setSaveError('')
+    familyId: catalogProduct?.familyId ?? position.familyId,
+    familyName: catalogProduct?.familyName ?? position.familyName,
+
+    productId: resolvedProductId,
+    productName:
+      catalogProduct?.productName ?? 'Producto exacto no identificado',
+
+    availableKg100: position.pendingKg100,
+
+    dayKg: '0',
+    nightKg: '0',
+
+    sourceProductId: position.productId,
+
+    requiresProductDistribution,
   }
+
+  const productExists = draft.rows.some(
+    (row) => row.product.productId === resolvedProductId,
+  )
+
+  const row =
+    !catalogProduct || productExists
+      ? null
+      : createRow(resolvedProductId, draft.rows.length)
+
+  setDraft((current) => ({
+    ...current,
+
+    rows:
+      row === null
+        ? current.rows
+        : [
+            ...current.rows,
+            {
+              ...row,
+              dayReportedKg: '0',
+              nightReportedKg: '0',
+            },
+          ],
+
+    balanceUses: [...current.balanceUses, balanceUse],
+  }))
+
+  setSelectedBalanceKey('')
+  setSaveError('')
+}
 
   const updateBalanceUse = (
     key: string,
