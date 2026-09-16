@@ -298,16 +298,17 @@ export function ProductionEntryPage() {
   const [selectedProductId, setSelectedProductId] = useState('')
   const [treatmentSearch, setTreatmentSearch] = useState('')
   const [selectedTreatmentProductId, setSelectedTreatmentProductId] = useState('')
-  const [treatmentProductIds, setTreatmentProductIds] = useState<Set<string>>(() => new Set() )
+  const [treatmentProductIds, setTreatmentProductIds] = 
+    useState<Set<string>>(() => new Set() )
   const effectiveTreatmentProductIds = useMemo(() => {
-  const ids = new Set(treatmentProductIds)
-  for (const row of draft.rows) {
-    if (captureQuantityKg100(row.treatmentKg) > 0) {
-        ids.add(row.product.productId)
+    const ids = new Set(treatmentProductIds)
+    for (const row of draft.rows) {
+      if (captureQuantityKg100(row.treatmentKg) > 0) {
+          ids.add(row.product.productId)
+        }
       }
-    }
-    return ids
-  }, [draft.rows, treatmentProductIds])
+      return ids
+    }, [draft.rows, treatmentProductIds])
 
   const [tunnelSearch, setTunnelSearch] = useState('')
   const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
@@ -503,6 +504,13 @@ export function ProductionEntryPage() {
           captureQuantityKg100(row.closingBalanceKg) > 0,
       ),
     [closingProductIds, draft.rows],
+  )
+  const treatmentRows = useMemo(
+  () =>
+    draft.rows.filter((row) =>
+      effectiveTreatmentProductIds.has(row.product.productId),
+    ),
+  [draft.rows, effectiveTreatmentProductIds],
   )
   const availableBalances = useMemo(() => {
     const selectedKeys = new Set(
@@ -2132,13 +2140,13 @@ export function ProductionEntryPage() {
             </button>
           </div>
 
-          {draft.rows.length === 0 ? (
+          {treatmentRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
-              Primero concilia los productos de Día y Noche.
+              No hay productos de tratamiento registrados.
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {draft.rows.map((row) => {
+              {treatmentRows.map((row) => {
                 const tunnelTotalKg100 = sumKg100([
                   captureQuantityKg100(row.tunnelDayKg),
                   captureQuantityKg100(row.tunnelNightKg),
@@ -2236,12 +2244,22 @@ export function ProductionEntryPage() {
             <button
               type="button"
               disabled={!selectedTreatmentProductId}
-              onClick={() =>
-                addMovementProduct(selectedTreatmentProductId, () => {
-                  setTreatmentSearch('')
-                  setSelectedTreatmentProductId('')
+              onClick={() => {
+              const productId = selectedTreatmentProductId
+
+              if (!productId) return
+
+              addMovementProduct(productId, () => {
+                setTreatmentProductIds((current) => {
+                  const next = new Set(current)
+                  next.add(productId)
+                  return next
                 })
-              }
+              
+                setTreatmentSearch('')
+                setSelectedTreatmentProductId('')
+              })
+            }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="size-4" aria-hidden="true" />
