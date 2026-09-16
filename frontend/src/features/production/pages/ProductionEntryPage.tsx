@@ -773,32 +773,64 @@ export function ProductionEntryPage() {
         `${balance.originDayId}|${balance.productId}` === selectedBalanceKey,
     )
     if (!position) return
-    const catalogProduct = PRODUCTION_CATALOG_ITEMS.find(
-      (product) => product.productId === position.productId,
-    )
+    const normalizedBalanceName = normalizeProductName(position.productName)
+
+    const reportProduct = draft.rows.find(
+      (row) =>
+        row.product.familyId === position.familyId &&
+        normalizeProductName(row.product.productName) === normalizedBalanceName,
+    )?.product
+
+    const catalogProduct =
+      reportProduct ??
+      catalogItems.find(
+        (product) => product.productId === position.productId,
+      ) ??
+      catalogItems.find(
+        (product) =>
+          product.familyId === position.familyId &&
+          (
+            normalizeProductName(product.productName) === normalizedBalanceName ||
+            normalizeProductName(product.canonicalName ?? '') === normalizedBalanceName ||
+            (product.aliases ?? []).some(
+              (alias) =>
+                normalizeProductName(alias) === normalizedBalanceName,
+            )
+          ),
+      )
+    
     const requiresProductDistribution = !catalogProduct
 
     const balanceUse: ProductionCaptureBalanceUse = {
       key: `balance-${position.originDayId}-${position.productId}`,
       originDayId: position.originDayId,
       originDate: position.originDate,
-      familyId: position.familyId,
-      familyName: position.familyName,
-      productId: position.productId,
+
+      familyId: catalogProduct?.familyId ?? position.familyId,
+      familyName: catalogProduct?.familyName ?? position.familyName,
+
+      productId: catalogProduct?.productId ?? position.productId,
       productName:
         catalogProduct?.productName ?? 'Producto exacto no identificado',
+
       availableKg100: position.pendingKg100,
       dayKg: '0',
       nightKg: '0',
+
+      // Conservamos el ID histórico original.
       sourceProductId: position.productId,
+
       requiresProductDistribution,
     }
+    const resolvedProductId =
+    catalogProduct?.productId ?? position.productId
+
     const productExists = draft.rows.some(
-      (row) => row.product.productId === position.productId,
+      (row) => row.product.productId === resolvedProductId,
     )
     const row = !catalogProduct || productExists
-      ? null
-      : createRow(position.productId, draft.rows.length)
+    ? null
+    : createRow(resolvedProductId, draft.rows.length)
 
     setDraft((current) => ({
       ...current,
@@ -2521,7 +2553,7 @@ export function ProductionEntryPage() {
                         }
                         className="min-w-0 flex-1"
                       />
-                    
+
                       <button
                         type="button"
                         onClick={() => removeClosingProduct(row.key)}
