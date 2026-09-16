@@ -21,6 +21,7 @@ const ANILLA_YIELD_CLASS_BY_PRODUCT_ID: Readonly<
 > = {
   'anillas-espana-polar-mixta': 'POLAR',
   'anillas-espana-segunda-mixta': 'GENERAL',
+  'anillas-espana-cm-2da-mixta': 'GENERAL',
   'anillas-espana-p-sm-sp-st-mixta': 'GENERAL',
   'anillas-espana-p-cm-sp-st-mixta': 'GENERAL',
   'anillas-iqf-tratamiento-usa-sm-cp-st': 'GENERAL',
@@ -37,6 +38,7 @@ const ANILLAS_PROCESS_ORIGIN_PRODUCT_IDS = new Set([
   'boton-usa-sm-cp-tratamiento',
   'boton-usa-cm-sp-tratamiento',
   'recorte-crudo-anillas-sm-sp-st',
+  'recorte-crudo-anillas-cm-sp-st',
   'membranas-cocidas',
 ])
 
