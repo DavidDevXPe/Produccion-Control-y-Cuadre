@@ -709,6 +709,64 @@ export function ProductionEntryPage() {
     })
   }
 
+  const removeClosingProduct = (rowKey: string) => {
+  setDraft((current) => {
+    const row = current.rows.find(
+      (candidate) => candidate.key === rowKey,
+    )
+
+    if (!row) return current
+
+    const productId = row.product.productId
+
+    const hasOtherMovement =
+      captureQuantityKg100(row.dayReportedKg) > 0 ||
+      captureQuantityKg100(row.nightReportedKg) > 0 ||
+      captureQuantityKg100(row.dayPreviousBalanceKg) > 0 ||
+      captureQuantityKg100(row.nightPreviousBalanceKg) > 0 ||
+      captureQuantityKg100(row.tunnelDayKg) > 0 ||
+      captureQuantityKg100(row.tunnelNightKg) > 0 ||
+      captureQuantityKg100(row.treatmentKg) > 0 ||
+      captureQuantityKg100(row.finishedKg) > 0 ||
+      current.balanceUses.some(
+        (balance) => balance.productId === productId,
+      )
+
+    return {
+      ...current,
+
+      rows: hasOtherMovement
+        ? current.rows.map((candidate) =>
+            candidate.key === rowKey
+              ? {
+                  ...candidate,
+                  closingBalanceKg: '0',
+                }
+              : candidate,
+          )
+        : current.rows.filter(
+            (candidate) => candidate.key !== rowKey,
+          ),
+    }
+  })
+
+  setClosingProductIds((current) => {
+    const next = new Set(current)
+
+    const row = draft.rows.find(
+      (candidate) => candidate.key === rowKey,
+    )
+
+    if (row) {
+      next.delete(row.product.productId)
+    }
+
+    return next
+  })
+
+  setSaveError('')
+}
+
   const addSelectedBalance = () => {
     const position = availableBalances.find(
       (balance) =>
@@ -2453,12 +2511,27 @@ export function ProductionEntryPage() {
                         {row.product.productName}
                       </p>
                     </div>
-                    <QuantityInput
-                      label="Saldo al cierre"
-                      value={row.closingBalanceKg}
-                      disabled={!reportsReconciled}
-                      onChange={(value) => updateRow(row.key, 'closingBalanceKg', value)}
-                    />
+                    <div className="flex items-end gap-2">
+                      <QuantityInput
+                        label="Saldo al cierre"
+                        value={row.closingBalanceKg}
+                        disabled={!reportsReconciled}
+                        onChange={(value) =>
+                          updateRow(row.key, 'closingBalanceKg', value)
+                        }
+                        className="min-w-0 flex-1"
+                      />
+                    
+                      <button
+                        type="button"
+                        onClick={() => removeClosingProduct(row.key)}
+                        className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                        aria-label={`Eliminar saldo de ${row.product.productName}`}
+                        title="Eliminar saldo"
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </button>
+                    </div>
                     <ClosingBalanceRowControl
                       summary={businessSummary}
                       summaryGroupId={row.product.summaryGroupId}
