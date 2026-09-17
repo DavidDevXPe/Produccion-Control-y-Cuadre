@@ -2249,8 +2249,12 @@ export function ProductionEntryPage() {
               >
                 <option value="">
                   {tunnelCatalogItems.length === 0
-                    ? 'No hay productos nuevos para agregar'
-                    : `Seleccionar entre ${tunnelCatalogItems.length} resultados…`}
+                    ? 'Sin productos coincidentes'
+                    : `Seleccionar entre ${tunnelCatalogItems.length} producto${
+                        tunnelCatalogItems.length === 1 ? '' : 's'
+                      } detectado${
+                        tunnelCatalogItems.length === 1 ? '' : 's'
+                      }…`}
                 </option>
                 {tunnelCatalogItems.map((product) => (
                   <option key={product.productId} value={product.productId}>
@@ -2378,7 +2382,15 @@ export function ProductionEntryPage() {
                 onChange={(event) => setSelectedTreatmentProductId(event.target.value)}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
               >
-                <option value="">Seleccionar producto…</option>
+                <option value="">
+                  {treatmentCatalogItems.length === 0
+                    ? 'Sin productos coincidentes'
+                    : `Seleccionar entre ${treatmentCatalogItems.length} producto${
+                        treatmentCatalogItems.length === 1 ? '' : 's'
+                      } detectado${
+                        treatmentCatalogItems.length === 1 ? '' : 's'
+                      }…`}
+                </option>
                 {treatmentCatalogItems.map((product) => (
                   <option key={product.productId} value={product.productId}>
                     {product.familyName} · {product.productName}
@@ -2763,7 +2775,15 @@ export function ProductionEntryPage() {
                 onChange={(event) => setSelectedClosingProductId(event.target.value)}
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
               >
-                <option value="">Seleccionar producto…</option>
+                <option value="">
+                  {closingCatalogItems.length === 0
+                    ? 'Sin productos coincidentes'
+                    : `Seleccionar entre ${closingCatalogItems.length} producto${
+                        closingCatalogItems.length === 1 ? '' : 's'
+                      } detectado${
+                        closingCatalogItems.length === 1 ? '' : 's'
+                      }…`}
+                </option>
                 {closingCatalogItems.map((product) => (
                   <option key={product.productId} value={product.productId}>
                     {product.familyName} · {product.productName}

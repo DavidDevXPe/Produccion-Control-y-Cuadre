@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CAPTURE_CATALOG_ITEMS,
+  filterCaptureCatalogItems,
   filterProductionCatalogItems,
   PRODUCTION_CATALOG_ITEMS,
 } from './productionCatalog'
-import { CAPTURE_CATALOG_ITEMS } from './productionCatalog'
 import { SEED_CAPTURE_PRODUCTS } from './seedProducts'
 
 describe('production catalog filtering', () => {
@@ -71,4 +72,28 @@ describe('active capture catalog', () => {
       ])
       )
     })
+  it('includes and finds Recorte de Anillas SM CP ST in the active catalog', () => {
+    expect(CAPTURE_CATALOG_ITEMS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: 'recorte-crudo-anillas-sm-cp-st',
+          productName:
+            'RECORTE CRUDO CONGELADO BLOCK S/TTO ANILLAS SM CP ST 100% P.N.',
+          familyId: 'recorte-crudo',
+          familyName: 'RECORTE CRUDO',
+          summaryGroupId: 'RECORTE_CRUDO',
+        }),
+      ]),
+    )
+  
+    const matches = filterCaptureCatalogItems('anillas sm cp st')
+  
+    expect(matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: 'recorte-crudo-anillas-sm-cp-st',
+        }),
+      ]),
+    )
+  })
 })
