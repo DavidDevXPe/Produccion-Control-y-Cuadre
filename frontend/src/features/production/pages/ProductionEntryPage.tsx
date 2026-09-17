@@ -176,6 +176,19 @@ function captureQuantityKg100(value: string) {
     : kg100(0)
 }
 
+function isTreatmentOnlyProduct(product: ProductionCatalogItem): boolean {
+  const productId = product.productId.toLowerCase()
+
+  const productName = normalizeProductName(
+    product.canonicalName ?? product.productName,
+  )
+
+  return (
+    productId.includes('tratamiento') ||
+    productName.includes('EN TRATAMIENTO')
+  )
+}
+
 function isCaptureDraftEmpty(draft: ProductionCaptureDraft): boolean {
   return (
     draft.source === 'MANUAL' &&
@@ -483,16 +496,27 @@ export function ProductionEntryPage() {
   }, [freezingAvailabilityPositions, isFreezing])
   const filteredCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(productSearch, catalogItems).filter(
-        (product) =>
-          !draft.rows.some((row) => row.product.productId === product.productId),
-      ).sort((first, second) =>
-        isFreezing
-          ? (freezingAvailabilityByProduct.get(second.productId) ?? 0) -
-            (freezingAvailabilityByProduct.get(first.productId) ?? 0)
-          : 0,
-      ),
-    [catalogItems, draft.rows, freezingAvailabilityByProduct, isFreezing, productSearch],
+      filterCaptureCatalogItems(productSearch, catalogItems)
+        .filter(
+          (product) =>
+            !isTreatmentOnlyProduct(product) &&
+            !draft.rows.some(
+              (row) => row.product.productId === product.productId,
+            ),
+        )
+        .sort((first, second) =>
+          isFreezing
+            ? (freezingAvailabilityByProduct.get(second.productId) ?? 0) -
+              (freezingAvailabilityByProduct.get(first.productId) ?? 0)
+            : 0,
+        ),
+    [
+      catalogItems,
+      draft.rows,
+      freezingAvailabilityByProduct,
+      isFreezing,
+      productSearch,
+    ],
   )
   const treatmentCatalogItems = useMemo(
     () =>
@@ -826,6 +850,62 @@ export function ProductionEntryPage() {
   setSaveError('')
 }
 
+  const removeTreatmentProduct = (rowKey: string) => {
+  const selectedRow = draft.rows.find(
+    (candidate) => candidate.key === rowKey,
+  )
+
+  if (!selectedRow) return
+
+  const productId = selectedRow.product.productId
+
+  setDraft((current) => {
+    const row = current.rows.find(
+      (candidate) => candidate.key === rowKey,
+    )
+
+    if (!row) return current
+
+    const hasOtherMovement =
+      captureQuantityKg100(row.dayReportedKg) > 0 ||
+      captureQuantityKg100(row.nightReportedKg) > 0 ||
+      captureQuantityKg100(row.dayPreviousBalanceKg) > 0 ||
+      captureQuantityKg100(row.nightPreviousBalanceKg) > 0 ||
+      captureQuantityKg100(row.tunnelDayKg) > 0 ||
+      captureQuantityKg100(row.tunnelNightKg) > 0 ||
+      captureQuantityKg100(row.closingBalanceKg) > 0 ||
+      captureQuantityKg100(row.finishedKg) > 0 ||
+      current.balanceUses.some(
+        (balance) => balance.productId === productId,
+      )
+
+    return {
+      ...current,
+
+      rows: hasOtherMovement
+        ? current.rows.map((candidate) =>
+            candidate.key === rowKey
+              ? {
+                  ...candidate,
+                  treatmentKg: '0',
+                }
+              : candidate,
+          )
+        : current.rows.filter(
+            (candidate) => candidate.key !== rowKey,
+          ),
+    }
+  })
+
+  setTreatmentProductIds((current) => {
+    const next = new Set(current)
+    next.delete(productId)
+    return next
+  })
+
+  setSaveError('')
+}
+
   const addSelectedBalance = () => {
   const position = availableBalances.find(
     (balance) =>
@@ -1030,17 +1110,35 @@ export function ProductionEntryPage() {
   }
 
   const removeRow = (key: string) => {
-    const productId = draft.rows.find((row) => row.key === key)?.product.productId
+    const productId = draft.rows.find(
+      (row) => row.key === key,
+    )?.product.productId
+  
     if (productId) {
       setClosingProductIds((current) => {
         const next = new Set(current)
         next.delete(productId)
         return next
       })
+    
+      setTreatmentProductIds((current) => {
+        const next = new Set(current)
+        next.delete(productId)
+        return next
+      })
+    
+      setTunnelProductIds((current) => {
+        const next = new Set(current)
+        next.delete(productId)
+        return next
+      })
     }
+  
     setDraft((current) => ({
       ...current,
-      rows: current.rows.filter((row) => row.key !== key),
+      rows: current.rows.filter(
+        (row) => row.key !== key,
+      ),
       balanceUses: current.balanceUses.filter(
         (balance) => balance.productId !== productId,
       ),
@@ -2320,26 +2418,43 @@ export function ProductionEntryPage() {
           ) : (
             <div className="divide-y divide-slate-100">
               {treatmentRows.map((row) => (
-                <div
-                  key={`treatment-${row.key}`}
-                  className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center sm:px-5"
+            <div
+              key={`treatment-${row.key}`}
+              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_10rem_2.5rem] sm:items-end sm:px-5"
+            >
+              <div className="min-w-0 sm:self-center">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">
+                  {row.product.familyName}
+                </p>
+
+                <p
+                  className="mt-0.5 truncate text-xs font-semibold text-slate-800"
+                  title={row.product.productName}
                 >
-                  <div className="min-w-0">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">
-                      {row.product.familyName}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs font-semibold text-slate-800" title={row.product.productName}>
-                      {row.product.productName}
-                    </p>
-                  </div>
-                  <QuantityInput
-                    label="Kg tratamiento"
-                    value={row.treatmentKg}
-                    disabled={!reportsReconciled}
-                    onChange={(value) => updateRow(row.key, 'treatmentKg', value)}
-                  />
-                </div>
-              ))}
+                  {row.product.productName}
+                </p>
+              </div>
+
+              <QuantityInput
+                label="Kg tratamiento"
+                value={row.treatmentKg}
+                disabled={!reportsReconciled}
+                onChange={(value) =>
+                  updateRow(row.key, 'treatmentKg', value)
+                }
+              />
+
+              <button
+                type="button"
+                onClick={() => removeTreatmentProduct(row.key)}
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                aria-label={`Eliminar tratamiento de ${row.product.productName}`}
+                title="Eliminar de tratamiento"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          ))}
             </div>
           )}
         </fieldset>
@@ -2830,7 +2945,7 @@ export function ProductionEntryPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="process-change-title"
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
+            className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-[#0d1f2c] shadow-2xl"
           >
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700">
@@ -2869,80 +2984,153 @@ export function ProductionEntryPage() {
         </div>
       ) : null}
 
-      {isCloseConfirmationOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm">
+            {isCloseConfirmationOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
           <section
             role="dialog"
             aria-modal="true"
             aria-labelledby="yield-warning-title"
-            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
           >
-            <div className="flex items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700">
-                <AlertTriangle className="size-5" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 id="yield-warning-title" className="text-base font-bold text-slate-950">
-                  Cerrar jornada
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Después del cierre, esta jornada quedará en solo lectura.
-                </p>
+            {/* Encabezado */}
+            <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
+                  <AlertTriangle className="size-4" aria-hidden="true" />
+                </span>
+            
+                <div className="min-w-0">
+                  <h2
+                    id="yield-warning-title"
+                    className="text-base font-bold text-[#F3F8FB]"
+                  >
+                    Cerrar jornada
+                  </h2>
+            
+                  <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
+                    Después del cierre, esta jornada quedará en solo lectura.
+                  </p>
+                </div>
               </div>
             </div>
-            <dl className="mt-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
-              {[
-                ['Fecha', formatIsoDate(draft.date)],
-                ['Materia prima', isFreezing ? 'No aplica' : formatCentiKg(buildResult.productionDay.declaredRawMaterialKg100)],
-                ['Producto terminado', formatCentiKg(buildResult.calculation.declaredFinishedKg100)],
-                ['Saldo final', formatCentiKg(buildResult.calculation.newClosingBalanceKg100)],
-                ['Diferencia', formatCentiKg(buildResult.calculation.differenceKg100)],
-                ['Aprovechamiento', usesExternalAvailability ? 'No aplica' : `${businessSummary.generalYieldPercent?.toFixed(2) ?? '—'}%`],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">{label}</dt>
-                  <dd className="number-tabular mt-0.5 text-xs font-bold text-slate-900">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            {closureValidation.warnings.length > 0 ? (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">
-                  Advertencias antes del cierre
-                </p>
-
-                {closureValidation.warnings.map((warning) => (
-                  <div
-                    key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
-                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-                  >
-                    <p className="font-bold">
-                      {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
-                        ? 'Variación técnica de MP - Anillas'
-                        : warning.familyKey
-                          ? 'Rendimiento de familia'
-                          : 'Advertencia'}
-                    </p>
-                      
-                    <p className="mt-1">
-                      {warning.message}
-                    </p>
+            
+            <div className="px-5 py-4 sm:px-6">
+              {/* Resumen de la jornada */}
+              <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
+                {[
+                  ['Fecha', formatIsoDate(draft.date)],
+                  [
+                    'Materia prima',
+                    isFreezing
+                      ? 'No aplica'
+                      : formatCentiKg(
+                          buildResult.productionDay.declaredRawMaterialKg100,
+                        ),
+                  ],
+                  [
+                    'Producto terminado',
+                    formatCentiKg(
+                      buildResult.calculation.declaredFinishedKg100,
+                    ),
+                  ],
+                  [
+                    'Saldo final',
+                    formatCentiKg(
+                      buildResult.calculation.newClosingBalanceKg100,
+                    ),
+                  ],
+                  [
+                    'Diferencia',
+                    formatCentiKg(
+                      buildResult.calculation.differenceKg100,
+                    ),
+                  ],
+                  [
+                    'Aprovechamiento',
+                    usesExternalAvailability
+                      ? 'No aplica'
+                      : `${
+                          businessSummary.generalYieldPercent?.toFixed(2) ?? '—'
+                        }%`,
+                  ],
+                ].map(([label, value]) => (
+                  <div key={label} className="min-w-0">
+                    <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
+                      {label}
+                    </dt>
+                
+                    <dd className="number-tabular mt-1 truncate text-sm font-bold text-[#F3F8FB]">
+                      {value}
+                    </dd>
                   </div>
                 ))}
-              </div>
-            ) : null}
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              </dl>
+              
+              {/* Advertencias */}
+              {closureValidation.warnings.length > 0 ? (
+                <div className="mt-5">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
+                      Advertencias antes del cierre
+                    </p>
+              
+                    <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
+                      {closureValidation.warnings.length}{' '}
+                      {closureValidation.warnings.length === 1
+                        ? 'advertencia'
+                        : 'advertencias'}
+                    </span>
+                  </div>
+                      
+                  <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
+                    {closureValidation.warnings.map((warning, index) => (
+                      <div
+                        key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                        className={`flex items-start gap-3 px-4 py-3 ${
+                          index > 0
+                            ? 'border-t border-amber-500/10'
+                            : ''
+                        }`}
+                      >
+                        <AlertTriangle
+                          className="mt-0.5 size-4 shrink-0 text-amber-400"
+                          aria-hidden="true"
+                        />
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-amber-200">
+                            {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
+                              ? 'Variación técnica de MP · Anillas'
+                              : warning.familyKey
+                                ? 'Rendimiento de familia'
+                                : 'Advertencia'}
+                          </p>
+                            
+                          <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
+                            {warning.message}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            
+            {/* Acciones */}
+            <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => setIsCloseConfirmationOpen(false)}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] bg-transparent px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247] hover:text-white"
               >
                 Volver a revisar
               </button>
+            
               <button
                 type="button"
                 onClick={() => persist(true, true)}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"
+                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
               >
                 {closureValidation.warnings.length > 0
                   ? 'Cerrar con observación'
