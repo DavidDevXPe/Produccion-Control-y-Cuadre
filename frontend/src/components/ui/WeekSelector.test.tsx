@@ -305,8 +305,16 @@ describe('WeekSelector', () => {
     const searchbox = screen.getByRole('searchbox', { name: 'Buscar semana' })
 
     await user.type(searchbox, '41')
-    expect(screen.getByRole('option', { name: /Semana 41/ })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Semana 42/ })).not.toBeInTheDocument()
+
+    expect(
+      screen.getByRole('option', { name: /Semana 41/ }),
+    ).toBeInTheDocument()
+    
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('option', { name: /Semana 42/ }),
+      ).not.toBeInTheDocument()
+    })
 
     await user.clear(searchbox)
     await user.type(searchbox, '31 AGO')
