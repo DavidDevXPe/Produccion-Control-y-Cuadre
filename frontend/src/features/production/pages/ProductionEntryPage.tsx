@@ -428,7 +428,13 @@ export function ProductionEntryPage() {
   const tunnelMovementRequired =
     draft.hasTunnelProduction && buildResult.calculation.tunnel.totalKg100 === 0
   const footerStatus = canClose
+  ? closureValidation.warnings.length > 0
     ? {
+        title: 'La jornada puede cerrarse con observaciones.',
+        description:
+          'El cuadre principal es válido, pero existen advertencias que quedarán sujetas a revisión.',
+      }
+    : {
         title: 'La jornada está lista para cerrar.',
         description: usesExternalAvailability
           ? isFreezing
@@ -436,15 +442,17 @@ export function ProductionEntryPage() {
             : 'Los reportes y consumos de saldo están conciliados sin producción propia.'
           : 'El cuadre es correcto y no existen diferencias pendientes.',
       }
-    : hasSufficientData
-      ? {
-          title: 'La jornada todavía requiere revisión.',
-          description: 'Revisa el cuadre y las validaciones pendientes antes de cerrar.',
-        }
-      : {
-          title: 'Completa los datos requeridos para validar la jornada.',
-          description: 'Puedes guardar un borrador válido y continuar después.',
-        }
+  : hasSufficientData
+    ? {
+        title: 'La jornada todavía requiere revisión.',
+        description:
+          'Revisa el cuadre y las validaciones pendientes antes de cerrar.',
+      }
+    : {
+        title: 'Completa los datos requeridos para validar la jornada.',
+        description:
+          'Puedes guardar un borrador válido y continuar después.',
+      }
   const importedBalanceTotal = sumImportedBalances(draft.importedBalances)
   const importedBalanceMatches =
     importedBalanceTotal === buildResult.calculation.newClosingBalanceKg100
@@ -2898,21 +2906,30 @@ export function ProductionEntryPage() {
               ))}
             </dl>
             {closureValidation.warnings.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">
-                Advertencias de familia
-              </p>
-              {businessSummary.families
-                .filter((family) => family.status === 'BELOW_TARGET')
-                .map((family) => (
-                  <div key={family.key} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-                    <p className="font-bold">{family.label}</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">
+                  Advertencias antes del cierre
+                </p>
+
+                {closureValidation.warnings.map((warning) => (
+                  <div
+                    key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+                  >
+                    <p className="font-bold">
+                      {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
+                        ? 'Variación técnica de MP - Anillas'
+                        : warning.familyKey
+                          ? 'Rendimiento de familia'
+                          : 'Advertencia'}
+                    </p>
+                      
                     <p className="mt-1">
-                      Actual: {family.projectedYieldPercent?.toFixed(2)}% · Objetivo: ≥{family.targetPercent?.toFixed(0)}% · Faltan: {formatCentiKg(family.missingToTargetKg100)}
+                      {warning.message}
                     </p>
                   </div>
                 ))}
-            </div>
+              </div>
             ) : null}
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
@@ -2928,7 +2945,7 @@ export function ProductionEntryPage() {
                 className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"
               >
                 {closureValidation.warnings.length > 0
-                  ? 'Cerrar de todas formas'
+                  ? 'Cerrar con observación'
                   : 'Cerrar jornada'}
               </button>
             </div>

@@ -365,10 +365,10 @@ describe('ProductionEntryPage product selector', () => {
 
     fireEvent.change(captureInputs[0]!, { target: { value: '90' } })
 
-    expect(screen.getByText('La jornada está lista para cerrar.')).toBeInTheDocument()
+    expect(screen.getByText('La jornada puede cerrarse con observaciones.')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'El cuadre es correcto y no existen diferencias pendientes.',
+        'El cuadre principal es válido, pero existen advertencias que quedarán sujetas a revisión.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeEnabled()
@@ -602,9 +602,9 @@ describe('ProductionEntryPage product selector', () => {
       screen.getByRole('dialog', { name: 'Cerrar jornada' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Volver a revisar' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Cerrar de todas formas' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Cerrar con observación' })).toBeEnabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar de todas formas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar con observación' }))
     expect(screen.getByText('Detalle guardado')).toBeInTheDocument()
     const stored = JSON.parse(
       window.localStorage.getItem('trabunda-production-days-v2') ?? '[]',

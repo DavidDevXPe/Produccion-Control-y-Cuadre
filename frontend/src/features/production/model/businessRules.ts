@@ -926,10 +926,12 @@ export function validateProductionClosure(
     })
   }
 
-  if (businessSummary.tubeMpBalance.mpMainAnillasExcessKg100 > 0) {
-    blockers.push({
+    if (businessSummary.tubeMpBalance.mpMainAnillasExcessKg100 > 0) {
+    warnings.push({
       code: 'ANILLAS_MP_EXCEEDS_AVAILABLE',
-      message: `Los rendimientos registrados para Anillas requieren más MP de la disponible en el proceso de Tubo. Exceso: ${kilograms(businessSummary.tubeMpBalance.mpMainAnillasExcessKg100)}.`,
+      message: `La reconstrucción teórica de las Anillas supera la MP disponible del proceso de Tubo en ${kilograms(
+        businessSummary.tubeMpBalance.mpMainAnillasExcessKg100,
+      )}. Revisa la variación de rendimiento antes de cerrar.`,
     })
   }
 

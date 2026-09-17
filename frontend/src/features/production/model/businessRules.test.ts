@@ -811,7 +811,7 @@ describe('production business rules', () => {
     expect(diagnostics[0]?.message).toContain('Redistribuye')
   })
 
-  it('blocks when technical Anillas MP exceeds the available process MP', () => {
+  it('allows closure with warning when Anillas MP exceeds the available Tube MP', () => {
     const day = productionDay(100, [
       { group: 'ANILLAS', day: 21.26 },
       { group: 'RECORTE_CRUDO', day: 58.74 },
@@ -822,9 +822,16 @@ describe('production business rules', () => {
     })
 
     expect(summary.tubeMpBalance.mpMainAnillasExcessKg100).toBeGreaterThan(0)
-    expect(validation.blockers).toContainEqual(
+
+    expect(validation.blockers).not.toContainEqual(
       expect.objectContaining({ code: 'ANILLAS_MP_EXCEEDS_AVAILABLE' }),
     )
+
+    expect(validation.warnings).toContainEqual(
+      expect.objectContaining({ code: 'ANILLAS_MP_EXCEEDS_AVAILABLE' }),
+    )
+
+    expect(validation.canClose).toBe(true)
   })
 
   it('blocks when estimated Manto MP exceeds the Tube pool', () => {
