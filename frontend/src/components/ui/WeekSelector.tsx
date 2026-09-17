@@ -49,6 +49,7 @@ export function WeekSelector({
   const listboxId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const optionRefs = useRef(new Map<number, HTMLButtonElement>())
   const shouldShowSearch = options.length > WEEK_SELECTOR_SEARCH_THRESHOLD
   const hasMultipleYears = useMemo(
@@ -107,10 +108,17 @@ export function WeekSelector({
           (option) =>
             option.number === selectedWeekNumber && !option.disabled,
         ) ?? options.find((option) => !option.disabled)
+      
       if (focusTarget) {
         const target = optionRefs.current.get(focusTarget.number)
+      
         target?.scrollIntoView?.({ block: 'nearest' })
-        target?.focus({ preventScroll: true })
+      
+        // Si el usuario ya empezó a usar el buscador,
+        // no debemos quitarle el foco.
+        if (document.activeElement !== searchInputRef.current) {
+          target?.focus({ preventScroll: true })
+        }
       }
     })
 
@@ -176,6 +184,7 @@ export function WeekSelector({
                     aria-hidden="true"
                   />
                   <input
+                    ref={searchInputRef}
                     type="search"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}

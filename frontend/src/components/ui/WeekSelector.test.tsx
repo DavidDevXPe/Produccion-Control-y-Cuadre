@@ -305,6 +305,7 @@ describe('WeekSelector', () => {
     const searchbox = screen.getByRole('searchbox', { name: 'Buscar semana' })
 
     await user.type(searchbox, '41')
+    expect(searchbox).toHaveValue('41')
 
     expect(
       screen.getByRole('option', { name: /Semana 41/ }),
