@@ -11,6 +11,7 @@ import {
   ImagePlus,
 } from 'lucide-react'
 import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
@@ -1113,27 +1114,27 @@ export function ProductionEntryPage() {
     const productId = draft.rows.find(
       (row) => row.key === key,
     )?.product.productId
-  
+
     if (productId) {
       setClosingProductIds((current) => {
         const next = new Set(current)
         next.delete(productId)
         return next
       })
-    
+
       setTreatmentProductIds((current) => {
         const next = new Set(current)
         next.delete(productId)
         return next
       })
-    
+
       setTunnelProductIds((current) => {
         const next = new Set(current)
         next.delete(productId)
         return next
       })
     }
-  
+
     setDraft((current) => ({
       ...current,
       rows: current.rows.filter(
@@ -2984,162 +2985,164 @@ export function ProductionEntryPage() {
         </div>
       ) : null}
 
-            {isCloseConfirmationOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="yield-warning-title"
-            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
-          >
-            {/* Encabezado */}
-            <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
-              <div className="flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
-                  <AlertTriangle className="size-4" aria-hidden="true" />
-                </span>
-            
-                <div className="min-w-0">
-                  <h2
-                    id="yield-warning-title"
-                    className="text-base font-bold text-[#F3F8FB]"
-                  >
-                    Cerrar jornada
-                  </h2>
-            
-                  <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
-                    Después del cierre, esta jornada quedará en solo lectura.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="px-5 py-4 sm:px-6">
-              {/* Resumen de la jornada */}
-              <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
-                {[
-                  ['Fecha', formatIsoDate(draft.date)],
-                  [
-                    'Materia prima',
-                    isFreezing
-                      ? 'No aplica'
-                      : formatCentiKg(
-                          buildResult.productionDay.declaredRawMaterialKg100,
-                        ),
-                  ],
-                  [
-                    'Producto terminado',
-                    formatCentiKg(
-                      buildResult.calculation.declaredFinishedKg100,
-                    ),
-                  ],
-                  [
-                    'Saldo final',
-                    formatCentiKg(
-                      buildResult.calculation.newClosingBalanceKg100,
-                    ),
-                  ],
-                  [
-                    'Diferencia',
-                    formatCentiKg(
-                      buildResult.calculation.differenceKg100,
-                    ),
-                  ],
-                  [
-                    'Aprovechamiento',
-                    usesExternalAvailability
-                      ? 'No aplica'
-                      : `${
-                          businessSummary.generalYieldPercent?.toFixed(2) ?? '—'
-                        }%`,
-                  ],
-                ].map(([label, value]) => (
-                  <div key={label} className="min-w-0">
-                    <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
-                      {label}
-                    </dt>
-                
-                    <dd className="number-tabular mt-1 truncate text-sm font-bold text-[#F3F8FB]">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              
-              {/* Advertencias */}
-              {closureValidation.warnings.length > 0 ? (
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
-                      Advertencias antes del cierre
-                    </p>
-              
-                    <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
-                      {closureValidation.warnings.length}{' '}
-                      {closureValidation.warnings.length === 1
-                        ? 'advertencia'
-                        : 'advertencias'}
+      {isCloseConfirmationOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#020914]/90 p-4">
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="yield-warning-title"
+                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+              >
+                {/* Encabezado */}
+                <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
+                      <AlertTriangle className="size-4" aria-hidden="true" />
                     </span>
-                  </div>
-                      
-                  <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
-                    {closureValidation.warnings.map((warning, index) => (
-                      <div
-                        key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
-                        className={`flex items-start gap-3 px-4 py-3 ${
-                          index > 0
-                            ? 'border-t border-amber-500/10'
-                            : ''
-                        }`}
+        
+                    <div className="min-w-0">
+                      <h2
+                        id="yield-warning-title"
+                        className="text-base font-bold text-[#F3F8FB]"
                       >
-                        <AlertTriangle
-                          className="mt-0.5 size-4 shrink-0 text-amber-400"
-                          aria-hidden="true"
-                        />
-
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-amber-200">
-                            {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
-                              ? 'Variación técnica de MP · Anillas'
-                              : warning.familyKey
-                                ? 'Rendimiento de familia'
-                                : 'Advertencia'}
-                          </p>
-                            
-                          <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
-                            {warning.message}
-                          </p>
-                        </div>
+                        Cerrar jornada
+                      </h2>
+        
+                      <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
+                        Después del cierre, esta jornada quedará en solo lectura.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+        
+                {/* Contenido */}
+                <div className="px-5 py-4 sm:px-6">
+                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
+                    {[
+                      ['Fecha', formatIsoDate(draft.date)],
+                      [
+                        'Materia prima',
+                        isFreezing
+                          ? 'No aplica'
+                          : formatCentiKg(
+                              buildResult.productionDay.declaredRawMaterialKg100,
+                            ),
+                      ],
+                      [
+                        'Producto terminado',
+                        formatCentiKg(
+                          buildResult.calculation.declaredFinishedKg100,
+                        ),
+                      ],
+                      [
+                        'Saldo final',
+                        formatCentiKg(
+                          buildResult.calculation.newClosingBalanceKg100,
+                        ),
+                      ],
+                      [
+                        'Diferencia',
+                        formatCentiKg(
+                          buildResult.calculation.differenceKg100,
+                        ),
+                      ],
+                      [
+                        'Aprovechamiento',
+                        usesExternalAvailability
+                          ? 'No aplica'
+                          : `${
+                              businessSummary.generalYieldPercent?.toFixed(2) ?? '—'
+                            }%`,
+                      ],
+                    ].map(([label, value]) => (
+                      <div key={label} className="min-w-0">
+                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
+                          {label}
+                        </dt>
+                    
+                        <dd className="number-tabular mt-1 truncate text-sm font-bold text-[#F3F8FB]">
+                          {value}
+                        </dd>
                       </div>
                     ))}
-                  </div>
+                  </dl>
+                  
+                  {closureValidation.warnings.length > 0 ? (
+                    <div className="mt-5">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
+                          Advertencias antes del cierre
+                        </p>
+                  
+                        <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
+                          {closureValidation.warnings.length}{' '}
+                          {closureValidation.warnings.length === 1
+                            ? 'advertencia'
+                            : 'advertencias'}
+                        </span>
+                      </div>
+                          
+                      <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
+                        {closureValidation.warnings.map((warning, index) => (
+                          <div
+                            key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                            className={`flex items-start gap-3 px-4 py-3 ${
+                              index > 0
+                                ? 'border-t border-amber-500/10'
+                                : ''
+                            }`}
+                          >
+                            <AlertTriangle
+                              className="mt-0.5 size-4 shrink-0 text-amber-400"
+                              aria-hidden="true"
+                            />
+      
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-amber-200">
+                                {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
+                                  ? 'Variación técnica de MP · Anillas'
+                                  : warning.familyKey
+                                    ? 'Rendimiento de familia'
+                                    : 'Advertencia'}
+                              </p>
+                                
+                              <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
+                                {warning.message}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-            
-            {/* Acciones */}
-            <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-              <button
-                type="button"
-                onClick={() => setIsCloseConfirmationOpen(false)}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] bg-transparent px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247] hover:text-white"
-              >
-                Volver a revisar
-              </button>
-            
-              <button
-                type="button"
-                onClick={() => persist(true, true)}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
-              >
-                {closureValidation.warnings.length > 0
-                  ? 'Cerrar con observación'
-                  : 'Cerrar jornada'}
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+                
+                {/* Botones */}
+                <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsCloseConfirmationOpen(false)}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] bg-transparent px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247] hover:text-white"
+                  >
+                    Volver a revisar
+                  </button>
+                
+                  <button
+                    type="button"
+                    onClick={() => persist(true, true)}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                  >
+                    {closureValidation.warnings.length > 0
+                      ? 'Cerrar con observación'
+                      : 'Cerrar jornada'}
+                  </button>
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-[#2b5268] dark:bg-[#0a1a27] xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
         <div className="mx-auto flex w-full max-w-[92.5rem] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6 xl:h-full xl:px-7 2xl:px-8">
