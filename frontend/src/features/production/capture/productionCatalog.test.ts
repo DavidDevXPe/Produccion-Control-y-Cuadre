@@ -58,4 +58,17 @@ describe('active capture catalog', () => {
       CAPTURE_CATALOG_ITEMS.length,
     )
   })
+  it('includes Panza Ballena Cocida in the Recorte Cocido group', () => {
+  expect(CAPTURE_CATALOG_ITEMS).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        productId: 'panza-ballena-cocida',
+        productName: 'PANZA BALLENA COCIDA',
+        familyId: 'recorte-cocido',
+        familyName: 'RECORTE COCIDO',
+        summaryGroupId: 'RECORTE_COCIDO',
+        })
+      ])
+      )
+    })
 })

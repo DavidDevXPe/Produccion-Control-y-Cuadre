@@ -155,6 +155,7 @@ function catalogMetadataForName(productName: string): Pick<
 > {
   const normalized = normalizeProductKey(productName)
   if (normalized.includes('aleta')) return { familyId: 'aleta-cruda', familyName: 'ALETA CRUDA', summaryGroupId: 'ALETA' }
+  if (normalized.includes('panza') && normalized.includes('ballena')) return { familyId: 'recorte-cocido', familyName: 'RECORTE COCIDO', summaryGroupId: 'RECORTE_COCIDO' }
   if (normalized.includes('manto') || normalized.includes('cono')) return { familyId: 'manto-crudo', familyName: 'MANTO CRUDO', summaryGroupId: 'MANTO' }
   if (normalized.includes('anilla')) return { familyId: 'anillas', familyName: 'ANILLAS', summaryGroupId: 'ANILLAS' }
   if (normalized.includes('reproductor')) return { familyId: 'reproductor-crudo', familyName: 'REPRODUCTOR CRUDO', summaryGroupId: 'REPRODUCTOR' }
