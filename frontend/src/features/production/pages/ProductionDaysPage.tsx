@@ -307,12 +307,45 @@ export function ProductionDaysPage() {
                   operationalState.state === 'READY_TO_CLOSE'
                 const isBalanceOnly = isBalanceOnlyProductionDay(day)
                 const yieldStatus = getYieldStatus(calculation.performance.percent)
+                const performancePercent = calculation.performance.percent
+                const hasObservedYield =
+                  !isFreezing &&
+                  !isBalanceOnly &&
+                  performancePercent !== null &&
+                  performancePercent < 80
+
+                const hasInvalidYield =
+                  !isFreezing &&
+                  !isBalanceOnly &&
+                  performancePercent !== null &&
+                  performancePercent > 100
+
+                const squareStatus = !isBalanced
+                  ? {
+                      tone: 'danger' as const,
+                      label: 'POR CUADRAR',
+                    }
+                  : hasInvalidYield
+                    ? {
+                        tone: 'danger' as const,
+                        label: 'REVISAR INTEGRIDAD',
+                      }
+                    : hasObservedYield
+                      ? {
+                          tone: 'warning' as const,
+                          label: 'CUADRADO · OBSERVADO',
+                        }
+                      : {
+                          tone: 'success' as const,
+                          label: 'CUADRADO',
+                        }
                 const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
-                const rowAccentClass = isBalanced
-                    ? 'before:bg-emerald-500'
-                    : isClosed
-                      ? 'before:bg-rose-500'
-                      : 'before:bg-amber-500'
+                const rowAccentClass =
+                  !isBalanced || hasInvalidYield
+                    ? 'before:bg-rose-500'
+                    : hasObservedYield
+                      ? 'before:bg-amber-500'
+                      : 'before:bg-emerald-500'
 
                 return (
                   <tr
@@ -355,8 +388,8 @@ export function ProductionDaysPage() {
                     </td>
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="flex w-full items-center justify-center">
-                        <StatusBadge tone={isBalanced ? 'success' : 'danger'}>
-                          {isBalanced ? 'CUADRADO' : 'NO CUADRADO'}
+                        <StatusBadge tone={squareStatus.tone}>
+                          {squareStatus.label}
                         </StatusBadge>
                       </div>
                     </td>
@@ -400,15 +433,20 @@ export function ProductionDaysPage() {
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="flex w-full items-center justify-center">
                         <ActionLink
-                          to={`${isClosed || activeWeekState.isReadOnly ? `/jornadas/${day.date}` : `/jornadas/${day.date}/editar`}?process=${selectedProcess}`}
+                          to={`${
+                            isClosed || activeWeekState.isReadOnly || isReadyToClose
+                              ? `/jornadas/${day.date}`
+                              : `/jornadas/${day.date}/editar`
+                          }?process=${selectedProcess}`}
                           variant="ghost"
                           size="sm"
                         >
                           {isClosed || activeWeekState.isReadOnly
                             ? 'Ver detalle'
                             : isReadyToClose
-                              ? 'Cerrar jornada'
-                              : 'Continuar captura'}
+                              ? 'Revisar y cerrar'
+                              : 'Seguir cuadrando'}
+                        
                           <ArrowRight className="size-4" aria-hidden="true" />
                         </ActionLink>
                       </div>
