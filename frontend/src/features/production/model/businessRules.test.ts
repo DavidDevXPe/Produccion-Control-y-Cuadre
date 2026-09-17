@@ -604,25 +604,48 @@ describe('production business rules', () => {
     })
   })
 
-  it('blocks a 79.99% general yield and permits 80% with exact reconciliation', () => {
+  it('allows a 79.99% general yield with warning and permits 80% normally', () => {
     const below = productionDay(100, [
       { group: 'RECORTE_CRUDO', day: 79.99 },
     ])
+  
     const exact = productionDay(100, [
       { group: 'RECORTE_CRUDO', day: 80 },
     ])
+  
     const belowCalculation = calculateProductionDay(below)
     const exactCalculation = calculateProductionDay(exact)
-
-    expect(
-      validateProductionClosure(below, belowCalculation, {
+  
+    const belowValidation = validateProductionClosure(
+      below,
+      belowCalculation,
+      {
         requiredDataComplete: true,
-      }).blockers,
-    ).toContainEqual(expect.objectContaining({ code: 'GENERAL_YIELD_BELOW_MIN' }))
+      },
+    )
+  
+    expect(belowValidation.canClose).toBe(true)
+  
+    expect(belowValidation.blockers).not.toContainEqual(
+      expect.objectContaining({
+        code: 'GENERAL_YIELD_BELOW_MIN',
+      }),
+    )
+  
+    expect(belowValidation.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'GENERAL_YIELD_BELOW_MIN',
+      }),
+    )
+  
     expect(
-      validateProductionClosure(exact, exactCalculation, {
-        requiredDataComplete: true,
-      }).canClose,
+      validateProductionClosure(
+        exact,
+        exactCalculation,
+        {
+          requiredDataComplete: true,
+        },
+      ).canClose,
     ).toBe(true)
   })
 

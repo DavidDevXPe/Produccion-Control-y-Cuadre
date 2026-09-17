@@ -95,6 +95,7 @@ export function ProductionDayPage() {
   const isBalanced = operationalState.isBalanced
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
+  const hasClosureWarnings = operationalState.validation.warnings.length > 0
   const isBalanceOnly = isBalanceOnlyProductionDay(productionDay)
   const canExport =
     productionDay.status === 'CLOSED' &&
@@ -180,13 +181,27 @@ export function ProductionDayPage() {
         }
         actions={
           <>
-            <StatusBadge tone={isClosed ? (isBalanced ? 'success' : 'danger') : isReadyToClose ? 'success' : 'warning'}>
+            <StatusBadge
+              tone={
+                isClosed
+                  ? isBalanced
+                    ? 'success'
+                    : 'danger'
+                  : isReadyToClose
+                    ? hasClosureWarnings
+                      ? 'warning'
+                      : 'success'
+                    : 'warning'
+              }
+            >
               {isClosed
                 ? isBalanced
                   ? 'CERRADA · SOLO LECTURA'
                   : 'CERRADA · REVISAR'
                 : isReadyToClose
-                  ? 'LISTA PARA CERRAR'
+                  ? hasClosureWarnings
+                    ? 'LISTA · CON OBSERVACIONES'
+                    : 'LISTA PARA CERRAR'
                   : 'BORRADOR · REVISAR'}
             </StatusBadge>
             {isBalanceOnly ? (
@@ -194,20 +209,50 @@ export function ProductionDayPage() {
             ) : null}
             {isUserManagedDay(productionDay.date, process) && !isClosed ? (
               <>
-                <ActionLink
+                <Link
                   to={`/jornadas/${productionDay.date}/editar?process=${process}`}
-                  variant="secondary"
-                  size="sm"
+                  className="
+                    inline-flex min-h-10 shrink-0 items-center justify-center gap-2
+                    rounded-[0.625rem] border border-slate-300 bg-white px-4 py-2
+                    text-sm font-bold text-slate-700 shadow-sm transition-colors
+                    hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800
+
+                    dark:border-[#2B5268] dark:bg-[#0D2534]
+                    dark:text-[#58C8EA] dark:shadow-none
+                    dark:hover:border-[#3D6A80]
+                    dark:hover:bg-[#123247]
+                    dark:hover:text-[#F3F8FB]
+                  "
                 >
                   <Pencil className="size-4" aria-hidden="true" />
                   Seguir editando
-                </ActionLink>
-                        
+                </Link>
+
                 <button
                   type="button"
                   disabled={!isReadyToClose}
                   onClick={handleCloseDay}
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[0.625rem] bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  className="
+                    inline-flex min-h-10 shrink-0 items-center justify-center gap-2
+                    rounded-[0.625rem] border border-brand-700
+                    bg-brand-700 px-4 py-2
+                    text-sm font-bold text-white transition-colors
+                    hover:bg-brand-800
+
+                    disabled:cursor-not-allowed
+                    disabled:border-slate-200
+                    disabled:bg-slate-100
+                    disabled:text-slate-400
+
+                    dark:border-[#169FD0]
+                    dark:bg-[#169FD0]
+                    dark:text-white
+                    dark:hover:bg-[#138BB6]
+
+                    dark:disabled:border-[#203E50]
+                    dark:disabled:bg-[#102331]
+                    dark:disabled:text-[#60798A]
+                  "
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   Cerrar jornada
@@ -216,7 +261,32 @@ export function ProductionDayPage() {
             ) : null}
             <button
               type="button"
-              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[0.625rem] bg-brand-700 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+              className="
+                inline-flex min-h-10 shrink-0 items-center justify-center gap-2
+                rounded-[0.625rem] border border-slate-300
+                bg-white px-4 py-2
+                text-sm font-bold text-slate-700
+                transition-colors
+                hover:border-brand-300
+                hover:bg-brand-50
+                hover:text-brand-800              
+
+                disabled:cursor-not-allowed
+                disabled:border-slate-200
+                disabled:bg-slate-100
+                disabled:text-slate-400             
+
+                dark:border-[#2B5268]
+                dark:bg-[#0D2534]
+                dark:text-[#A5BED0]
+                dark:hover:border-[#3D6A80]
+                dark:hover:bg-[#123247]
+                dark:hover:text-[#F3F8FB]             
+
+                dark:disabled:border-[#203E50]
+                dark:disabled:bg-[#102331]
+                dark:disabled:text-[#60798A]
+              "
               disabled={!canExport || exportState === 'EXPORTING'}
               onClick={handleExport}
               title={

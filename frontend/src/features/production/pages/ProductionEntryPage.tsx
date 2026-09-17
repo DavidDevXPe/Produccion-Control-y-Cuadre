@@ -2888,18 +2888,20 @@ export function ProductionEntryPage() {
           tone={
             usesExternalAvailability
               ? 'neutral'
-              : businessSummary.overallUtilization.percent !== null &&
-            businessSummary.overallUtilization.percent >= 80 &&
-            businessSummary.overallUtilization.percent <= 100
-              ? 'success'
-              : 'danger'
+              : businessSummary.overallUtilization.percent === null
+                ? 'neutral'
+                : businessSummary.overallUtilization.percent > 100
+                  ? 'danger'
+                  : businessSummary.overallUtilization.percent < 80
+                    ? 'warning'
+                    : 'success'
           }
           description={
             usesExternalAvailability
               ? isFreezing
                 ? 'No aplica el 80%; Congelamiento se valida contra disponibilidad de Envasado.'
                 : 'Jornada de saldos sin nueva materia prima.'
-              : 'Debe estar entre 80% y 100% para cerrar.'
+              : 'La referencia operativa es 80%. Un valor inferior permite cierre con observación; un valor superior a 100% requiere revisión.'
           }
         />
       </section>

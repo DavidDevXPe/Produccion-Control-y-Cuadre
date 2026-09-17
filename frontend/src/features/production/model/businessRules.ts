@@ -906,15 +906,25 @@ export function validateProductionClosure(
   }
 
   const generalYield = businessSummary.generalYieldPercent
-  if (generalYield === null || generalYield < GENERAL_MIN_YIELD * 100) {
+
+  if (generalYield === null) {
     blockers.push({
       code: 'GENERAL_YIELD_BELOW_MIN',
-      message: 'El aprovechamiento general debe ser al menos 80%.',
+      message:
+        'No se pudo calcular el aprovechamiento general de la jornada.',
     })
   } else if (generalYield > 100) {
     blockers.push({
       code: 'GENERAL_YIELD_ABOVE_MAX',
-      message: 'El aprovechamiento general no puede superar 100%.',
+      message:
+        'El aprovechamiento general no puede superar 100%.',
+    })
+  } else if (generalYield < GENERAL_MIN_YIELD * 100) {
+    warnings.push({
+      code: 'GENERAL_YIELD_BELOW_MIN',
+      message: `El aprovechamiento general es ${generalYield.toFixed(
+        2,
+      )}%, por debajo de la referencia de 80%. La jornada puede cerrarse con observación.`,
     })
   }
 

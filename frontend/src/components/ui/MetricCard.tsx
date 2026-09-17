@@ -56,6 +56,7 @@ export function MetricCard({
       className={[
         'metric-card min-h-[7.125rem] min-w-0 rounded-xl border border-l-[3px] border-slate-200 bg-white p-[1.125rem] shadow-panel',
         cardToneClasses[tone],
+        icon ? 'metric-card--with-icon' : '',
         className,
       ]
         .filter(Boolean)

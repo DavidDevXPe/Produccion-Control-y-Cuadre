@@ -301,10 +301,20 @@ summary:focus-visible,
   font-size: 1.625rem;
 }
 
+.metric-card--with-icon .metric-card__value {
+  padding-right: 2.75rem;
+}
+
 .metric-card__icon {
   position: absolute;
   right: 1.125rem;
   top: 1.125rem;
+}
+
+@container metric-card (max-width: 14.99rem) {
+  .metric-card--with-icon .metric-card__value {
+    font-size: 1.4rem;
+  }
 }
 
 @container metric-card (min-width: 15rem) {
@@ -320,6 +330,10 @@ summary:focus-visible,
   }
 
   html.dark .metric-card__label {
+    padding-right: 0;
+  }
+
+  html.dark .metric-card--with-icon .metric-card__value {
     padding-right: 0;
   }
 
