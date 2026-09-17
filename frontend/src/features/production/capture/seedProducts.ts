@@ -8,9 +8,10 @@ const seedNames = [
     ['MANTO ESTANDAR CRUDO CONGELADO BLOCK S/TTO C/02 MEMB 2 KG - 4 KG CH 100% P.N.', 'MANTO'],
     ['MANTO JAPONES CRUDO CONGELADO BLOCK S/TTO 2 KG - 4 KG SB 100% P.N.', 'MANTO'],
     ['MANTO JAPONES CRUDO CONGELADO BLOCK S/TTO 1 KG - 2 KG SB 100% P.N.', 'MANTO'],
+    ['ALETA CRUDA CONGELADA BLOCK S/TTO 2000 g - 3000 g 100% P.N.', 'ALETA'],
     ['ALETA CRUDA CONGELADA BLOCK S/TTO 1000 g - 2000 g (E) 100% P.N.', 'ALETA'],
     ['ALETA CRUDA CONGELADA BLOCK S/TTO 500 g - 1000 g 100% P.N.', 'ALETA'],
-    ['ALETA CRUDA CONGELADA BLOCK S/TTO 2000 g - 3000 g 100% P.N.', 'ALETA'],
+    ['ALETA CRUDA CONGELADA BLOCK S/TTO 0 g - 500 g 100% P.N.', 'ALETA'],
     ['REJO CRUDO CONGELADO BLOCK S/TTO BAA S/R 1-2 100% P.N.', 'REJOS'],
     ['REJO CRUDO CONGELADO BLOCK S/TTO BAA S/R 2-3 100% P.N.', 'REJOS'],
     ['REJOS CRUDOS SECCIONADOS 1-2 PARTE CORONA (EN TRATAMIENTO)', 'REJOS'],
@@ -44,10 +45,11 @@ const seedIds = [
     'manto-estandar-crudo-2-4',
     'manto-estandar-crudo-2-4-ch',
     'manto-japones-crudo',
-    'capture-seed-5',
-    'capture-seed-6',
-    'capture-seed-7',
-    'capture-seed-8',
+    'manto-japones-crudo-1-2',
+    'aleta-cruda-block-2000-3000',
+    'aleta-cruda-block-1000-2000-e',
+    'aleta-cruda-block-500-1000',
+    'aleta-cruda-block-0-500',
     'rejo-baa-1-2',
     'rejo-baa-2-3',
     'rejos-seccionados-1-2-corona-tratamiento',
@@ -94,6 +96,12 @@ function technicalClassification(canonicalName: string): NonNullable<ProductionC
     if (canonicalName.includes('POLAR')) return 'POLAR'
     if (canonicalName.includes('USA')) return 'USA'
     return 'GENERAL'
+}
+
+if (seedNames.length !== seedIds.length) {
+    throw new Error(
+        `El catálogo semilla tiene ${seedNames.length} productos y ${seedIds.length} IDs.`,
+    )
 }
 
 export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] = seedNames.map(

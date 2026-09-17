@@ -59,6 +59,7 @@ describe('active capture catalog', () => {
       CAPTURE_CATALOG_ITEMS.length,
     )
   })
+
   it('includes Panza Ballena Cocida in the Recorte Cocido group', () => {
   expect(CAPTURE_CATALOG_ITEMS).toEqual(
     expect.arrayContaining([
@@ -72,6 +73,7 @@ describe('active capture catalog', () => {
       ])
       )
     })
+
   it('includes and finds Recorte de Anillas SM CP ST in the active catalog', () => {
     expect(CAPTURE_CATALOG_ITEMS).toEqual(
       expect.arrayContaining([
@@ -85,9 +87,9 @@ describe('active capture catalog', () => {
         }),
       ]),
     )
-  
+
     const matches = filterCaptureCatalogItems('anillas sm cp st')
-  
+
     expect(matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -95,5 +97,45 @@ describe('active capture catalog', () => {
         }),
       ]),
     )
+  })
+
+  it('includes and finds Aleta Cruda Block 0 g - 500 g in the active catalog', () => {
+    expect(CAPTURE_CATALOG_ITEMS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: 'aleta-cruda-block-0-500',
+          productName:
+            'ALETA CRUDA CONGELADA BLOCK S/TTO 0 g - 500 g 100% P.N.',
+          familyId: 'aleta-cruda',
+          familyName: 'ALETA CRUDA',
+          summaryGroupId: 'ALETA',
+        }),
+      ]),
+    )
+  
+    const matches = filterCaptureCatalogItems('aleta 0 500')
+  
+    expect(matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: 'aleta-cruda-block-0-500',
+        }),
+      ]),
+    )
+  })
+  
+  it('keeps every capture seed product paired with a unique product id', () => {
+    const ids = SEED_CAPTURE_PRODUCTS.map((product) => product.productId)
+  
+    expect(ids).toHaveLength(SEED_CAPTURE_PRODUCTS.length)
+    expect(new Set(ids).size).toBe(ids.length)
+  
+    expect(
+      SEED_CAPTURE_PRODUCTS.every(
+        (product) =>
+          typeof product.productId === 'string' &&
+          product.productId.trim().length > 0,
+      ),
+    ).toBe(true)
   })
 })
