@@ -3061,7 +3061,7 @@ export function ProductionEntryPage() {
                           {label}
                         </dt>
                     
-                        <dd className="number-tabular mt-1 truncate text-sm font-bold text-[#F3F8FB]">
+                        <dd className="number-tabular mt-1 text-sm font-bold text-[#F3F8FB]">
                           {value}
                         </dd>
                       </div>
@@ -3097,7 +3097,7 @@ export function ProductionEntryPage() {
                               className="mt-0.5 size-4 shrink-0 text-amber-400"
                               aria-hidden="true"
                             />
-      
+
                             <div className="min-w-0">
                               <p className="text-xs font-bold text-amber-200">
                                 {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'

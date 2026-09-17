@@ -1,7 +1,9 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   Boxes,
   CalendarDays,
+  CheckCircle2,
   Download,
   LoaderCircle,
   Moon,
@@ -31,6 +33,7 @@ import {
 } from '../model/calculations'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
+import { createPortal } from 'react-dom'
 import {
   getProductionProcess,
   isFreezingProductionDay,
@@ -44,11 +47,14 @@ export function ProductionDayPage() {
   const [exportState, setExportState] = useState<
     'IDLE' | 'EXPORTING' | 'SUCCESS' | 'ERROR'
   >('IDLE')
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
+  const [closeError, setCloseError] = useState('')
   const {
     allProductionDays,
     subsequentBalanceLots,
     findProductionDay,
     isUserManagedDay,
+    upsertProductionDay,
   } = useProductionData()
   const processParam = searchParams.get('process')
   const requestedProcess = isProductionProcess(processParam)
@@ -122,6 +128,38 @@ export function ProductionDayPage() {
     }
   }
 
+  const handleCloseDay = () => {
+  if (!isReadyToClose || isClosed) return
+
+  setCloseError('')
+  setIsCloseConfirmationOpen(true)
+}
+
+  const confirmCloseDay = () => {
+    if (!isReadyToClose || isClosed) return
+
+    try {
+      upsertProductionDay(
+        {
+          ...productionDay,
+          status: 'CLOSED',
+        },
+        {
+          allowReplace: true,
+        },
+      )
+
+      setIsCloseConfirmationOpen(false)
+      setCloseError('')
+    } catch (error) {
+      setCloseError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo cerrar la jornada.',
+      )
+    }
+  }
+
   return (
     <div className="space-y-5">
       <Link
@@ -155,14 +193,26 @@ export function ProductionDayPage() {
               <StatusBadge tone="info">JORNADA DE SALDOS</StatusBadge>
             ) : null}
             {isUserManagedDay(productionDay.date, process) && !isClosed ? (
-              <ActionLink
-                to={`/jornadas/${productionDay.date}/editar?process=${process}`}
-                variant={isReadyToClose ? 'primary' : 'secondary'}
-                size="sm"
-              >
-                <Pencil className="size-4" aria-hidden="true" />
-                {isReadyToClose ? 'Cerrar jornada' : 'Continuar captura'}
-              </ActionLink>
+              <>
+                <ActionLink
+                  to={`/jornadas/${productionDay.date}/editar?process=${process}`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                  Seguir editando
+                </ActionLink>
+                        
+                <button
+                  type="button"
+                  disabled={!isReadyToClose}
+                  onClick={handleCloseDay}
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[0.625rem] bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                >
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                  Cerrar jornada
+                </button>
+              </>
             ) : null}
             <button
               type="button"
@@ -288,6 +338,167 @@ export function ProductionDayPage() {
           />
         ) : null}
       </div>
+      {isCloseConfirmationOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#020914]/90 p-4">
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="day-close-title"
+                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+              >
+                <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
+                      <AlertTriangle className="size-4" aria-hidden="true" />
+                    </span>
+
+                    <div>
+                      <h2
+                        id="day-close-title"
+                        className="text-base font-bold text-[#F3F8FB]"
+                      >
+                        Cerrar jornada
+                      </h2>
+
+                      <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
+                        Después del cierre, esta jornada quedará en solo lectura.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-5 py-4 sm:px-6">
+                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
+                    {[
+                      ['Fecha', formatIsoDate(productionDay.date)],
+                      [
+                        'Materia prima',
+                        formatCentiKg(
+                          productionDay.declaredRawMaterialKg100,
+                        ),
+                      ],
+                      [
+                        'Producto terminado',
+                        formatCentiKg(
+                          calculation.declaredFinishedKg100,
+                        ),
+                      ],
+                      [
+                        'Saldo final',
+                        formatCentiKg(
+                          calculation.newClosingBalanceKg100,
+                        ),
+                      ],
+                      [
+                        'Diferencia',
+                        formatCentiKg(
+                          calculation.differenceKg100,
+                        ),
+                      ],
+                      [
+                        'Estado',
+                        isReadyToClose
+                          ? 'Lista para cerrar'
+                          : 'Requiere revisión',
+                      ],
+                    ].map(([label, value]) => (
+                      <div key={label} className="min-w-0">
+                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
+                          {label}
+                        </dt>
+
+                        <dd className="number-tabular mt-1 text-sm font-bold text-[#F3F8FB]">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {operationalState.validation.warnings.length > 0 ? (
+                    <div className="mt-5">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
+                          Advertencias antes del cierre
+                        </p>
+
+                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
+                          {operationalState.validation.warnings.length}{' '}
+                          {operationalState.validation.warnings.length === 1
+                            ? 'advertencia'
+                            : 'advertencias'}
+                        </span>
+                      </div>
+
+                      <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
+                        {operationalState.validation.warnings.map(
+                          (warning, index) => (
+                            <div
+                              key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                              className={`flex items-start gap-3 px-4 py-3 ${
+                                index > 0
+                                  ? 'border-t border-amber-500/10'
+                                  : ''
+                              }`}
+                            >
+                              <AlertTriangle
+                                className="mt-0.5 size-4 shrink-0 text-amber-400"
+                                aria-hidden="true"
+                              />
+
+                              <div>
+                                <p className="text-xs font-bold text-amber-200">
+                                  Advertencia
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
+                                  {warning.message}
+                                </p>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {closeError ? (
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200"
+                    >
+                      {closeError}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCloseConfirmationOpen(false)
+                      setCloseError('')
+                    }}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247]"
+                  >
+                    Volver a revisar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={confirmCloseDay}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                  >
+                    {operationalState.validation.warnings.length > 0
+                      ? 'Cerrar con observación'
+                      : 'Cerrar jornada'}
+                  </button>
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
