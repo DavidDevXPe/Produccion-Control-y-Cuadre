@@ -179,6 +179,31 @@ function captureQuantityKg100(value: string) {
     : kg100(0)
 }
 
+function addDaysToIsoDate(
+  isoDate: string,
+  days: number,
+): string {
+  const [year, month, day] = isoDate
+    .split('-')
+    .map(Number)
+
+  const date = new Date(
+    Date.UTC(
+      year!,
+      month! - 1,
+      day!,
+    ),
+  )
+
+  date.setUTCDate(
+    date.getUTCDate() + days,
+  )
+
+  return date
+    .toISOString()
+    .slice(0, 10)
+}
+
 function isTreatmentOnlyProduct(product: ProductionCatalogItem): boolean {
   const productId = product.productId.toLowerCase()
 
@@ -570,33 +595,88 @@ export function ProductionEntryPage() {
   [freezingAvailabilityPositions],
 )
 
-const freezingPreviousOriginPositions = useMemo(
-  () =>
-    freezingOpenOriginPositions.filter(
-      (position) => position.originDate < draft.date,
-    ),
-  [draft.date, freezingOpenOriginPositions],
-)
+const freezingAutomaticOriginStartDate =
+  useMemo(() => {
+    const week =
+      getOperationalWeekContextForIsoDate(
+        draft.date,
+      )
 
-const freezingCurrentOriginPositions = useMemo(
-  () =>
-    freezingOpenOriginPositions.filter(
-      (position) => position.originDate === draft.date,
-    ),
-  [draft.date, freezingOpenOriginPositions],
-)
+    /*
+     * Congelamiento trabaja automáticamente
+     * con la semana operativa actual y permite
+     * el arrastre inmediato del fin de semana.
+     *
+     * Si la semana empieza lunes 14/09:
+     *
+     * inicio automático = sábado 12/09.
+     *
+     * Así:
+     * - sábado 12 puede arrastrarse,
+     * - domingo 13 puede arrastrarse,
+     * - lunes 14 entra normalmente,
+     * - históricos como 02/09 o 07/09 no
+     *   son consumidos automáticamente.
+     */
+    return addDaysToIsoDate(
+      week.period.startDate,
+      -2,
+    )
+  }, [draft.date])
+
+const freezingAutomaticOriginPositions =
+  useMemo(
+    () =>
+      freezingOpenOriginPositions.filter(
+        (position) =>
+          position.originDate >=
+            freezingAutomaticOriginStartDate &&
+          position.originDate <= draft.date,
+      ),
+    [
+      draft.date,
+      freezingAutomaticOriginStartDate,
+      freezingOpenOriginPositions,
+    ],
+  )
+
+const freezingPreviousOriginPositions =
+  useMemo(
+    () =>
+      freezingAutomaticOriginPositions.filter(
+        (position) =>
+          position.originDate < draft.date,
+      ),
+    [
+      draft.date,
+      freezingAutomaticOriginPositions,
+    ],
+  )
+
+const freezingCurrentOriginPositions =
+  useMemo(
+    () =>
+      freezingAutomaticOriginPositions.filter(
+        (position) =>
+          position.originDate === draft.date,
+      ),
+    [
+      draft.date,
+      freezingAutomaticOriginPositions,
+    ],
+  )
 
   const freezingAvailabilityByProduct = useMemo(() => {
     if (!isFreezing) return new Map<string, ReturnType<typeof kg100>>()
     const totals = new Map<string, ReturnType<typeof kg100>>()
-    for (const position of freezingOpenOriginPositions) {
+    for (const position of freezingAutomaticOriginPositions) {
       totals.set(
         position.productId,
         kg100((totals.get(position.productId) ?? 0) + position.pendingKg100),
       )
     }
     return totals
-  }, [freezingOpenOriginPositions, isFreezing])
+  }, [freezingAutomaticOriginPositions, isFreezing])
 
   const getFreezingPotentialAvailabilityKg100 = (
     productId: string,
@@ -623,7 +703,7 @@ const freezingCurrentOriginPositions = useMemo(
     )
 
     const sourceAvailableKg100 = sumKg100(
-      freezingOpenOriginPositions
+      freezingAutomaticOriginPositions
         .filter((position) => {
           if (position.pendingKg100 <= 0) {
             return false
@@ -770,10 +850,18 @@ const freezingCurrentOriginPositions = useMemo(
       isFreezing
         ? availableBalances.filter(
             (balance) =>
-              balance.originDate < draft.date,
+              balance.originDate >=
+                freezingAutomaticOriginStartDate &&
+              balance.originDate <
+                draft.date,
           )
         : [],
-    [availableBalances, draft.date, isFreezing],
+    [
+      availableBalances,
+      draft.date,
+      freezingAutomaticOriginStartDate,
+      isFreezing,
+    ],
   )
 
 const availableFreezingCurrentOriginBalances =
@@ -796,6 +884,23 @@ const availableFreezingCurrentOriginBalances =
     freezingPreviousOriginPositions.map(
       (position) => position.pendingKg100,
     ),
+  )
+
+const availableFreezingHistoricalBalances =
+  useMemo(
+    () =>
+      isFreezing
+        ? availableBalances.filter(
+            (balance) =>
+              balance.originDate <
+              freezingAutomaticOriginStartDate,
+          )
+        : [],
+    [
+      availableBalances,
+      freezingAutomaticOriginStartDate,
+      isFreezing,
+    ],
   )
 
 const freezingCurrentOriginAvailableKg100 =
@@ -1417,7 +1522,7 @@ const freezingOriginLedgerSummary =
       reportedNightKg100: captureQuantityKg100(
         row.nightReportedKg,
       ),
-      positions: freezingOpenOriginPositions,
+      positions: freezingAutomaticOriginPositions,
       existingUses: current.balanceUses,
     })
     return {
@@ -1449,7 +1554,7 @@ const autoLinkAllFreezingProducts = () => {
         reportedNightKg100: captureQuantityKg100(
           row.nightReportedKg,
         ),
-        positions: freezingOpenOriginPositions,
+        positions: freezingAutomaticOriginPositions,
         existingUses: nextBalanceUses,
       })
 
@@ -3492,6 +3597,30 @@ freezingOriginLedger.length > 0 ? (
                           {balance.familyName} ·{' '}
                           {balance.productName} ·{' '}
                           {formatCentiKg(balance.pendingKg100)}
+                        </option>
+                      ),
+                    )}
+                  </optgroup>
+                ) : null}
+                {availableFreezingHistoricalBalances.length >
+                0 ? (
+                  <optgroup
+                    label={`HISTÓRICO · VINCULACIÓN MANUAL · ${availableFreezingHistoricalBalances.length}`}
+                  >
+                    {availableFreezingHistoricalBalances.map(
+                      (balance) => (
+                        <option
+                          key={`${balance.originDayId}|${balance.productId}`}
+                          value={`${balance.originDayId}|${balance.productId}`}
+                        >
+                          {formatIsoDate(
+                            balance.originDate,
+                          )}{' '}
+                          · {balance.familyName} ·{' '}
+                          {balance.productName} ·{' '}
+                          {formatCentiKg(
+                            balance.pendingKg100,
+                          )}
                         </option>
                       ),
                     )}
