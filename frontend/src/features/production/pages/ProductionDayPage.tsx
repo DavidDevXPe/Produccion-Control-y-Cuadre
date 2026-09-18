@@ -183,21 +183,25 @@ export function ProductionDayPage() {
           <>
             <StatusBadge
               tone={
-                isClosed
-                  ? isBalanced
+              isClosed
+                ? hasClosureWarnings
+                  ? 'warning'
+                  : isBalanced
                     ? 'success'
                     : 'danger'
-                  : isReadyToClose
-                    ? hasClosureWarnings
-                      ? 'warning'
-                      : 'success'
-                    : 'warning'
-              }
+                : isReadyToClose
+                  ? hasClosureWarnings
+                    ? 'warning'
+                    : 'success'
+                  : 'warning'
+            }
             >
               {isClosed
-                ? isBalanced
-                  ? 'CERRADA · SOLO LECTURA'
-                  : 'CERRADA · REVISAR'
+                ? hasClosureWarnings
+                  ? 'CERRADA · CON OBSERVACIONES'
+                  : isBalanced
+                    ? 'CERRADA · SOLO LECTURA'
+                    : 'CERRADA · REVISAR'
                 : isReadyToClose
                   ? hasClosureWarnings
                     ? 'LISTA · CON OBSERVACIONES'
@@ -305,6 +309,46 @@ export function ProductionDayPage() {
           </>
         }
       />
+
+{hasClosureWarnings ? (
+  <SectionCard
+    title={
+      isClosed
+        ? 'Observaciones de cierre'
+        : 'Observaciones detectadas'
+    }
+    description="Estas advertencias quedan asociadas a la jornada para revisión y auditoría."
+    action={
+      <StatusBadge tone="warning">
+        CON OBSERVACIÓN
+      </StatusBadge>
+    }
+  >
+    <div className="divide-y divide-amber-100 dark:divide-amber-500/10">
+      {operationalState.validation.warnings.map(
+        (warning) => (
+          <div
+            key={`${warning.code}-${
+              warning.familyKey ??
+              warning.productId ??
+              'GENERAL'
+            }`}
+            className="flex items-start gap-3 px-4 py-3 sm:px-5"
+          >
+            <AlertTriangle
+              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+
+            <p className="text-xs leading-5 text-slate-700 dark:text-[#C3D2DC]">
+              {warning.message}
+            </p>
+          </div>
+        ),
+      )}
+    </div>
+  </SectionCard>
+) : null}
 
       <p className="sr-only" role="status" aria-live="polite">
         {exportState === 'SUCCESS'
@@ -504,7 +548,7 @@ export function ProductionDayPage() {
                         {operationalState.validation.warnings.map(
                           (warning, index) => (
                             <div
-                              key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                              key={`${warning.code}-${warning.familyKey ?? warning.productId ?? 'GENERAL'}`}
                               className={`flex items-start gap-3 px-4 py-3 ${
                                 index > 0
                                   ? 'border-t border-amber-500/10'

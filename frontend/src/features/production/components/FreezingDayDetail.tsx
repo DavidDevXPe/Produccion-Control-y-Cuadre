@@ -1,4 +1,4 @@
-import { ArrowLeft, Boxes, Moon, Scale, Snowflake, Sun } from 'lucide-react'
+import {AlertTriangle, ArrowLeft, Boxes, Moon, Scale, Snowflake, Sun } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
@@ -31,6 +31,8 @@ export function FreezingDayDetail({
   const isBalanced = operationalState.isBalanced && differenceKg100 === 0
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
+  const hasClosureWarnings = operationalState.validation.warnings.length > 0
+  const reconciliationObserved = differenceKg100 !== 0 && hasClosureWarnings
 
   return (
     <div className="space-y-5">
@@ -48,13 +50,31 @@ export function FreezingDayDetail({
         description="Producto congelado por turno y vinculado a su jornada de origen en Envasado."
         actions={
           <>
-            <StatusBadge tone={isClosed ? (isBalanced ? 'success' : 'danger') : isReadyToClose ? 'success' : 'warning'}>
+            <StatusBadge
+              tone={
+                isClosed
+                  ? hasClosureWarnings
+                    ? 'warning'
+                    : isBalanced
+                      ? 'success'
+                      : 'danger'
+                  : isReadyToClose
+                    ? hasClosureWarnings
+                      ? 'warning'
+                      : 'success'
+                    : 'warning'
+              }
+            >
               {isClosed
-                ? isBalanced
-                  ? 'CERRADA · SOLO LECTURA'
-                  : 'CERRADA · REVISAR'
+                ? hasClosureWarnings
+                  ? 'CERRADA · CON OBSERVACIONES'
+                  : isBalanced
+                    ? 'CERRADA · SOLO LECTURA'
+                    : 'CERRADA · REVISAR'
                 : isReadyToClose
-                  ? 'LISTA PARA CERRAR'
+                  ? hasClosureWarnings
+                    ? 'LISTA · CON OBSERVACIONES'
+                    : 'LISTA PARA CERRAR'
                   : 'BORRADOR · REVISAR'}
             </StatusBadge>
             {canEdit ? (
@@ -77,10 +97,78 @@ export function FreezingDayDetail({
         <MetricCard label="Diferencia" value={formatCentiKg(differenceKg100)} icon={<Scale className="size-5" />} tone={differenceKg100 === 0 ? 'success' : 'danger'} />
       </section>
 
+      {hasClosureWarnings ? (
+  <SectionCard
+    title={
+      isClosed
+        ? 'Observaciones de cierre'
+        : 'Observaciones detectadas'
+    }
+    description="Estas diferencias no modifican el reporte físico; quedan registradas para revisión y auditoría."
+    action={
+      <StatusBadge tone="warning">
+        CON OBSERVACIÓN
+      </StatusBadge>
+    }
+  >
+    <div className="divide-y divide-amber-100 dark:divide-amber-500/10">
+      {operationalState.validation.warnings.map(
+        (warning) => (
+          <div
+            key={`${warning.code}-${
+              warning.familyKey ??
+              warning.productId ??
+              'GENERAL'
+            }`}
+            className="flex items-start gap-3 px-4 py-3 sm:px-5"
+          >
+            <AlertTriangle
+              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+
+            <div className="min-w-0">
+              <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em] text-amber-800 dark:text-amber-300">
+                {warning.code ===
+                'FREEZING_TRACEABILITY_DIFFERENCE'
+                  ? 'Diferencia de trazabilidad'
+                  : warning.code ===
+                      'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
+                    ? 'Producto con origen insuficiente'
+                    : 'Observación'}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#C3D2DC]">
+                {warning.message}
+              </p>
+            </div>
+          </div>
+        ),
+      )}
+    </div>
+  </SectionCard>
+) : null}
+
       <SectionCard
         title="Cuadre de reportes"
         description="Cada turno debe coincidir con su detalle y todo producto congelado debe tener disponibilidad trazable."
-        action={<StatusBadge tone={isBalanced ? 'success' : 'danger'}>{isBalanced ? 'CUADRADO' : 'REVISAR'}</StatusBadge>}
+        action={
+          <StatusBadge
+            tone={
+              isBalanced
+                ? 'success'
+                : reconciliationObserved
+                  ? 'warning'
+                  : 'danger'
+            }
+          >
+            {isBalanced
+              ? 'CUADRADO'
+              : reconciliationObserved
+                ? 'CUADRADO · OBSERVADO'
+                : 'REVISAR'}
+          </StatusBadge>
+        }
         contentClassName="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 sm:p-5"
       >
         {[

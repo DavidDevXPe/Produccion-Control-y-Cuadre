@@ -4600,7 +4600,7 @@ freezingOriginLedger.length > 0 ? (
                       <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
                         {closureValidation.warnings.map((warning, index) => (
                           <div
-                            key={`${warning.code}-${warning.familyKey ?? 'GENERAL'}`}
+                            key={`${warning.code}-${warning.familyKey ?? warning.productId ?? 'GENERAL'}`}
                             className={`flex items-start gap-3 px-4 py-3 ${
                               index > 0
                                 ? 'border-t border-amber-500/10'
