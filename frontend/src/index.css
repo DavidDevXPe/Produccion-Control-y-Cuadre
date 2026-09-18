@@ -3,7 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans:
+    "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
   --color-brand-50: #eefaff;
   --color-brand-100: #d9f3fc;
   --color-brand-200: #b8e7f7;
@@ -206,8 +208,22 @@ html.dark ::selection {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, #09121b 0%, rgb(9 18 27 / 0.96) 20%, rgb(9 18 27 / 0.76) 42%, rgb(9 18 27 / 0.28) 62%, rgb(9 18 27 / 0.08) 82%, rgb(9 18 27 / 0.1) 100%),
-    linear-gradient(180deg, rgb(9 18 27 / 0.06) 0%, rgb(9 18 27 / 0.02) 52%, rgb(9 18 27 / 0.32) 78%, #09121b 100%);
+    linear-gradient(
+      90deg,
+      #09121b 0%,
+      rgb(9 18 27 / 0.96) 20%,
+      rgb(9 18 27 / 0.76) 42%,
+      rgb(9 18 27 / 0.28) 62%,
+      rgb(9 18 27 / 0.08) 82%,
+      rgb(9 18 27 / 0.1) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(9 18 27 / 0.06) 0%,
+      rgb(9 18 27 / 0.02) 52%,
+      rgb(9 18 27 / 0.32) 78%,
+      #09121b 100%
+    );
 }
 
 html.dark .dashboard-layout-backdrop {
@@ -260,7 +276,8 @@ summary {
 button,
 a {
   transition-duration: 160ms;
-  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-property:
+    color, background-color, border-color, box-shadow, opacity, transform;
 }
 
 button:focus-visible,
@@ -434,3 +451,36 @@ summary:focus-visible,
   }
 }
 
+/* =========================================================
+    INTERACCIONES GLOBALES
+    Todos los botones interactivos deben sentirse clickeables.
+   ========================================================= */
+
+button:not(:disabled) {
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease,
+    filter 150ms ease;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible {
+  outline: 2px solid #169fd0;
+  outline-offset: 2px;
+}

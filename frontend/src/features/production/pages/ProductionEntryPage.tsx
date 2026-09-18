@@ -3557,19 +3557,27 @@ const autoLinkAllFreezingProducts = () => {
       setIsBulkFreezingLinkConfirmationOpen(true)
     }
     className="
-      inline-flex min-h-9 shrink-0 items-center
-      justify-center rounded-lg
+  inline-flex min-h-9 shrink-0 items-center justify-center
+  rounded-lg border border-amber-400
+  bg-white px-3
+  text-xs font-extrabold text-amber-900
+  shadow-sm
+  transition-all
 
-      border border-amber-400
-      bg-white px-3
-      text-xs font-extrabold text-amber-900
-      transition hover:bg-amber-100
+  hover:border-amber-500
+  hover:bg-amber-100
+  hover:shadow-md
 
-      dark:border-[#B58A27]
-      dark:bg-[#0D2534]
-      dark:text-[#FFE7A3]
-      dark:hover:bg-[#2A2414]
-    "
+  active:scale-[0.98]
+
+  dark:border-[#B58A27]
+  dark:bg-[#0D2534]
+  dark:text-[#FFE7A3]
+
+  dark:hover:border-[#FFD166]
+  dark:hover:bg-[#2A2414]
+  dark:hover:text-[#FFF1BF]
+"
   >
     Vincular todos FIFO
   </button>
