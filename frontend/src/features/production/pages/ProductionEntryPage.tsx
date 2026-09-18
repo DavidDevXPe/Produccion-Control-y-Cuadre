@@ -927,7 +927,7 @@ const freezingTotalAvailableKg100 = sumKg100([
     ),
   )
 
-  const freezingBalanceExplanation = useMemo(() => {
+const freezingBalanceExplanation = (() => {
   if (!isFreezing) {
     return {
       selectedAvailableKg100: kg100(0),
@@ -1020,14 +1020,7 @@ const freezingTotalAvailableKg100 = sumKg100([
     physicalDifferenceKg100,
     untouchedPositions,
   }
-}, [
-  draft.balanceUses,
-  freezingAutomaticOriginPositions,
-  freezingLinkedThisDayKg100,
-  freezingTotalAvailableKg100,
-  isFreezing,
-  totalReportedKg100,
-])
+})()
 
   const freezingProductsPendingLink = useMemo(
   () =>
