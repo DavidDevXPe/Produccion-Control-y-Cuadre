@@ -244,6 +244,62 @@ function captureProductAvailability(
   }
 }
 
+function freezingTraceabilityStatus(
+  reportedKg100: ReturnType<typeof kg100>,
+  availableKg100: ReturnType<typeof kg100>,
+  linkedKg100: ReturnType<typeof kg100>,
+) {
+  const pendingToLinkKg100 = kg100(
+    Math.max(reportedKg100 - linkedKg100, 0),
+  )
+
+  if (reportedKg100 === 0 && linkedKg100 === 0) {
+    return {
+      tone: 'neutral' as const,
+      label: 'SIN MOVIMIENTO',
+      pendingToLinkKg100,
+    }
+  }
+
+  if (linkedKg100 > reportedKg100) {
+    return {
+      tone: 'danger' as const,
+      label: 'REVISAR VÍNCULO',
+      pendingToLinkKg100,
+    }
+  }
+
+  if (availableKg100 === 0) {
+    return {
+      tone: 'danger' as const,
+      label: 'SIN ORIGEN TRAZABLE',
+      pendingToLinkKg100,
+    }
+  }
+
+  if (availableKg100 < reportedKg100) {
+    return {
+      tone: 'danger' as const,
+      label: 'ORIGEN INSUFICIENTE',
+      pendingToLinkKg100,
+    }
+  }
+
+  if (linkedKg100 < reportedKg100) {
+    return {
+      tone: 'warning' as const,
+      label: 'PENDIENTE VINCULAR',
+      pendingToLinkKg100,
+    }
+  }
+
+  return {
+    tone: 'success' as const,
+    label: 'TRAZABLE',
+    pendingToLinkKg100,
+  }
+}
+
 export function ProductionEntryPage() {
   const { date: editingDate } = useParams()
   const navigate = useNavigate()
@@ -468,8 +524,13 @@ export function ProductionEntryPage() {
           'Puedes guardar un borrador válido y continuar después.',
       }
   const importedBalanceTotal = sumImportedBalances(draft.importedBalances)
-  const importedBalanceMatches =
-    importedBalanceTotal === buildResult.calculation.newClosingBalanceKg100
+  const importedBalanceMatches = importedBalanceTotal === buildResult.calculation.newClosingBalanceKg100
+
+  const freezingWeekContext = useMemo(
+    () => getOperationalWeekContextForIsoDate(draft.date),
+    [draft.date],
+  )
+
   const freezingAvailabilityPositions = useMemo(
     () =>
       isFreezing
@@ -484,6 +545,43 @@ export function ProductionEntryPage() {
         : [],
     [allProductionDays, draft.date, draft.process, isFreezing],
   )
+
+  const freezingCarryoverPositions = useMemo(
+  () =>
+    freezingAvailabilityPositions
+      .filter(
+        (position) =>
+          position.pendingKg100 > 0 &&
+          position.originDate < freezingWeekContext.period.startDate,
+      )
+      .sort((first, second) =>
+        first.originDate.localeCompare(second.originDate),
+      ),
+  [
+    freezingAvailabilityPositions,
+    freezingWeekContext.period.startDate,
+  ],
+)
+
+  const freezingCurrentWeekPositions = useMemo(
+    () =>
+      freezingAvailabilityPositions
+        .filter(
+          (position) =>
+            position.pendingKg100 > 0 &&
+            position.originDate >= freezingWeekContext.period.startDate &&
+            position.originDate <= draft.date,
+        )
+        .sort((first, second) =>
+          first.originDate.localeCompare(second.originDate),
+        ),
+    [
+      draft.date,
+      freezingAvailabilityPositions,
+      freezingWeekContext.period.startDate,
+    ],
+  )
+
   const freezingAvailabilityByProduct = useMemo(() => {
     if (!isFreezing) return new Map<string, ReturnType<typeof kg100>>()
     const totals = new Map<string, ReturnType<typeof kg100>>()
@@ -495,6 +593,59 @@ export function ProductionEntryPage() {
     }
     return totals
   }, [freezingAvailabilityPositions, isFreezing])
+
+  const getFreezingPotentialAvailabilityKg100 = (
+    productId: string,
+  ) => {
+    const linkedAvailability = captureProductAvailability(
+      draft,
+      productId,
+    )
+
+    const product =
+      draft.rows.find(
+        (row) => row.product.productId === productId,
+      )?.product ??
+      catalogItems.find(
+        (candidate) => candidate.productId === productId,
+      )
+
+    if (!product) {
+      return linkedAvailability.availableKg100
+    }
+
+    const normalizedProductName = normalizeProductName(
+      product.productName,
+    )
+
+    const sourceAvailableKg100 = sumKg100(
+      freezingAvailabilityPositions
+        .filter((position) => {
+          if (position.pendingKg100 <= 0) {
+            return false
+          }
+
+          if (position.productId === product.productId) {
+            return true
+          }
+
+          return (
+            position.familyId === product.familyId &&
+            normalizeProductName(position.productName) ===
+              normalizedProductName
+          )
+        })
+        .map((position) => position.pendingKg100),
+    )
+
+    return kg100(
+      Math.max(
+        sourceAvailableKg100,
+        linkedAvailability.availableKg100,
+      ),
+    )
+  }
+
   const filteredCatalogItems = useMemo(
     () =>
       filterCaptureCatalogItems(productSearch, catalogItems)
@@ -582,13 +733,16 @@ export function ProductionEntryPage() {
     )
 
     const positions = isFreezing
-      ? freezingAvailabilityPositions
-      : calculateOutstandingBalances(
-          allProductionDays.filter(
-            (day) => isPackingProductionDay(day) && day.date < draft.date,
-          ),
-          subsequentBalanceLots,
-        )
+    ? [
+        ...freezingCarryoverPositions,
+        ...freezingCurrentWeekPositions,
+      ]
+    : calculateOutstandingBalances(
+        allProductionDays.filter(
+          (day) => isPackingProductionDay(day) && day.date < draft.date,
+        ),
+        subsequentBalanceLots,
+      )
 
     return positions.filter(
       (balance) =>
@@ -599,27 +753,61 @@ export function ProductionEntryPage() {
     allProductionDays,
     draft.balanceUses,
     draft.date,
-    freezingAvailabilityPositions,
+    freezingCarryoverPositions,
+    freezingCurrentWeekPositions,
     isFreezing,
     subsequentBalanceLots,
-  ])
+])
+  const availableFreezingCarryoverBalances = useMemo(
+    () =>
+      isFreezing
+        ? availableBalances.filter(
+            (balance) =>
+              balance.originDate <
+              freezingWeekContext.period.startDate,
+          )
+        : [],
+    [
+      availableBalances,
+      freezingWeekContext.period.startDate,
+      isFreezing,
+    ],
+  )
+
+  const availableFreezingCurrentWeekBalances = useMemo(
+    () =>
+      isFreezing
+        ? availableBalances.filter(
+            (balance) =>
+              balance.originDate >=
+              freezingWeekContext.period.startDate,
+          )
+        : [],
+    [
+      availableBalances,
+      freezingWeekContext.period.startDate,
+      isFreezing,
+    ],
+  )
   const totalReportedKg100 = sumKg100([
     buildResult.calculation.day.declaredReportedKg100,
     buildResult.calculation.night.declaredReportedKg100,
   ])
-  const freezingAvailableFromPackingKg100 = sumKg100(
-    freezingAvailabilityPositions
-      .filter((position) => position.originDate === draft.date)
-      .map((position) => position.pendingKg100),
+  const freezingCurrentWeekAvailableKg100 = sumKg100(
+    freezingCurrentWeekPositions.map(
+      (position) => position.pendingKg100,
+    ),
   )
-  const freezingPreviousPendingKg100 = sumKg100(
-    freezingAvailabilityPositions
-      .filter((position) => position.originDate < draft.date)
-      .map((position) => position.pendingKg100),
+
+  const freezingCarryoverAvailableKg100 = sumKg100(
+    freezingCarryoverPositions.map(
+      (position) => position.pendingKg100,
+    ),
   )
+
   const freezingTotalAvailableKg100 = sumKg100([
-    freezingAvailableFromPackingKg100,
-    freezingPreviousPendingKg100,
+    freezingCarryoverAvailableKg100,
+    freezingCurrentWeekAvailableKg100,
   ])
   const freezingLinkedThisDayKg100 = sumKg100(
     draft.balanceUses.flatMap((balance) => [
@@ -2036,11 +2224,13 @@ export function ProductionEntryPage() {
                   <th className="px-3 py-2.5 text-right">
                     {isFreezing ? 'Disponible' : 'Rend. preliminar'}
                   </th>
+
                   <th className="px-3 py-2.5 text-right">
-                    {isFreezing ? 'Pendiente' : 'Objetivo'}
+                    {isFreezing ? 'Vinculado' : 'Objetivo'}
                   </th>
+
                   <th className="px-3 py-2.5 text-right">
-                    {isFreezing ? 'Diferencia' : 'Kg faltantes'}
+                    {isFreezing ? 'Por vincular' : 'Kg faltantes'}
                   </th>
                   <th className="px-3 py-2.5 text-center">Estado</th>
                   <th className="px-3 py-2.5"><span className="sr-only">Eliminar</span></th>
@@ -2048,33 +2238,36 @@ export function ProductionEntryPage() {
               </thead>
               <tbody>
                 {reportFamilySubtotals.map((subtotal) => {
-                  const familyAvailability = subtotal.productIds.reduce(
+                  const familyTraceability = subtotal.productIds.reduce(
                     (total, productId) => {
-                      const availability = captureProductAvailability(
-                        draft,
-                        productId,
-                      )
+                      const linkedAvailability =
+                        captureProductAvailability(draft, productId)
+                    
+                      const availableKg100 =
+                        getFreezingPotentialAvailabilityKg100(productId)
+                    
                       return {
                         availableKg100: kg100(
-                          total.availableKg100 + availability.availableKg100,
+                          total.availableKg100 + availableKg100,
                         ),
-                        frozenKg100: kg100(
-                          total.frozenKg100 + availability.frozenKg100,
-                        ),
-                        pendingKg100: kg100(
-                          total.pendingKg100 + availability.pendingKg100,
+                        linkedKg100: kg100(
+                          total.linkedKg100 +
+                            linkedAvailability.frozenKg100,
                         ),
                       }
                     },
                     {
                       availableKg100: kg100(0),
-                      frozenKg100: kg100(0),
-                      pendingKg100: kg100(0),
+                      linkedKg100: kg100(0),
                     },
                   )
-                  const familyDifferenceKg100 = kg100(
-                    subtotal.totalKg100 - familyAvailability.frozenKg100,
-                  )
+
+                  const familyTraceabilityStatus =
+                    freezingTraceabilityStatus(
+                      subtotal.totalKg100,
+                      familyTraceability.availableKg100,
+                      familyTraceability.linkedKg100,
+                    )
 
                   return (
                   <Fragment key={subtotal.key}>
@@ -2095,12 +2288,20 @@ export function ProductionEntryPage() {
                         calculated?.day.reportedKg100 ?? kg100(0),
                         calculated?.night.reportedKg100 ?? kg100(0),
                       ])
-                      const availability = captureProductAvailability(
+                      const linkedAvailability = captureProductAvailability(
                         draft,
                         productId,
                       )
-                      const linkedDifferenceKg100 = kg100(
-                        totalKg100 - availability.frozenKg100,
+                      
+                      const availableKg100 =
+                        getFreezingPotentialAvailabilityKg100(productId)
+                      
+                      const linkedKg100 = linkedAvailability.frozenKg100
+                      
+                      const traceabilityStatus = freezingTraceabilityStatus(
+                        totalKg100,
+                        availableKg100,
+                        linkedKg100,
                       )
                       return (
                     <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
@@ -2118,22 +2319,35 @@ export function ProductionEntryPage() {
                         {formatCentiKg(totalKg100)}
                       </td>
                       <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
-                        {isFreezing ? formatCentiKg(availability.availableKg100) : '—'}
+                        {isFreezing
+                          ? formatCentiKg(availableKg100)
+                          : '—'}
                       </td>
+                        
                       <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
-                        {isFreezing ? formatCentiKg(availability.pendingKg100) : '—'}
+                        {isFreezing
+                          ? formatCentiKg(linkedKg100)
+                          : '—'}
                       </td>
-                      <td className={`number-tabular px-3 py-2.5 text-right text-xs ${isFreezing && linkedDifferenceKg100 !== 0 ? 'font-bold text-rose-700' : 'text-slate-400'}`}>
-                        {isFreezing ? formatCentiKg(linkedDifferenceKg100) : '—'}
+                        
+                      <td
+                        className={`number-tabular px-3 py-2.5 text-right text-xs ${
+                          isFreezing &&
+                          traceabilityStatus.pendingToLinkKg100 > 0
+                            ? 'font-bold text-amber-700'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {isFreezing
+                          ? formatCentiKg(
+                              traceabilityStatus.pendingToLinkKg100,
+                            )
+                          : '—'}
                       </td>
                       <td className="px-3 py-2.5 text-center text-xs text-slate-400">
                         {isFreezing ? (
-                          <StatusBadge tone={linkedDifferenceKg100 === 0 ? 'success' : 'danger'}>
-                            {availability.availableKg100 === 0
-                              ? 'SIN DISPONIBILIDAD'
-                              : linkedDifferenceKg100 === 0
-                                ? 'TRAZABLE'
-                                : 'REVISAR'}
+                          <StatusBadge tone={traceabilityStatus.tone}>
+                            {traceabilityStatus.label}
                           </StatusBadge>
                         ) : '—'}
                       </td>
@@ -2154,32 +2368,64 @@ export function ProductionEntryPage() {
                       <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">{formatCentiKg(subtotal.totalKg100)}</td>
                       <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">
                         {isFreezing
-                          ? formatCentiKg(familyAvailability.availableKg100)
+                          ? formatCentiKg(
+                              familyTraceability.availableKg100,
+                            )
                           : isBalanceOnly
                             ? 'No aplica'
-                          : subtotal.preliminaryYieldPercent === null
-                            ? 'No disponible'
-                            : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                            : subtotal.preliminaryYieldPercent === null
+                              ? 'No disponible'
+                              : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
                       </td>
                       <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
                         {isFreezing
-                          ? formatCentiKg(familyAvailability.pendingKg100)
+                          ? formatCentiKg(
+                              familyTraceability.linkedKg100,
+                            )
                           : isBalanceOnly
                             ? 'No aplica'
-                          : subtotal.targetPercent === null
-                            ? 'Sin objetivo'
-                            : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
+                            : subtotal.targetPercent === null
+                              ? 'Sin objetivo'
+                              : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
                       <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
                         {isFreezing
-                          ? formatCentiKg(familyDifferenceKg100)
+                          ? formatCentiKg(
+                              familyTraceabilityStatus.pendingToLinkKg100,
+                            )
                           : isBalanceOnly || subtotal.targetPercent === null
                             ? '—'
-                          : formatCentiKg(subtotal.missingToTargetKg100)}
+                            : formatCentiKg(
+                                subtotal.missingToTargetKg100,
+                              )}
                       </td>
                       <td className="px-3 py-3 text-center">
-                        <StatusBadge tone={isFreezing ? familyDifferenceKg100 === 0 ? 'success' : 'danger' : isBalanceOnly ? 'neutral' : subtotal.status === 'INTEGRITY_ERROR' ? 'danger' : subtotal.status === 'BELOW_TARGET' ? 'warning' : subtotal.status === 'COMPLIES' ? 'success' : 'neutral'}>
-                          {isFreezing ? familyDifferenceKg100 === 0 ? 'TRAZABLE' : 'REVISAR' : isBalanceOnly ? 'NO APLICA' : subtotal.status === 'INTEGRITY_ERROR' ? 'ERROR' : subtotal.status === 'BELOW_TARGET' ? 'BAJO OBJETIVO' : subtotal.status === 'COMPLIES' ? 'CUMPLE' : 'SIN OBJETIVO'}
+                        <StatusBadge
+                          tone={
+                            isFreezing
+                              ? familyTraceabilityStatus.tone
+                              : isBalanceOnly
+                                ? 'neutral'
+                                : subtotal.status === 'INTEGRITY_ERROR'
+                                  ? 'danger'
+                                  : subtotal.status === 'BELOW_TARGET'
+                                    ? 'warning'
+                                    : subtotal.status === 'COMPLIES'
+                                      ? 'success'
+                                      : 'neutral'
+                          }
+                        >
+                          {isFreezing
+                            ? familyTraceabilityStatus.label
+                            : isBalanceOnly
+                              ? 'NO APLICA'
+                              : subtotal.status === 'INTEGRITY_ERROR'
+                                ? 'ERROR'
+                                : subtotal.status === 'BELOW_TARGET'
+                                  ? 'BAJO OBJETIVO'
+                                  : subtotal.status === 'COMPLIES'
+                                    ? 'CUMPLE'
+                                    : 'SIN OBJETIVO'}
                         </StatusBadge>
                       </td>
                       <td />
@@ -2488,8 +2734,8 @@ export function ProductionEntryPage() {
         {isFreezing ? (
           <dl className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
             {[
-              ['Disponible desde Envasado', freezingAvailableFromPackingKg100],
-              ['Pendiente anterior', freezingPreviousPendingKg100],
+              [`Disponible semana ${freezingWeekContext.number}`, freezingCurrentWeekAvailableKg100 ],
+              ['Saldo semanas anteriores', freezingCarryoverAvailableKg100,],
               ['Total disponible', freezingTotalAvailableKg100],
               ['Congelado en esta jornada', freezingLinkedThisDayKg100],
               ['Pendiente posterior', freezingPendingAfterKg100],
@@ -2533,15 +2779,54 @@ export function ProductionEntryPage() {
                       : 'No hay otros saldos pendientes disponibles'
                     : 'Seleccionar jornada origen y producto…'}
                 </option>
-                {availableBalances.map((balance) => (
-                  <option
-                    key={`${balance.originDayId}|${balance.productId}`}
-                    value={`${balance.originDayId}|${balance.productId}`}
-                  >
-                    {formatIsoDate(balance.originDate)} · {balance.familyName} ·{' '}
-                    {balance.productName} · {formatCentiKg(balance.pendingKg100)}
-                  </option>
-                ))}
+                {isFreezing ? (
+                  <>
+                    {availableFreezingCarryoverBalances.length > 0 ? (
+                      <optgroup
+                        label={`SALDOS DE SEMANAS ANTERIORES · ${availableFreezingCarryoverBalances.length}`}
+                      >
+                        {availableFreezingCarryoverBalances.map((balance) => (
+                          <option
+                            key={`${balance.originDayId}|${balance.productId}`}
+                            value={`${balance.originDayId}|${balance.productId}`}
+                          >
+                            {formatIsoDate(balance.originDate)} ·{' '}
+                            {balance.familyName} · {balance.productName} ·{' '}
+                            {formatCentiKg(balance.pendingKg100)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+
+                    {availableFreezingCurrentWeekBalances.length > 0 ? (
+                      <optgroup
+                        label={`SEMANA ${freezingWeekContext.number} · ${availableFreezingCurrentWeekBalances.length}`}
+                      >
+                        {availableFreezingCurrentWeekBalances.map((balance) => (
+                          <option
+                            key={`${balance.originDayId}|${balance.productId}`}
+                            value={`${balance.originDayId}|${balance.productId}`}
+                          >
+                            {formatIsoDate(balance.originDate)} ·{' '}
+                            {balance.familyName} · {balance.productName} ·{' '}
+                            {formatCentiKg(balance.pendingKg100)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                  </>
+                ) : (
+                  availableBalances.map((balance) => (
+                    <option
+                      key={`${balance.originDayId}|${balance.productId}`}
+                      value={`${balance.originDayId}|${balance.productId}`}
+                    >
+                      {formatIsoDate(balance.originDate)} · {balance.familyName} ·{' '}
+                      {balance.productName} ·{' '}
+                      {formatCentiKg(balance.pendingKg100)}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
             <button

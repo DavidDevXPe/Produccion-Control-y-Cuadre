@@ -15,7 +15,13 @@ describe('production days page', () => {
 
     expect(screen.getByText('4 de 7 días de la semana')).toBeInTheDocument()
     expect(screen.getByText('Bajo referencia (<80%)')).toBeInTheDocument()
-    expect(screen.getAllByText('CUADRADO')).toHaveLength(4)
+
+    const squaredStatuses = [
+      ...screen.queryAllByText('CUADRADO'),
+      ...screen.queryAllByText('CUADRADO · OBSERVADO'),
+    ]
+    
+    expect(squaredStatuses).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: /Ver detalle/i })).toHaveLength(4)
     expect(screen.getByText('Último registro disponible')).toBeInTheDocument()
     expect(screen.getByText('SÁBADO')).toBeInTheDocument()

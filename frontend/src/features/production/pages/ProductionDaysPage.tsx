@@ -446,7 +446,6 @@ export function ProductionDaysPage() {
                             : isReadyToClose
                               ? 'Revisar y cerrar'
                               : 'Seguir cuadrando'}
-                        
                           <ArrowRight className="size-4" aria-hidden="true" />
                         </ActionLink>
                       </div>
