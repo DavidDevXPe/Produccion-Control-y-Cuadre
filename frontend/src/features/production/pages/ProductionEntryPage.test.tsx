@@ -208,6 +208,83 @@ describe('ProductionEntryPage product selector', () => {
     expect(
       screen.getByRole('heading', { name: 'Disponibilidad para congelar' }),
     ).toBeInTheDocument()
+
+    const freezingAvailabilitySection = screen
+      .getByRole('heading', {
+        name: 'Disponibilidad para congelar',
+      })
+      .closest('section')!
+    
+    expect(
+      within(freezingAvailabilitySection).getByText(
+        'Saldo jornadas anteriores',
+      ),
+    ).toBeInTheDocument()
+
+    expect(
+      within(freezingAvailabilitySection).getByText(
+        'Jornada actual de Envasado',
+      ),
+    ).toBeInTheDocument()
+
+    expect(
+      within(freezingAvailabilitySection).getByText(
+        'Total disponible trazable',
+      ),
+    ).toBeInTheDocument()
+
+    expect(
+      within(freezingAvailabilitySection).getByText(
+        'Pendiente por congelar',
+      ),
+    ).toBeInTheDocument()
+
+    expect(
+      within(freezingAvailabilitySection).queryByText(
+        /Saldo semanas anteriores/i,
+      ),
+    ).not.toBeInTheDocument()
+
+    expect(
+      within(freezingAvailabilitySection).queryByText(
+        /Disponible semana/i,
+      ),
+    ).not.toBeInTheDocument()
+
+const originLedger =
+  screen.getByRole('region', {
+    name: 'Cuenta corriente por jornada origen de Envasado',
+  })
+
+expect(originLedger).toBeInTheDocument()
+
+expect(
+  within(originLedger).getByRole(
+    'table',
+    {
+      name: 'Saldo de Congelamiento por jornada origen',
+    },
+  ),
+).toBeInTheDocument()
+
+expect(
+  within(originLedger).getByRole('columnheader', {
+    name: 'Generado para congelar',
+  }),
+).toBeInTheDocument()
+
+expect(
+  within(originLedger).getByRole('columnheader', {
+    name: 'Congelado acumulado',
+  }),
+).toBeInTheDocument()
+
+expect(
+  within(originLedger).getByRole('columnheader', {
+    name: 'Pendiente',
+  }),
+).toBeInTheDocument()
+
     expect(screen.queryByLabelText('Existe producto para Túnel')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Balance MP Tubo' })).toBeNull()
 

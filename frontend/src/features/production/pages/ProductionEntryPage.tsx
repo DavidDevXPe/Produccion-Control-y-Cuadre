@@ -39,6 +39,7 @@ import {
   type ProductionCaptureRow,
 } from '../capture/productionCapture'
 import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
+import { buildFreezingOriginLedger } from '../capture/freezingOriginLedger'
 import {
   CAPTURE_CATALOG_ITEMS,
   confirmProductionCatalogItem,
@@ -528,11 +529,6 @@ export function ProductionEntryPage() {
   const importedBalanceTotal = sumImportedBalances(draft.importedBalances)
   const importedBalanceMatches = importedBalanceTotal === buildResult.calculation.newClosingBalanceKg100
 
-  const freezingWeekContext = useMemo(
-    () => getOperationalWeekContextForIsoDate(draft.date),
-    [draft.date],
-  )
-
   const freezingAvailabilityPositions = useMemo(
     () =>
       isFreezing
@@ -548,53 +544,59 @@ export function ProductionEntryPage() {
     [allProductionDays, draft.date, draft.process, isFreezing],
   )
 
-  const freezingCarryoverPositions = useMemo(
+  const freezingOpenOriginPositions = useMemo(
   () =>
     freezingAvailabilityPositions
-      .filter(
-        (position) =>
-          position.pendingKg100 > 0 &&
-          position.originDate < freezingWeekContext.period.startDate,
-      )
-      .sort((first, second) =>
-        first.originDate.localeCompare(second.originDate),
-      ),
-  [
-    freezingAvailabilityPositions,
-    freezingWeekContext.period.startDate,
-  ],
+      .filter((position) => position.pendingKg100 > 0)
+      .sort((first, second) => {
+        const dateComparison =
+          first.originDate.localeCompare(second.originDate)
+
+        if (dateComparison !== 0) {
+          return dateComparison
+        }
+
+        const dayComparison =
+          first.originDayId.localeCompare(second.originDayId)
+
+        if (dayComparison !== 0) {
+          return dayComparison
+        }
+
+        return first.productId.localeCompare(
+          second.productId,
+        )
+      }),
+  [freezingAvailabilityPositions],
 )
 
-  const freezingCurrentWeekPositions = useMemo(
-    () =>
-      freezingAvailabilityPositions
-        .filter(
-          (position) =>
-            position.pendingKg100 > 0 &&
-            position.originDate >= freezingWeekContext.period.startDate &&
-            position.originDate <= draft.date,
-        )
-        .sort((first, second) =>
-          first.originDate.localeCompare(second.originDate),
-        ),
-    [
-      draft.date,
-      freezingAvailabilityPositions,
-      freezingWeekContext.period.startDate,
-    ],
-  )
+const freezingPreviousOriginPositions = useMemo(
+  () =>
+    freezingOpenOriginPositions.filter(
+      (position) => position.originDate < draft.date,
+    ),
+  [draft.date, freezingOpenOriginPositions],
+)
+
+const freezingCurrentOriginPositions = useMemo(
+  () =>
+    freezingOpenOriginPositions.filter(
+      (position) => position.originDate === draft.date,
+    ),
+  [draft.date, freezingOpenOriginPositions],
+)
 
   const freezingAvailabilityByProduct = useMemo(() => {
     if (!isFreezing) return new Map<string, ReturnType<typeof kg100>>()
     const totals = new Map<string, ReturnType<typeof kg100>>()
-    for (const position of freezingAvailabilityPositions) {
+    for (const position of freezingOpenOriginPositions) {
       totals.set(
         position.productId,
         kg100((totals.get(position.productId) ?? 0) + position.pendingKg100),
       )
     }
     return totals
-  }, [freezingAvailabilityPositions, isFreezing])
+  }, [freezingOpenOriginPositions, isFreezing])
 
   const getFreezingPotentialAvailabilityKg100 = (
     productId: string,
@@ -621,7 +623,7 @@ export function ProductionEntryPage() {
     )
 
     const sourceAvailableKg100 = sumKg100(
-      freezingAvailabilityPositions
+      freezingOpenOriginPositions
         .filter((position) => {
           if (position.pendingKg100 <= 0) {
             return false
@@ -730,87 +732,83 @@ export function ProductionEntryPage() {
     const selectedKeys = new Set(
       draft.balanceUses.map(
         (balance) =>
-          `${balance.originDayId}|${balance.sourceProductId ?? balance.productId}`,
+          `${balance.originDayId}|${
+            balance.sourceProductId ?? balance.productId
+          }`,
       ),
     )
 
     const positions = isFreezing
-    ? [
-        ...freezingCarryoverPositions,
-        ...freezingCurrentWeekPositions,
-      ]
-    : calculateOutstandingBalances(
-        allProductionDays.filter(
-          (day) => isPackingProductionDay(day) && day.date < draft.date,
-        ),
-        subsequentBalanceLots,
-      )
+      ? freezingOpenOriginPositions
+      : calculateOutstandingBalances(
+          allProductionDays.filter(
+            (day) =>
+              isPackingProductionDay(day) &&
+              day.date < draft.date,
+          ),
+          subsequentBalanceLots,
+        )
 
     return positions.filter(
       (balance) =>
         balance.pendingKg100 > 0 &&
-        !selectedKeys.has(`${balance.originDayId}|${balance.productId}`),
+        !selectedKeys.has(
+          `${balance.originDayId}|${balance.productId}`,
+        ),
     )
   }, [
     allProductionDays,
     draft.balanceUses,
     draft.date,
-    freezingCarryoverPositions,
-    freezingCurrentWeekPositions,
+    freezingOpenOriginPositions,
     isFreezing,
     subsequentBalanceLots,
-])
-  const availableFreezingCarryoverBalances = useMemo(
+  ])
+  const availableFreezingPreviousOriginBalances =
+  useMemo(
     () =>
       isFreezing
         ? availableBalances.filter(
             (balance) =>
-              balance.originDate <
-              freezingWeekContext.period.startDate,
+              balance.originDate < draft.date,
           )
         : [],
-    [
-      availableBalances,
-      freezingWeekContext.period.startDate,
-      isFreezing,
-    ],
+    [availableBalances, draft.date, isFreezing],
   )
 
-  const availableFreezingCurrentWeekBalances = useMemo(
+const availableFreezingCurrentOriginBalances =
+  useMemo(
     () =>
       isFreezing
         ? availableBalances.filter(
             (balance) =>
-              balance.originDate >=
-              freezingWeekContext.period.startDate,
+              balance.originDate === draft.date,
           )
         : [],
-    [
-      availableBalances,
-      freezingWeekContext.period.startDate,
-      isFreezing,
-    ],
+    [availableBalances, draft.date, isFreezing],
   )
   const totalReportedKg100 = sumKg100([
     buildResult.calculation.day.declaredReportedKg100,
     buildResult.calculation.night.declaredReportedKg100,
   ])
-  const freezingCurrentWeekAvailableKg100 = sumKg100(
-    freezingCurrentWeekPositions.map(
+  const freezingPreviousOriginsAvailableKg100 =
+  sumKg100(
+    freezingPreviousOriginPositions.map(
       (position) => position.pendingKg100,
     ),
   )
 
-  const freezingCarryoverAvailableKg100 = sumKg100(
-    freezingCarryoverPositions.map(
+const freezingCurrentOriginAvailableKg100 =
+  sumKg100(
+    freezingCurrentOriginPositions.map(
       (position) => position.pendingKg100,
     ),
   )
 
-  const freezingTotalAvailableKg100 = sumKg100([
-    freezingCarryoverAvailableKg100,
-    freezingCurrentWeekAvailableKg100,
-  ])
+const freezingTotalAvailableKg100 = sumKg100([
+  freezingPreviousOriginsAvailableKg100,
+  freezingCurrentOriginAvailableKg100,
+])
   const freezingLinkedThisDayKg100 = sumKg100(
     draft.balanceUses.flatMap((balance) => [
       captureQuantityKg100(balance.dayKg),
@@ -822,9 +820,6 @@ export function ProductionEntryPage() {
       freezingTotalAvailableKg100 - freezingLinkedThisDayKg100,
       0,
     ),
-  )
-  const freezingUnexplainedDifferenceKg100 = kg100(
-    totalReportedKg100 - freezingLinkedThisDayKg100,
   )
 
   const freezingProductsPendingLink = useMemo(
@@ -991,6 +986,56 @@ const freezingTraceabilityProgressClass =
       : freezingTraceabilityOverview.tone === 'success'
         ? 'bg-emerald-500'
         : 'bg-slate-400'
+
+  const freezingOriginLedger = useMemo(
+  () =>
+    isFreezing
+      ? buildFreezingOriginLedger({
+          positions:
+            freezingAvailabilityPositions,
+
+          currentUses:
+            draft.balanceUses,
+        })
+      : [],
+  [
+    draft.balanceUses,
+    freezingAvailabilityPositions,
+    isFreezing,
+  ],
+)
+
+const freezingOriginLedgerSummary =
+  useMemo(() => {
+    const completedOrigins =
+      freezingOriginLedger.filter(
+        (row) =>
+          row.status === 'COMPLETE',
+      ).length
+
+    const pendingOrigins =
+      freezingOriginLedger.filter(
+        (row) =>
+          row.status === 'PENDING',
+      ).length
+
+    const excessOrigins =
+      freezingOriginLedger.filter(
+        (row) =>
+          row.status === 'EXCESS',
+      ).length
+
+    return {
+      totalOrigins:
+        freezingOriginLedger.length,
+
+      completedOrigins,
+
+      pendingOrigins,
+
+      excessOrigins,
+    }
+  }, [freezingOriginLedger])
 
   const applyProcessChange = (process: ProductionProcess) => {
     if (editingDate || process === draft.process) return
@@ -1372,7 +1417,7 @@ const freezingTraceabilityProgressClass =
       reportedNightKg100: captureQuantityKg100(
         row.nightReportedKg,
       ),
-      positions: freezingAvailabilityPositions,
+      positions: freezingOpenOriginPositions,
       existingUses: current.balanceUses,
     })
     return {
@@ -1404,7 +1449,7 @@ const autoLinkAllFreezingProducts = () => {
         reportedNightKg100: captureQuantityKg100(
           row.nightReportedKg,
         ),
-        positions: freezingAvailabilityPositions,
+        positions: freezingOpenOriginPositions,
         existingUses: nextBalanceUses,
       })
 
@@ -2593,7 +2638,7 @@ const autoLinkAllFreezingProducts = () => {
                               }
                               className="inline-flex min-h-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-2.5 text-[0.6875rem] font-bold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
                               aria-label={`Vincular FIFO ${row.product.productName}`}
-                              title="Vincula primero los saldos de Envasado más antiguos disponibles"
+                              title="Consume primero la jornada de Envasado pendiente más antigua para este producto"
                             >
                               Vincular FIFO
                             </button>
@@ -2973,7 +3018,7 @@ const autoLinkAllFreezingProducts = () => {
         title={isFreezing ? 'Disponibilidad para congelar' : 'Saldos anteriores procesados'}
         description={
           isFreezing
-            ? 'Vincula manualmente el origen o usa Vincular FIFO para consumir primero el producto envasado más antiguo. Todos los vínculos pueden revisarse antes del cierre.'
+            ? 'Cada producto conserva su jornada de Envasado como origen hasta quedar congelado al 100%. Puedes vincularlo manualmente o usar FIFO para consumir primero la jornada pendiente más antigua.'
             : isBalanceOnly
             ? 'Fuente principal del domingo: vincula cada kg procesado con su jornada de origen y turno.'
             : 'Selecciona lotes pendientes reales y distribuye su consumo entre Día y Noche.'
@@ -2981,41 +3026,50 @@ const autoLinkAllFreezingProducts = () => {
         action={<StatusBadge tone="info">ORIGEN TRAZABLE</StatusBadge>}
       >
         {isFreezing ? (
-  <dl className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
-    {[
-      [
-        `Disponible semana ${freezingWeekContext.number}`,
-        freezingCurrentWeekAvailableKg100,
-      ],
-      ["Saldo semanas anteriores", freezingCarryoverAvailableKg100],
-      ["Total disponible", freezingTotalAvailableKg100],
-      ["Congelado en esta jornada", freezingLinkedThisDayKg100],
-      ["Pendiente posterior", freezingPendingAfterKg100],
-      ["Diferencia no explicada", freezingUnexplainedDifferenceKg100],
-    ].map(([label, value], index) => (
-      <div
-        key={String(label)}
-        className="bg-white px-4 py-3 text-center"
-      >
-        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-          {String(label)}
-        </dt>
-
-        <dd
-          className={`number-tabular mt-1 whitespace-nowrap text-sm font-extrabold ${
-            index === 5 && freezingUnexplainedDifferenceKg100 !== 0
-              ? "text-rose-700"
-              : index === 4 && freezingPendingAfterKg100 > 0
-                ? "text-amber-700"
-                : "text-slate-950"
-          }`}
-        >
-          {formatCentiKg(value as ReturnType<typeof kg100>)}
-        </dd>
-      </div>
-    ))}
-  </dl>
-) : null}
+          <dl className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
+            {[
+          [
+            'Saldo jornadas anteriores',
+            freezingPreviousOriginsAvailableKg100,
+          ],
+          [
+            'Jornada actual de Envasado',
+            freezingCurrentOriginAvailableKg100,
+          ],
+          [
+            'Total disponible trazable',
+            freezingTotalAvailableKg100,
+          ],
+          [
+            'Congelado reportado',
+            totalReportedKg100,
+          ],
+          [
+            'Vinculado a origen',
+            freezingLinkedThisDayKg100,
+          ],
+          [
+            'Pendiente por congelar',
+            freezingPendingAfterKg100,
+          ],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            className="bg-white px-4 py-3 text-center"
+          >
+            <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+              {String(label)}
+            </dt>
+        
+            <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-slate-950">
+              {formatCentiKg(
+                value as ReturnType<typeof kg100>,
+              )}
+            </dd>
+          </div>
+        ))}
+          </dl>
+        ) : null}
 
         {isFreezing && freezingPendingLinkCount > 0 ? (
           <div className="border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-[#203E50]">
@@ -3030,8 +3084,7 @@ const autoLinkAllFreezingProducts = () => {
                   {freezingPendingLinkCount === 1
                     ? "producto tiene"
                     : "productos tienen"}{" "}
-                  kilos pendientes de vincular. El sistema usará primero los saldos
-                  trazables más antiguos de Envasado.
+                  kilos pendientes de vincular. El sistema consumirá primero las jornadas de Envasado abiertas más antiguas para cada producto.
                 </p>
               </div>
                   
@@ -3197,6 +3250,191 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
   </div>
 ) : null}
 
+{isFreezing &&
+freezingOriginLedger.length > 0 ? (
+  <div
+    role="region"
+    aria-label="Cuenta corriente por jornada origen de Envasado"
+    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-[#203E50]"
+  >
+    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-[#203E50]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-[#203E50] dark:bg-[#07141F]/60">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-800 dark:text-[#F3F8FB]">
+            Cuenta corriente por jornada origen
+          </p>
+
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+            Cada jornada de Envasado conserva sus kilos
+            pendientes hasta que todo el producto generado
+            quede congelado al 100%.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge tone="neutral">
+            {
+              freezingOriginLedgerSummary.totalOrigins
+            }{' '}
+            JORNADAS
+          </StatusBadge>
+
+          {freezingOriginLedgerSummary.pendingOrigins >
+          0 ? (
+            <StatusBadge tone="warning">
+              {
+                freezingOriginLedgerSummary.pendingOrigins
+              }{' '}
+              CON SALDO
+            </StatusBadge>
+          ) : null}
+
+          {freezingOriginLedgerSummary.excessOrigins >
+          0 ? (
+            <StatusBadge tone="danger">
+              {
+                freezingOriginLedgerSummary.excessOrigins
+              }{' '}
+              CON EXCESO
+            </StatusBadge>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table
+          className="w-full min-w-[70rem] border-collapse text-left"
+          aria-label="Saldo de Congelamiento por jornada origen"
+        >
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:border-[#203E50] dark:bg-[#0D2534] dark:text-[#7F9BAD]">
+              <th className="px-4 py-3">
+                Jornada origen
+              </th>
+
+              <th className="px-3 py-3 text-center">
+                Productos
+              </th>
+
+              <th className="px-3 py-3 text-right">
+                Generado para congelar
+              </th>
+
+              <th className="px-3 py-3 text-right">
+                Congelado acumulado
+              </th>
+
+              <th className="px-3 py-3 text-right">
+                Congelado en esta jornada
+              </th>
+
+              <th className="px-3 py-3 text-right">
+                Pendiente
+              </th>
+
+              <th className="px-3 py-3 text-right">
+                Avance
+              </th>
+
+              <th className="px-4 py-3 text-center">
+                Estado
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {freezingOriginLedger.map((row) => (
+              <tr
+                key={row.originDayId}
+                className="border-b border-slate-100 bg-white last:border-b-0 dark:border-[#203E50] dark:bg-[#0D2534]"
+              >
+                <th className="px-4 py-3">
+                  <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                    {formatIsoDate(
+                      row.originDate,
+                    )}
+                  </p>
+
+                  <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-slate-400 dark:text-[#7F9BAD]">
+                    Envasado
+                  </p>
+                </th>
+
+                <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-700 dark:text-[#C3D2DC]">
+                  {row.productCount}
+                </td>
+
+                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                  {formatCentiKg(
+                    row.generatedKg100,
+                  )}
+                </td>
+
+                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                  {formatCentiKg(
+                    row.frozenAccumulatedKg100,
+                  )}
+                </td>
+
+                <td className="number-tabular px-3 py-3 text-right text-xs text-brand-700 dark:text-[#58C8EA]">
+                  {formatCentiKg(
+                    row.frozenCurrentKg100,
+                  )}
+                </td>
+
+                <td
+                  className={`number-tabular px-3 py-3 text-right text-xs font-bold ${
+                    row.excessKg100 > 0
+                      ? 'text-rose-700 dark:text-rose-300'
+                      : row.pendingKg100 > 0
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : 'text-emerald-700 dark:text-emerald-300'
+                  }`}
+                >
+                  {row.excessKg100 > 0
+                    ? `Exceso ${formatCentiKg(
+                        row.excessKg100,
+                      )}`
+                    : formatCentiKg(
+                        row.pendingKg100,
+                      )}
+                </td>
+
+                <td className="number-tabular px-3 py-3 text-right text-xs font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                  {row.completionPercent.toFixed(
+                    2,
+                  )}
+                  %
+                </td>
+
+                <td className="px-4 py-3 text-center">
+                  <StatusBadge
+                    tone={
+                      row.status === 'EXCESS'
+                        ? 'danger'
+                        : row.status ===
+                            'COMPLETE'
+                          ? 'success'
+                          : 'warning'
+                    }
+                  >
+                    {row.status === 'EXCESS'
+                      ? 'REVISAR EXCESO'
+                      : row.status ===
+                          'COMPLETE'
+                        ? 'CONGELADO 100%'
+                        : 'PENDIENTE'}
+                  </StatusBadge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+) : null}
+
         <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="disabled:opacity-65">
           <legend className="sr-only">Consumo de saldos anteriores</legend>
           <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -3218,39 +3456,47 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
                 </option>
                 {isFreezing ? (
                   <>
-                    {availableFreezingCarryoverBalances.length > 0 ? (
-                      <optgroup
-                        label={`SALDOS DE SEMANAS ANTERIORES · ${availableFreezingCarryoverBalances.length}`}
-                      >
-                        {availableFreezingCarryoverBalances.map((balance) => (
-                          <option
-                            key={`${balance.originDayId}|${balance.productId}`}
-                            value={`${balance.originDayId}|${balance.productId}`}
-                          >
-                            {formatIsoDate(balance.originDate)} ·{' '}
-                            {balance.familyName} · {balance.productName} ·{' '}
-                            {formatCentiKg(balance.pendingKg100)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
+                    {availableFreezingPreviousOriginBalances.length >
+0 ? (
+                  <optgroup
+                    label={`JORNADAS ANTERIORES CON SALDO · ${availableFreezingPreviousOriginBalances.length}`}
+                  >
+                    {availableFreezingPreviousOriginBalances.map(
+                      (balance) => (
+                        <option
+                          key={`${balance.originDayId}|${balance.productId}`}
+                          value={`${balance.originDayId}|${balance.productId}`}
+                        >
+                          {formatIsoDate(balance.originDate)} ·{' '}
+                          {balance.familyName} ·{' '}
+                          {balance.productName} ·{' '}
+                          {formatCentiKg(balance.pendingKg100)}
+                        </option>
+                      ),
+                    )}
+                  </optgroup>
+                ) : null}
 
-                    {availableFreezingCurrentWeekBalances.length > 0 ? (
-                      <optgroup
-                        label={`SEMANA ${freezingWeekContext.number} · ${availableFreezingCurrentWeekBalances.length}`}
-                      >
-                        {availableFreezingCurrentWeekBalances.map((balance) => (
-                          <option
-                            key={`${balance.originDayId}|${balance.productId}`}
-                            value={`${balance.originDayId}|${balance.productId}`}
-                          >
-                            {formatIsoDate(balance.originDate)} ·{' '}
-                            {balance.familyName} · {balance.productName} ·{' '}
-                            {formatCentiKg(balance.pendingKg100)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
+                {availableFreezingCurrentOriginBalances.length >
+                0 ? (
+                  <optgroup
+                    label={`JORNADA ACTUAL DE ENVASADO · ${availableFreezingCurrentOriginBalances.length}`}
+                  >
+                    {availableFreezingCurrentOriginBalances.map(
+                      (balance) => (
+                        <option
+                          key={`${balance.originDayId}|${balance.productId}`}
+                          value={`${balance.originDayId}|${balance.productId}`}
+                        >
+                          {formatIsoDate(balance.originDate)} ·{' '}
+                          {balance.familyName} ·{' '}
+                          {balance.productName} ·{' '}
+                          {formatCentiKg(balance.pendingKg100)}
+                        </option>
+                      ),
+                    )}
+                  </optgroup>
+                ) : null}
                   </>
                 ) : (
                   availableBalances.map((balance) => (
@@ -3753,8 +3999,7 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
               ? 'producto'
               : 'productos'}
           </strong>{' '}
-          utilizando primero la disponibilidad trazable
-          más antigua de Envasado.
+          utilizando primero las jornadas origen de Envasado que todavía tienen saldo pendiente de congelar.
         </p>
 
         <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-3 text-xs leading-5 text-amber-100">
