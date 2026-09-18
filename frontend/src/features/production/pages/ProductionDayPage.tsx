@@ -335,7 +335,20 @@ if (isFreezing) {
                       )
                       setCloseError('')
                     }}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100 dark:border-[#2B5268] dark:bg-transparent dark:text-[#C3D2DC] dark:hover:bg-[#123247] dark:hover:text-white"
+                    className="
+                      inline-flex min-h-10 items-center justify-center
+                      rounded-lg border border-slate-300
+                      bg-white px-4
+                      text-sm font-bold text-slate-700
+                      transition
+                      hover:bg-slate-100 hover:text-slate-950
+
+                      dark:border-[#2B5268]
+                      dark:bg-transparent
+                      dark:text-[#C3D2DC]
+                      dark:hover:bg-[#123247]
+                      dark:hover:text-white
+                    "
                   >
                     Volver a revisar
                   </button>
@@ -343,7 +356,25 @@ if (isFreezing) {
                   <button
                     type="button"
                     onClick={confirmCloseDay}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                    className="
+                      inline-flex min-h-10 items-center justify-center
+                      rounded-lg border border-emerald-700
+                      bg-emerald-700 px-5
+                      text-sm font-extrabold text-white
+                      shadow-sm transition
+
+                      hover:border-emerald-800
+                      hover:bg-emerald-800
+
+                      focus-visible:outline-none
+                      focus-visible:ring-2
+                      focus-visible:ring-emerald-500
+                      focus-visible:ring-offset-2
+
+                      dark:border-emerald-500
+                      dark:bg-emerald-600
+                      dark:hover:bg-emerald-500
+                    "
                   >
                     {operationalState.validation
                       .warnings.length > 0
@@ -808,7 +839,20 @@ if (isFreezing) {
                       setIsCloseConfirmationOpen(false)
                       setCloseError('')
                     }}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247]"
+                    className="
+                      inline-flex min-h-10 items-center justify-center
+                      rounded-lg border border-slate-300
+                      bg-white px-4
+                      text-sm font-bold text-slate-700
+                      transition
+                      hover:bg-slate-100 hover:text-slate-950
+
+                      dark:border-[#2B5268]
+                      dark:bg-transparent
+                      dark:text-[#C3D2DC]
+                      dark:hover:bg-[#123247]
+                      dark:hover:text-white
+                    "
                   >
                     Volver a revisar
                   </button>
@@ -816,7 +860,25 @@ if (isFreezing) {
                   <button
                     type="button"
                     onClick={confirmCloseDay}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                    className="
+                      inline-flex min-h-10 items-center justify-center
+                      rounded-lg border border-emerald-700
+                      bg-emerald-700 px-5
+                      text-sm font-extrabold text-white
+                      shadow-sm transition
+
+                      hover:border-emerald-800
+                      hover:bg-emerald-800
+
+                      focus-visible:outline-none
+                      focus-visible:ring-2
+                      focus-visible:ring-emerald-500
+                      focus-visible:ring-offset-2
+
+                      dark:border-emerald-500
+                      dark:bg-emerald-600
+                      dark:hover:bg-emerald-500
+                    "
                   >
                     {operationalState.validation.warnings.length > 0
                       ? 'Cerrar con observación'

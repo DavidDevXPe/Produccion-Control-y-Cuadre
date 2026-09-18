@@ -2040,9 +2040,21 @@ const autoLinkAllFreezingProducts = () => {
             <StatusBadge tone="info">
               {isFreezing ? 'CONGELAMIENTO' : 'ENVASADO'}
             </StatusBadge>
-            <StatusBadge tone={canClose ? 'success' : 'warning'}>
-              {canClose ? 'LISTA PARA CERRAR' : 'EN CAPTURA'}
-            </StatusBadge>
+            <StatusBadge
+  tone={
+    !canClose
+      ? 'warning'
+      : closureValidation.warnings.length > 0
+        ? 'warning'
+        : 'success'
+  }
+>
+  {!canClose
+    ? 'EN CAPTURA'
+    : closureValidation.warnings.length > 0
+      ? 'LISTA · CON OBSERVACIONES'
+      : 'LISTA PARA CERRAR'}
+</StatusBadge>
             {isBalanceOnly ? (
               <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
             ) : null}
@@ -3455,12 +3467,21 @@ const autoLinkAllFreezingProducts = () => {
           </dl>
 
           {freezingBalanceExplanation.untracedFrozenKg100 > 0 ? (
-            <div className="mt-3 rounded-lg border border-[#8A6A1F] bg-[#2A2414] px-3 py-2 text-[0.6875rem] font-semibold leading-5 text-[#FFE6A3]">
-              Hay producto congelado cuya presentación u origen
-              no alcanza a justificarse completamente. La jornada
-              puede cerrarse con observación y la diferencia quedará
-              registrada para revisión.
-            </div>
+            <div className="
+  mt-3 rounded-lg border border-amber-300
+  bg-amber-50 px-3 py-2
+  text-[0.6875rem] font-semibold leading-5
+  text-amber-900
+
+  dark:border-[#8A6A1F]
+  dark:bg-[#2A2414]
+  dark:text-[#FFE6A3]
+">
+  Hay producto congelado cuya presentación u origen
+  no alcanza a justificarse completamente. La jornada
+  puede cerrarse con observación y la diferencia quedará
+  registrada para revisión.
+</div>
           ) : null}
         </div>
       </div>
@@ -3505,31 +3526,54 @@ const autoLinkAllFreezingProducts = () => {
 
         {isFreezing && freezingPendingLinkCount > 0 ? (
           <div className="border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-[#203E50]">
-            <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-500/20 dark:bg-amber-500/[0.06]">
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                  Vinculación FIFO disponible
-                </p>
-        
-                <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-[#C3D2DC]">
-                  {freezingPendingLinkCount}{" "}
-                  {freezingPendingLinkCount === 1
-                    ? "producto tiene"
-                    : "productos tienen"}{" "}
-                  kilos pendientes de vincular. El sistema consumirá primero las jornadas de Envasado abiertas más antiguas para cada producto.
-                </p>
-              </div>
-                  
-              <button
-                type="button"
-                onClick={() =>
-                  setIsBulkFreezingLinkConfirmationOpen(true)
-                }
-                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-amber-900 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-[#0D2534] dark:text-amber-300 dark:hover:bg-amber-500/10"
-              >
-                Vincular todos FIFO
-              </button>
-            </div>
+            <div className="
+  flex flex-col gap-3 rounded-xl
+  border border-amber-300 bg-amber-50
+  px-4 py-3
+  sm:flex-row sm:items-center sm:justify-between
+
+  dark:border-[#8A6A1F]
+  dark:bg-[#211D12]
+">
+  <div className="min-w-0">
+    <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
+      Vinculación FIFO disponible
+    </p>
+
+    <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-[#F4E7BC]">
+      {freezingPendingLinkCount}{' '}
+      {freezingPendingLinkCount === 1
+        ? 'producto tiene'
+        : 'productos tienen'}{' '}
+      kilos pendientes de vincular. El sistema consumirá primero
+      las jornadas de Envasado abiertas más antiguas para cada
+      producto.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    onClick={() =>
+      setIsBulkFreezingLinkConfirmationOpen(true)
+    }
+    className="
+      inline-flex min-h-9 shrink-0 items-center
+      justify-center rounded-lg
+
+      border border-amber-400
+      bg-white px-3
+      text-xs font-extrabold text-amber-900
+      transition hover:bg-amber-100
+
+      dark:border-[#B58A27]
+      dark:bg-[#0D2534]
+      dark:text-[#FFE7A3]
+      dark:hover:bg-[#2A2414]
+    "
+  >
+    Vincular todos FIFO
+  </button>
+</div>
           </div>
         ) : null}
 
@@ -4643,11 +4687,16 @@ freezingOriginLedger.length > 0 ? (
 
                             <div className="min-w-0">
                               <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
-                                {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
-                                  ? 'Variación técnica de MP · Anillas'
-                                  : warning.familyKey
-                                    ? 'Rendimiento de familia'
-                                    : 'Advertencia'}
+                                {warning.code === 'FREEZING_TRACEABILITY_DIFFERENCE'
+  ? 'Diferencia de trazabilidad'
+  : warning.code ===
+      'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
+    ? 'Producto con origen insuficiente'
+    : warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
+      ? 'Variación técnica de MP · Anillas'
+      : warning.familyKey
+        ? 'Rendimiento de familia'
+        : 'Advertencia operativa'}
                               </p>
                                 
                               <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
@@ -4664,22 +4713,55 @@ freezingOriginLedger.length > 0 ? (
                 {/* Botones */}
                 <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-[#203E50] dark:bg-[#0A1A27]">
                   <button
-                    type="button"
-                    onClick={() => setIsCloseConfirmationOpen(false)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] bg-transparent px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247] hover:text-white"
-                  >
-                    Volver a revisar
-                  </button>
+  type="button"
+  onClick={() => {
+    setIsCloseConfirmationOpen(false)
+  }}
+  className="
+    inline-flex min-h-10 items-center justify-center
+    rounded-lg border border-slate-300
+    bg-white px-4
+    text-sm font-bold text-slate-700
+    transition
+    hover:bg-slate-100 hover:text-slate-950
+
+    dark:border-[#2B5268]
+    dark:bg-transparent
+    dark:text-[#C3D2DC]
+    dark:hover:bg-[#123247]
+    dark:hover:text-white
+  "
+>
+  Volver a revisar
+</button>
                 
                   <button
-                    type="button"
-                    onClick={() => persist(true, true)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100 dark:border-[#2B5268] dark:bg-transparent dark:text-[#C3D2DC] dark:hover:bg-[#123247] dark:hover:text-white"
-                  >
-                    {closureValidation.warnings.length > 0
-                      ? 'Cerrar con observación'
-                      : 'Cerrar jornada'}
-                  </button>
+  type="button"
+  onClick={() => persist(true, true)}
+  className="
+    inline-flex min-h-10 items-center justify-center
+    rounded-lg border border-emerald-700
+    bg-emerald-700 px-5
+    text-sm font-extrabold text-white
+    shadow-sm transition
+
+    hover:border-emerald-800
+    hover:bg-emerald-800
+
+    focus-visible:outline-none
+    focus-visible:ring-2
+    focus-visible:ring-emerald-500
+    focus-visible:ring-offset-2
+
+    dark:border-emerald-500
+    dark:bg-emerald-600
+    dark:hover:bg-emerald-500
+  "
+>
+  {closureValidation.warnings.length > 0
+    ? 'Cerrar con observación'
+    : 'Cerrar jornada'}
+</button>
                 </div>
               </section>
             </div>,
