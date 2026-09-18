@@ -3455,11 +3455,11 @@ const autoLinkAllFreezingProducts = () => {
           </dl>
 
           {freezingBalanceExplanation.untracedFrozenKg100 > 0 ? (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[0.6875rem] leading-5 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.06] dark:text-amber-200">
-              Hay producto congelado cuya presentación/origen
-              no alcanza a justificarse completamente. La
-              jornada podrá registrarse con observación una
-              vez habilitemos el cierre observado.
+            <div className="mt-3 rounded-lg border border-[#8A6A1F] bg-[#2A2414] px-3 py-2 text-[0.6875rem] font-semibold leading-5 text-[#FFE6A3]">
+              Hay producto congelado cuya presentación u origen
+              no alcanza a justificarse completamente. La jornada
+              puede cerrarse con observación y la diferencia quedará
+              registrada para revisión.
             </div>
           ) : null}
         </div>
@@ -4499,24 +4499,24 @@ freezingOriginLedger.length > 0 ? (
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="yield-warning-title"
-                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#203E50] dark:bg-[#0D2534]"
               >
                 {/* Encabezado */}
-                <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
+                <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
                   <div className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-[#FFD166]">
                       <AlertTriangle className="size-4" aria-hidden="true" />
                     </span>
         
                     <div className="min-w-0">
                       <h2
                         id="yield-warning-title"
-                        className="text-base font-bold text-[#F3F8FB]"
+                        className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
                       >
                         Cerrar jornada
                       </h2>
         
-                      <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
+                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
                         Después del cierre, esta jornada quedará en solo lectura.
                       </p>
                     </div>
@@ -4525,50 +4525,86 @@ freezingOriginLedger.length > 0 ? (
         
                 {/* Contenido */}
                 <div className="px-5 py-4 sm:px-6">
-                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
-                    {[
-                      ['Fecha', formatIsoDate(draft.date)],
-                      [
-                        'Materia prima',
-                        isFreezing
-                          ? 'No aplica'
-                          : formatCentiKg(
-                              buildResult.productionDay.declaredRawMaterialKg100,
-                            ),
-                      ],
-                      [
-                        'Producto terminado',
-                        formatCentiKg(
-                          buildResult.calculation.declaredFinishedKg100,
-                        ),
-                      ],
-                      [
-                        'Saldo final',
-                        formatCentiKg(
-                          buildResult.calculation.newClosingBalanceKg100,
-                        ),
-                      ],
-                      [
-                        'Diferencia',
-                        formatCentiKg(
-                          buildResult.calculation.differenceKg100,
-                        ),
-                      ],
-                      [
-                        'Aprovechamiento',
-                        usesExternalAvailability
-                          ? 'No aplica'
-                          : `${
-                              businessSummary.generalYieldPercent?.toFixed(2) ?? '—'
-                            }%`,
-                      ],
-                    ].map(([label, value]) => (
+                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3 dark:border-[#203E50] dark:bg-[#07141F]/70">
+                    {(
+  isFreezing
+    ? [
+        [
+          'Fecha',
+          formatIsoDate(draft.date),
+        ],
+        [
+          'Congelado Día',
+          formatCentiKg(
+            buildResult.calculation.day.declaredReportedKg100,
+          ),
+        ],
+        [
+          'Congelado Noche',
+          formatCentiKg(
+            buildResult.calculation.night.declaredReportedKg100,
+          ),
+        ],
+        [
+          'Total congelado',
+          formatCentiKg(totalReportedKg100),
+        ],
+        [
+          'Con origen identificado',
+          formatCentiKg(
+            freezingLinkedThisDayKg100,
+          ),
+        ],
+        [
+          'Sin origen suficiente',
+          formatCentiKg(
+            freezingBalanceExplanation.untracedFrozenKg100,
+          ),
+        ],
+      ]
+    : [
+        [
+          'Fecha',
+          formatIsoDate(draft.date),
+        ],
+        [
+          'Materia prima',
+          formatCentiKg(
+            buildResult.productionDay.declaredRawMaterialKg100,
+          ),
+        ],
+        [
+          'Producto terminado',
+          formatCentiKg(
+            buildResult.calculation.declaredFinishedKg100,
+          ),
+        ],
+        [
+          'Saldo final',
+          formatCentiKg(
+            buildResult.calculation.newClosingBalanceKg100,
+          ),
+        ],
+        [
+          'Diferencia',
+          formatCentiKg(
+            buildResult.calculation.differenceKg100,
+          ),
+        ],
+        [
+          'Aprovechamiento',
+          `${
+            businessSummary.generalYieldPercent?.toFixed(2) ?? '—'
+          }%`,
+        ],
+      ]
+).map(([label, value]) => (
                       <div key={label} className="min-w-0">
-                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
+                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
                           {label}
                         </dt>
                     
-                        <dd className="number-tabular mt-1 text-sm font-bold text-[#F3F8FB]">
+                        <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
                           {value}
                         </dd>
                       </div>
@@ -4578,11 +4614,11 @@ freezingOriginLedger.length > 0 ? (
                   {closureValidation.warnings.length > 0 ? (
                     <div className="mt-5">
                       <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
                           Advertencias antes del cierre
                         </p>
                   
-                        <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
+                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.625rem] font-extrabold text-amber-800 dark:border-[#8A6A1F] dark:bg-[#2A2414] dark:text-[#FFD166]">
                           {closureValidation.warnings.length}{' '}
                           {closureValidation.warnings.length === 1
                             ? 'advertencia'
@@ -4590,23 +4626,23 @@ freezingOriginLedger.length > 0 ? (
                         </span>
                       </div>
                           
-                      <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
+                      <div className="overflow-hidden rounded-xl border border-amber-300 bg-amber-50 dark:border-[#72581D] dark:bg-[#211D12]">
                         {closureValidation.warnings.map((warning, index) => (
                           <div
                             key={`${warning.code}-${warning.familyKey ?? warning.productId ?? 'GENERAL'}`}
                             className={`flex items-start gap-3 px-4 py-3 ${
                               index > 0
-                                ? 'border-t border-amber-500/10'
+                                ? 'border-t border-amber-200 dark:border-amber-500/10'
                                 : ''
                             }`}
                           >
                             <AlertTriangle
-                              className="mt-0.5 size-4 shrink-0 text-amber-400"
+                              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
                               aria-hidden="true"
                             />
 
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-amber-200">
+                              <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
                                 {warning.code === 'ANILLAS_MP_EXCEEDS_AVAILABLE'
                                   ? 'Variación técnica de MP · Anillas'
                                   : warning.familyKey
@@ -4614,7 +4650,7 @@ freezingOriginLedger.length > 0 ? (
                                     : 'Advertencia'}
                               </p>
                                 
-                              <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
+                              <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
                                 {warning.message}
                               </p>
                             </div>
@@ -4626,7 +4662,7 @@ freezingOriginLedger.length > 0 ? (
                 </div>
                 
                 {/* Botones */}
-                <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-[#203E50] dark:bg-[#0A1A27]">
                   <button
                     type="button"
                     onClick={() => setIsCloseConfirmationOpen(false)}
@@ -4638,7 +4674,7 @@ freezingOriginLedger.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => persist(true, true)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100 dark:border-[#2B5268] dark:bg-transparent dark:text-[#C3D2DC] dark:hover:bg-[#123247] dark:hover:text-white"
                   >
                     {closureValidation.warnings.length > 0
                       ? 'Cerrar con observación'

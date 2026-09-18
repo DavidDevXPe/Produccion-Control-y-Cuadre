@@ -30,6 +30,7 @@ import { ReceivedBalancePanel } from '../components/ReceivedBalancePanel'
 import { ReconciliationPanel } from '../components/ReconciliationPanel'
 import {
   calculateOutstandingBalances,
+  sumKg100,
 } from '../model/calculations'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
@@ -103,32 +104,6 @@ export function ProductionDayPage() {
     calculation.integrityIssues.length === 0
   const sourceSheet = productionDay.lines.at(0)?.source.sheet ?? 'la hoja operativa'
 
-  if (isFreezing) {
-    return (
-      <FreezingDayDetail
-        productionDay={productionDay}
-        allProductionDays={allProductionDays}
-        canEdit={isUserManagedDay(productionDay.date, process) && !isClosed}
-      />
-    )
-  }
-
-  const handleExport = async () => {
-    if (!canExport || exportState === 'EXPORTING') return
-
-    setExportState('EXPORTING')
-
-    try {
-      const { exportProductionDayWorkbook } = await import(
-        '../export/productionDayWorkbook'
-      )
-      await exportProductionDayWorkbook(productionDay, calculation)
-      setExportState('SUCCESS')
-    } catch {
-      setExportState('ERROR')
-    }
-  }
-
   const handleCloseDay = () => {
   if (!isReadyToClose || isClosed) return
 
@@ -158,6 +133,246 @@ export function ProductionDayPage() {
           ? error.message
           : 'No se pudo cerrar la jornada.',
       )
+    }
+  }
+
+if (isFreezing) {
+  const totalFrozenKg100 = sumKg100([
+    calculation.day.declaredReportedKg100,
+    calculation.night.declaredReportedKg100,
+  ])
+
+  return (
+    <>
+      <FreezingDayDetail
+        productionDay={productionDay}
+        allProductionDays={allProductionDays}
+        canEdit={
+          isUserManagedDay(
+            productionDay.date,
+            process,
+          ) && !isClosed
+        }
+        canClose={isReadyToClose && !isClosed}
+        onClose={handleCloseDay}
+      />
+
+      {isCloseConfirmationOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-[1px] dark:bg-[#020914]/90">
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="freezing-close-title"
+                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#203E50] dark:bg-[#0D2534]"
+              >
+                {/* Encabezado */}
+                <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-[#FFD166]">
+                      <AlertTriangle
+                        className="size-4"
+                        aria-hidden="true"
+                      />
+                    </span>
+
+                    <div className="min-w-0">
+                      <h2
+                        id="freezing-close-title"
+                        className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
+                      >
+                        Cerrar jornada de Congelamiento
+                      </h2>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
+                        Después del cierre, esta jornada
+                        quedará en solo lectura.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumen */}
+                <div className="px-5 py-4 sm:px-6">
+                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3 dark:border-[#203E50] dark:bg-[#07141F]/70">
+                    {[
+                      [
+                        'Fecha',
+                        formatIsoDate(
+                          productionDay.date,
+                        ),
+                      ],
+                      [
+                        'Congelado Día',
+                        formatCentiKg(
+                          calculation.day
+                            .declaredReportedKg100,
+                        ),
+                      ],
+                      [
+                        'Congelado Noche',
+                        formatCentiKg(
+                          calculation.night
+                            .declaredReportedKg100,
+                        ),
+                      ],
+                      [
+                        'Total congelado',
+                        formatCentiKg(
+                          totalFrozenKg100,
+                        ),
+                      ],
+                      [
+                        'Con origen identificado',
+                        formatCentiKg(
+                          calculation
+                            .processedPreviousBalanceKg100,
+                        ),
+                      ],
+                      [
+                        'Sin origen suficiente',
+                        formatCentiKg(
+                          calculation
+                            .reportOwnProductionKg100,
+                        ),
+                      ],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="min-w-0"
+                      >
+                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                          {label}
+                        </dt>
+
+                        <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {/* Advertencias */}
+                  {operationalState.validation.warnings
+                    .length > 0 ? (
+                    <div className="mt-5">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
+                          Advertencias antes del cierre
+                        </p>
+
+                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.625rem] font-extrabold text-amber-800 dark:border-[#8A6A1F] dark:bg-[#2A2414] dark:text-[#FFD166]">
+                          {
+                            operationalState.validation
+                              .warnings.length
+                          }{' '}
+                          {operationalState.validation
+                            .warnings.length === 1
+                            ? 'advertencia'
+                            : 'advertencias'}
+                        </span>
+                      </div>
+
+                      <div className="overflow-hidden rounded-xl border border-amber-300 bg-amber-50 dark:border-[#72581D] dark:bg-[#211D12]">
+                        {operationalState.validation.warnings.map(
+                          (warning, index) => (
+                            <div
+                              key={`${warning.code}-${
+                                warning.familyKey ??
+                                warning.productId ??
+                                'GENERAL'
+                              }`}
+                              className={`flex items-start gap-3 px-4 py-3 ${
+                                index > 0
+                                  ? 'border-t border-amber-200 dark:border-amber-500/10'
+                                  : ''
+                              }`}
+                            >
+                              <AlertTriangle
+                                className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
+                                aria-hidden="true"
+                              />
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
+                                  {warning.code ===
+                                  'FREEZING_TRACEABILITY_DIFFERENCE'
+                                    ? 'Diferencia de trazabilidad'
+                                    : warning.code ===
+                                        'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
+                                      ? 'Producto con origen insuficiente'
+                                      : 'Advertencia'}
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
+                                  {warning.message}
+                                </p>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {closeError ? (
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+                    >
+                      {closeError}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Botones */}
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-[#203E50] dark:bg-[#0A1A27]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCloseConfirmationOpen(
+                        false,
+                      )
+                      setCloseError('')
+                    }}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100 dark:border-[#2B5268] dark:bg-transparent dark:text-[#C3D2DC] dark:hover:bg-[#123247] dark:hover:text-white"
+                  >
+                    Volver a revisar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={confirmCloseDay}
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500"
+                  >
+                    {operationalState.validation
+                      .warnings.length > 0
+                      ? 'Cerrar con observación'
+                      : 'Cerrar jornada'}
+                  </button>
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  )
+}
+
+  const handleExport = async () => {
+    if (!canExport || exportState === 'EXPORTING') return
+
+    setExportState('EXPORTING')
+
+    try {
+      const { exportProductionDayWorkbook } = await import(
+        '../export/productionDayWorkbook'
+      )
+      await exportProductionDayWorkbook(productionDay, calculation)
+      setExportState('SUCCESS')
+    } catch {
+      setExportState('ERROR')
     }
   }
 

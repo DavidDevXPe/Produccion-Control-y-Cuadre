@@ -1,4 +1,4 @@
-import {AlertTriangle, ArrowLeft, Boxes, Moon, Scale, Snowflake, Sun } from 'lucide-react'
+import {AlertTriangle, ArrowLeft, Boxes, CheckCircle2, Moon, Pencil, Scale, Snowflake, Sun } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
@@ -16,12 +16,16 @@ interface FreezingDayDetailProps {
   productionDay: ProductionDay
   allProductionDays: readonly ProductionDay[]
   canEdit: boolean
+  canClose: boolean
+  onClose: () => void
 }
 
 export function FreezingDayDetail({
   productionDay,
   allProductionDays,
   canEdit,
+  canClose,
+  onClose,
 }: FreezingDayDetailProps) {
   const operationalState = getProductionDayOperationalState(productionDay)
   const calculation = operationalState.calculation
@@ -78,14 +82,27 @@ export function FreezingDayDetail({
                   : 'BORRADOR · REVISAR'}
             </StatusBadge>
             {canEdit ? (
-              <ActionLink
-                to={`/jornadas/${productionDay.date}/editar?process=FREEZING`}
-                variant={isReadyToClose ? 'primary' : 'secondary'}
-                size="sm"
-              >
-                {isReadyToClose ? 'Cerrar jornada' : 'Continuar captura'}
-              </ActionLink>
-            ) : null}
+  <>
+    <ActionLink
+      to={`/jornadas/${productionDay.date}/editar?process=FREEZING`}
+      variant="secondary"
+      size="sm"
+    >
+      <Pencil className="size-4" aria-hidden="true" />
+      Seguir editando
+    </ActionLink>
+
+    <button
+      type="button"
+      disabled={!canClose}
+      onClick={onClose}
+      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+    >
+      <CheckCircle2 className="size-4" aria-hidden="true" />
+      Cerrar jornada
+    </button>
+  </>
+) : null}
           </>
         }
       />
