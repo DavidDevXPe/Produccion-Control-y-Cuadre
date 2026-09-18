@@ -223,6 +223,95 @@ describe('ProductionEntryPage product selector', () => {
     )
   })
 
+  it('shows the freezing traceability summary for reported product movement', () => {
+  renderNewEntry('/jornadas/nueva?process=FREEZING')
+
+  fireEvent.change(
+    screen.getByLabelText(/^Reporte Día/),
+    {
+      target: { value: '10' },
+    },
+  )
+
+  fireEvent.change(
+    screen.getByRole('searchbox', {
+      name: 'Buscar producto',
+    }),
+    {
+      target: { value: 'aleta 1000 2000' },
+    },
+  )
+
+  const productSelect = screen.getByRole('combobox', {
+    name: 'Producto con movimiento',
+  })
+
+  const product = within(productSelect)
+    .getAllByRole('option')
+    .filter(
+      (option) =>
+        (option as HTMLOptionElement).value !== '',
+    )[0] as HTMLOptionElement
+
+  expect(product).toBeDefined()
+
+  fireEvent.change(productSelect, {
+    target: { value: product.value },
+  })
+
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Agregar',
+    }),
+  )
+
+  const captureRegion = screen.getByRole('region', {
+    name: 'Captura por producto y turno',
+  })
+
+  const captureInputs =
+    within(captureRegion).getAllByRole('spinbutton')
+
+  fireEvent.change(captureInputs[0]!, {
+    target: { value: '10' },
+  })
+
+  const traceabilitySummary = screen.getByRole(
+    'region',
+    {
+      name: 'Resumen de trazabilidad de Congelamiento',
+    },
+  )
+
+  expect(traceabilitySummary).toBeInTheDocument()
+
+  expect(
+    within(traceabilitySummary).getByText(
+      'Productos reportados',
+    ),
+  ).toBeInTheDocument()
+
+  expect(
+    within(traceabilitySummary).getByText(
+      'Cobertura vinculada',
+    ),
+  ).toBeInTheDocument()
+
+  expect(
+    within(traceabilitySummary).getByText('0.00%'),
+  ).toBeInTheDocument()
+
+  expect(
+  within(traceabilitySummary).getByText(
+    /^Faltan\s+10\.00\s+kg$/,
+  ),
+).toBeInTheDocument()
+
+expect(traceabilitySummary).toHaveTextContent(
+  /0\.00\s*kg\s+de\s+10\.00\s*kg\s+con origen vinculado\./i,
+)
+})
+
   it('changes process immediately while the form is empty', () => {
     renderNewEntry()
 

@@ -38,6 +38,7 @@ import {
   type ProductionCaptureBalanceUse,
   type ProductionCaptureRow,
 } from '../capture/productionCapture'
+import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
 import {
   CAPTURE_CATALOG_ITEMS,
   confirmProductionCatalogItem,
@@ -411,6 +412,7 @@ export function ProductionEntryPage() {
   )
   const [selectedBalanceKey, setSelectedBalanceKey] = useState('')
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
+  const [isBulkFreezingLinkConfirmationOpen, setIsBulkFreezingLinkConfirmationOpen] = useState(false)
   const [tunnelToggleError, setTunnelToggleError] = useState('')
   const [parsedSheets, setParsedSheets] = useState<
     readonly ParsedProductionSheet[]
@@ -825,6 +827,171 @@ export function ProductionEntryPage() {
     totalReportedKg100 - freezingLinkedThisDayKg100,
   )
 
+  const freezingProductsPendingLink = useMemo(
+  () =>
+    isFreezing
+      ? draft.rows.filter((row) => {
+          const reportedKg100 = sumKg100([
+            captureQuantityKg100(row.dayReportedKg),
+            captureQuantityKg100(row.nightReportedKg),
+          ])
+
+          if (reportedKg100 === 0) {
+            return false
+          }
+
+          const linked =
+            captureProductAvailability(
+              draft,
+              row.product.productId,
+            )
+
+          return linked.frozenKg100 < reportedKg100
+        })
+      : [],
+  [draft, isFreezing],
+)
+
+const freezingPendingLinkCount =
+  freezingProductsPendingLink.length
+
+const freezingTraceabilitySummary = isFreezing
+  ? draft.rows.reduce(
+      (summary, row) => {
+        const reportedKg100 = sumKg100([
+          captureQuantityKg100(row.dayReportedKg),
+          captureQuantityKg100(row.nightReportedKg),
+        ])
+
+        if (reportedKg100 === 0) {
+          return summary
+        }
+
+        const linkedAvailability =
+          captureProductAvailability(
+            draft,
+            row.product.productId,
+          )
+
+        const linkedKg100 =
+          linkedAvailability.frozenKg100
+
+        const availableKg100 =
+          getFreezingPotentialAvailabilityKg100(
+            row.product.productId,
+          )
+
+        const status = freezingTraceabilityStatus(
+          reportedKg100,
+          availableKg100,
+          linkedKg100,
+        )
+
+        const tracedKg100 = kg100(
+          Math.min(linkedKg100, reportedKg100),
+        )
+
+        const excessLinkedKg100 = kg100(
+          Math.max(linkedKg100 - reportedKg100, 0),
+        )
+
+        return {
+          totalProducts: summary.totalProducts + 1,
+
+          traceableProducts:
+            summary.traceableProducts +
+            (status.label === 'TRAZABLE' ? 1 : 0),
+
+          pendingProducts:
+            summary.pendingProducts +
+            (status.tone === 'warning' ? 1 : 0),
+
+          problemProducts:
+            summary.problemProducts +
+            (status.tone === 'danger' ? 1 : 0),
+
+          reportedKg100: kg100(
+            summary.reportedKg100 + reportedKg100,
+          ),
+
+          tracedKg100: kg100(
+            summary.tracedKg100 + tracedKg100,
+          ),
+
+          pendingKg100: kg100(
+            summary.pendingKg100 +
+              status.pendingToLinkKg100,
+          ),
+
+          excessLinkedKg100: kg100(
+            summary.excessLinkedKg100 +
+              excessLinkedKg100,
+          ),
+        }
+      },
+      {
+        totalProducts: 0,
+        traceableProducts: 0,
+        pendingProducts: 0,
+        problemProducts: 0,
+        reportedKg100: kg100(0),
+        tracedKg100: kg100(0),
+        pendingKg100: kg100(0),
+        excessLinkedKg100: kg100(0),
+      },
+    )
+  : {
+      totalProducts: 0,
+      traceableProducts: 0,
+      pendingProducts: 0,
+      problemProducts: 0,
+      reportedKg100: kg100(0),
+      tracedKg100: kg100(0),
+      pendingKg100: kg100(0),
+      excessLinkedKg100: kg100(0),
+    }
+
+const freezingTraceabilityCoveragePercent =
+  freezingTraceabilitySummary.reportedKg100 > 0
+    ? Math.min(
+        100,
+        (freezingTraceabilitySummary.tracedKg100 /
+          freezingTraceabilitySummary.reportedKg100) *
+          100,
+      )
+    : null
+
+const freezingTraceabilityOverview =
+  freezingTraceabilitySummary.totalProducts === 0
+    ? {
+        tone: 'neutral' as const,
+        label: 'SIN MOVIMIENTOS',
+      }
+    : freezingTraceabilitySummary.problemProducts > 0 ||
+        freezingTraceabilitySummary.excessLinkedKg100 > 0
+      ? {
+          tone: 'danger' as const,
+          label: 'REVISAR TRAZABILIDAD',
+        }
+      : freezingTraceabilitySummary.pendingProducts > 0
+        ? {
+            tone: 'warning' as const,
+            label: 'VINCULACIÓN PENDIENTE',
+          }
+        : {
+            tone: 'success' as const,
+            label: 'TRAZABILIDAD COMPLETA',
+          }
+
+const freezingTraceabilityProgressClass =
+  freezingTraceabilityOverview.tone === 'danger'
+    ? 'bg-rose-500'
+    : freezingTraceabilityOverview.tone === 'warning'
+      ? 'bg-amber-500'
+      : freezingTraceabilityOverview.tone === 'success'
+        ? 'bg-emerald-500'
+        : 'bg-slate-400'
+
   const applyProcessChange = (process: ProductionProcess) => {
     if (editingDate || process === draft.process) return
     const processWeek = getWeekView(activeWeek.number, process)
@@ -1184,6 +1351,72 @@ export function ProductionEntryPage() {
   }))
 
   setSelectedBalanceKey('')
+  setSaveError('')
+}
+
+  const autoLinkFreezingProduct = (productId: string) => {
+  if (!isFreezing) return
+  setDraft((current) => {
+    const row = current.rows.find(
+      (candidate) =>
+        candidate.product.productId === productId,
+    )
+    if (!row) {
+      return current
+    }
+    const allocation = buildFreezingFifoAllocation({
+      targetProduct: row.product,
+      reportedDayKg100: captureQuantityKg100(
+        row.dayReportedKg,
+      ),
+      reportedNightKg100: captureQuantityKg100(
+        row.nightReportedKg,
+      ),
+      positions: freezingAvailabilityPositions,
+      existingUses: current.balanceUses,
+    })
+    return {
+      ...current,
+      balanceUses: allocation.balanceUses,
+    }
+  })
+  setSaveError('')
+}
+
+const autoLinkAllFreezingProducts = () => {
+  if (!isFreezing) return
+
+  setDraft((current) => {
+    let nextBalanceUses = [...current.balanceUses]
+
+    const rowsWithMovement = current.rows.filter(
+      (row) =>
+        captureQuantityKg100(row.dayReportedKg) > 0 ||
+        captureQuantityKg100(row.nightReportedKg) > 0,
+    )
+
+    for (const row of rowsWithMovement) {
+      const allocation = buildFreezingFifoAllocation({
+        targetProduct: row.product,
+        reportedDayKg100: captureQuantityKg100(
+          row.dayReportedKg,
+        ),
+        reportedNightKg100: captureQuantityKg100(
+          row.nightReportedKg,
+        ),
+        positions: freezingAvailabilityPositions,
+        existingUses: nextBalanceUses,
+      })
+
+      nextBalanceUses = [...allocation.balanceUses]
+    }
+
+    return {
+      ...current,
+      balanceUses: nextBalanceUses,
+    }
+  })
+
   setSaveError('')
 }
 
@@ -2344,12 +2577,28 @@ export function ProductionEntryPage() {
                             )
                           : '—'}
                       </td>
-                      <td className="px-3 py-2.5 text-center text-xs text-slate-400">
-                        {isFreezing ? (
+                      <td className="px-3 py-2.5 text-center align-middle">
+                        <div className="flex flex-col items-center gap-1.5">
                           <StatusBadge tone={traceabilityStatus.tone}>
                             {traceabilityStatus.label}
                           </StatusBadge>
-                        ) : '—'}
+
+                          {isFreezing &&
+                          traceabilityStatus.pendingToLinkKg100 > 0 &&
+                          availableKg100 > linkedKg100 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                autoLinkFreezingProduct(productId)
+                              }
+                              className="inline-flex min-h-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-2.5 text-[0.6875rem] font-bold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+                              aria-label={`Vincular FIFO ${row.product.productName}`}
+                              title="Vincula primero los saldos de Envasado más antiguos disponibles"
+                            >
+                              Vincular FIFO
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-2.5">
                         <button type="button" className="grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700" aria-label={`Eliminar ${row.product.productName}`} onClick={() => removeRow(row.key)}>
@@ -2724,7 +2973,7 @@ export function ProductionEntryPage() {
         title={isFreezing ? 'Disponibilidad para congelar' : 'Saldos anteriores procesados'}
         description={
           isFreezing
-            ? 'Selecciona producto envasado pendiente de congelar y distribuye lo ejecutado entre Día y Noche.'
+            ? 'Vincula manualmente el origen o usa Vincular FIFO para consumir primero el producto envasado más antiguo. Todos los vínculos pueden revisarse antes del cierre.'
             : isBalanceOnly
             ? 'Fuente principal del domingo: vincula cada kg procesado con su jornada de origen y turno.'
             : 'Selecciona lotes pendientes reales y distribuye su consumo entre Día y Noche.'
@@ -2732,34 +2981,222 @@ export function ProductionEntryPage() {
         action={<StatusBadge tone="info">ORIGEN TRAZABLE</StatusBadge>}
       >
         {isFreezing ? (
-          <dl className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
-            {[
-              [`Disponible semana ${freezingWeekContext.number}`, freezingCurrentWeekAvailableKg100 ],
-              ['Saldo semanas anteriores', freezingCarryoverAvailableKg100,],
-              ['Total disponible', freezingTotalAvailableKg100],
-              ['Congelado en esta jornada', freezingLinkedThisDayKg100],
-              ['Pendiente posterior', freezingPendingAfterKg100],
-              ['Diferencia no explicada', freezingUnexplainedDifferenceKg100],
-            ].map(([label, value], index) => (
-              <div key={String(label)} className="bg-white px-4 py-3 text-center">
-                <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                  {String(label)}
-                </dt>
-                <dd
-                  className={`number-tabular mt-1 whitespace-nowrap text-sm font-extrabold ${
-                    index === 5 && freezingUnexplainedDifferenceKg100 !== 0
-                      ? 'text-rose-700'
-                      : index === 4 && freezingPendingAfterKg100 > 0
-                        ? 'text-amber-700'
-                        : 'text-slate-950'
-                  }`}
-                >
-                  {formatCentiKg(value as ReturnType<typeof kg100>)}
-                </dd>
+  <dl className="grid gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-6">
+    {[
+      [
+        `Disponible semana ${freezingWeekContext.number}`,
+        freezingCurrentWeekAvailableKg100,
+      ],
+      ["Saldo semanas anteriores", freezingCarryoverAvailableKg100],
+      ["Total disponible", freezingTotalAvailableKg100],
+      ["Congelado en esta jornada", freezingLinkedThisDayKg100],
+      ["Pendiente posterior", freezingPendingAfterKg100],
+      ["Diferencia no explicada", freezingUnexplainedDifferenceKg100],
+    ].map(([label, value], index) => (
+      <div
+        key={String(label)}
+        className="bg-white px-4 py-3 text-center"
+      >
+        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+          {String(label)}
+        </dt>
+
+        <dd
+          className={`number-tabular mt-1 whitespace-nowrap text-sm font-extrabold ${
+            index === 5 && freezingUnexplainedDifferenceKg100 !== 0
+              ? "text-rose-700"
+              : index === 4 && freezingPendingAfterKg100 > 0
+                ? "text-amber-700"
+                : "text-slate-950"
+          }`}
+        >
+          {formatCentiKg(value as ReturnType<typeof kg100>)}
+        </dd>
+      </div>
+    ))}
+  </dl>
+) : null}
+
+        {isFreezing && freezingPendingLinkCount > 0 ? (
+          <div className="border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-[#203E50]">
+            <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-500/20 dark:bg-amber-500/[0.06]">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Vinculación FIFO disponible
+                </p>
+        
+                <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-[#C3D2DC]">
+                  {freezingPendingLinkCount}{" "}
+                  {freezingPendingLinkCount === 1
+                    ? "producto tiene"
+                    : "productos tienen"}{" "}
+                  kilos pendientes de vincular. El sistema usará primero los saldos
+                  trazables más antiguos de Envasado.
+                </p>
               </div>
-            ))}
-          </dl>
+                  
+              <button
+                type="button"
+                onClick={() =>
+                  setIsBulkFreezingLinkConfirmationOpen(true)
+                }
+                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-amber-900 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-[#0D2534] dark:text-amber-300 dark:hover:bg-amber-500/10"
+              >
+                Vincular todos FIFO
+              </button>
+            </div>
+          </div>
         ) : null}
+
+{isFreezing &&
+freezingTraceabilitySummary.totalProducts > 0 ? (
+  <div
+    role="region"
+    aria-label="Resumen de trazabilidad de Congelamiento"
+    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-[#203E50]"
+  >
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-[#203E50] dark:bg-[#07141F]/60">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-700 dark:text-[#A5BED0]">
+            Resumen de trazabilidad
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#7F9BAD]">
+            Estado de los productos reportados en
+            Congelamiento frente a su origen trazable
+            de Envasado.
+          </p>
+        </div>
+
+        <StatusBadge
+          tone={freezingTraceabilityOverview.tone}
+        >
+          {freezingTraceabilityOverview.label}
+        </StatusBadge>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-[#203E50] dark:bg-[#0D2534]">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+            Productos reportados
+          </dt>
+
+          <dd className="mt-1 text-lg font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+            {freezingTraceabilitySummary.totalProducts}
+          </dd>
+        </div>
+
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-3 dark:border-emerald-500/20 dark:bg-emerald-500/[0.05]">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-emerald-700 dark:text-emerald-300">
+            Trazables
+          </dt>
+
+          <dd className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
+            {freezingTraceabilitySummary.traceableProducts}
+          </dd>
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-3 dark:border-amber-500/20 dark:bg-amber-500/[0.05]">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-amber-700 dark:text-amber-300">
+            Pendientes
+          </dt>
+
+          <dd className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">
+            {freezingTraceabilitySummary.pendingProducts}
+          </dd>
+        </div>
+
+        <div className="rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-3 dark:border-rose-500/20 dark:bg-rose-500/[0.05]">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-rose-700 dark:text-rose-300">
+            Con problema
+          </dt>
+
+          <dd className="mt-1 text-lg font-extrabold text-rose-700 dark:text-rose-300">
+            {freezingTraceabilitySummary.problemProducts}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-slate-700 dark:text-[#C3D2DC]">
+              Cobertura vinculada
+            </p>
+
+            <p className="mt-0.5 text-[0.6875rem] text-slate-500 dark:text-[#7F9BAD]">
+              Kg reportados que ya cuentan con origen
+              de Envasado identificado.
+            </p>
+          </div>
+
+          <span className="number-tabular shrink-0 text-lg font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+            {freezingTraceabilityCoveragePercent === null
+              ? '—'
+              : `${freezingTraceabilityCoveragePercent.toFixed(
+                  2,
+                )}%`}
+          </span>
+        </div>
+
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#203E50]">
+          <div
+            className={`h-full rounded-full transition-[width] duration-300 ${freezingTraceabilityProgressClass}`}
+            style={{
+              width: `${
+                freezingTraceabilityCoveragePercent ?? 0
+              }%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-3 flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between dark:text-[#A5BED0]">
+          <p>
+            <strong className="number-tabular text-slate-900 dark:text-[#F3F8FB]">
+              {formatCentiKg(
+                freezingTraceabilitySummary.tracedKg100,
+              )}
+            </strong>{' '}
+            de{' '}
+            <strong className="number-tabular text-slate-900 dark:text-[#F3F8FB]">
+              {formatCentiKg(
+                freezingTraceabilitySummary.reportedKg100,
+              )}
+            </strong>{' '}
+            con origen vinculado.
+          </p>
+
+          {freezingTraceabilitySummary.pendingKg100 > 0 ? (
+            <p className="number-tabular font-bold text-amber-700 dark:text-amber-300">
+              Faltan{' '}
+              {formatCentiKg(
+                freezingTraceabilitySummary.pendingKg100,
+              )}
+            </p>
+          ) : (
+            <p className="font-bold text-emerald-700 dark:text-emerald-300">
+              Sin kilos pendientes.
+            </p>
+          )}
+        </div>
+
+        {freezingTraceabilitySummary.excessLinkedKg100 >
+        0 ? (
+          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200">
+            Existen{' '}
+            {formatCentiKg(
+              freezingTraceabilitySummary.excessLinkedKg100,
+            )}{' '}
+            vinculados por encima de los kilos reportados.
+            Revisa la distribución Día/Noche.
+          </div>
+        ) : null}
+      </div>
+    </div>
+  </div>
+) : null}
+
         <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="disabled:opacity-65">
           <legend className="sr-only">Consumo de saldos anteriores</legend>
           <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -3291,6 +3728,68 @@ export function ProductionEntryPage() {
           </section>
         </div>
       ) : null}
+
+      {isBulkFreezingLinkConfirmationOpen ? (
+  <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-4">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bulk-freezing-link-title"
+      className="w-full max-w-lg overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+    >
+      <div className="px-5 py-5">
+        <h2
+          id="bulk-freezing-link-title"
+          className="text-base font-bold text-[#F3F8FB]"
+        >
+          Vincular productos mediante FIFO
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-[#A5BED0]">
+          Se intentarán vincular{' '}
+          <strong className="text-white">
+            {freezingPendingLinkCount}{' '}
+            {freezingPendingLinkCount === 1
+              ? 'producto'
+              : 'productos'}
+          </strong>{' '}
+          utilizando primero la disponibilidad trazable
+          más antigua de Envasado.
+        </p>
+
+        <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-3 text-xs leading-5 text-amber-100">
+          Los reportes Día/Noche no serán modificados.
+          Los vínculos generados podrán revisarse,
+          editarse o eliminarse antes de cerrar la
+          jornada.
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4">
+        <button
+          type="button"
+          onClick={() =>
+            setIsBulkFreezingLinkConfirmationOpen(false)
+          }
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247]"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            autoLinkAllFreezingProducts()
+            setIsBulkFreezingLinkConfirmationOpen(false)
+          }}
+          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800"
+        >
+          Vincular todos FIFO
+        </button>
+      </div>
+    </section>
+  </div>
+) : null}
 
       {isCloseConfirmationOpen
         ? createPortal(
