@@ -8,6 +8,7 @@ import {
   toKilograms,
 } from '../model/calculations'
 import { calculateFreezingAvailability } from '../model/freezing'
+import { productIdsEquivalent } from '../model/productIdentity'
 import { calculateProductionBusinessSummary } from '../model/businessRules'
 import {
   GENERAL_MIN_YIELD_BPS,
@@ -205,7 +206,7 @@ function buildReceivedBalanceLots(
       (candidate) =>
         candidate.originDayId === selection.originDayId &&
         candidate.familyId === selection.familyId &&
-        candidate.productId === sourceProductId,
+        productIdsEquivalent(candidate.productId, sourceProductId),
     )
     const availableKg100 = position?.pendingKg100 ?? ZERO_KG100
     const dayKg100 = quantityFor(

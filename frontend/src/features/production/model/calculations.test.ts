@@ -372,6 +372,49 @@ describe('Nuca semilimpia reference', () => {
     expect(calculation.nucaSemilimpia.status).toBe('BELOW_REFERENCE')
     expect(calculation.status).toBe('BALANCED')
   })
+
+  it('deducts historical product ids against the current canonical product', () => {
+    const sourceLine = WEDNESDAY_PRODUCTION_DAY.lines[0]
+    expect(sourceLine).toBeDefined()
+
+    const dayWithLegacyReceivedBalance: ProductionDay = {
+      ...WEDNESDAY_PRODUCTION_DAY,
+      lines: [
+        {
+          ...sourceLine!,
+          productId: 'aleta-cruda-block-1000-2000-e',
+        },
+        ...WEDNESDAY_PRODUCTION_DAY.lines.slice(1),
+      ],
+      receivedBalanceLots: [
+        {
+          id: 'previous-legacy-aleta',
+          originDayId: 'production-day-2026-09-01',
+          familyId: sourceLine!.familyId,
+          productId: 'capture-seed-6',
+          originalKg100: kg(1_000),
+          uses: [
+            {
+              id: 'previous-legacy-aleta-day-use',
+              targetDayId: WEDNESDAY_PRODUCTION_DAY.id,
+              shift: 'DAY',
+              kg100: kg(1_000),
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = calculateProductionDay(dayWithLegacyReceivedBalance)
+    const canonicalProduct = result.products.find(
+      (product) => product.productId === 'aleta-cruda-block-1000-2000-e',
+    )
+
+    expect(canonicalProduct?.day.previousBalanceProcessedKg100).toBe(kg(1_000))
+    expect(
+      result.integrityIssues.map((issue) => issue.code),
+    ).not.toContain('BALANCE_PRODUCT_NOT_FOUND')
+  })
 })
 
 describe('weekly summary validation', () => {

@@ -170,4 +170,37 @@ describe("freezing FIFO allocation", () => {
       }),
     );
   });
+
+  it("matches historical source product ids with their canonical target", () => {
+    const result = buildFreezingFifoAllocation({
+      targetProduct: {
+        productId: "aleta-cruda-block-1000-2000-e",
+        productName: "ALETA CRUDA CONGELADA BLOCK S/TTO 1000 g - 2000 g (E) 100% P.N.",
+        familyId: "aleta-cruda",
+        familyName: "ALETA CRUDA",
+      },
+      reportedDayKg100: kg100(100 * 100),
+      reportedNightKg100: kg100(0),
+      positions: [
+        {
+          ...position("packing-legacy", "2026-09-14", 100),
+          familyId: "aleta-cruda",
+          familyName: "ALETA CRUDA",
+          productId: "capture-seed-6",
+          productName: "ALETA CRUDA LEGACY",
+          summaryGroupId: "ALETA",
+        },
+      ],
+      existingUses: [],
+    });
+
+    expect(result.remainingDayKg100).toBe(0);
+    expect(result.balanceUses[0]).toEqual(
+      expect.objectContaining({
+        originDayId: "packing-legacy",
+        sourceProductId: "capture-seed-6",
+        dayKg: "100",
+      }),
+    );
+  });
 });

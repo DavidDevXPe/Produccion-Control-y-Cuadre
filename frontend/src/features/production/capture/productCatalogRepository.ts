@@ -1,8 +1,9 @@
 import { normalizeProductName, productNameSlug } from './productNormalizer'
 import { SEED_CAPTURE_PRODUCTS } from './seedProducts'
 import type { ProductionCatalogItem } from './productionCatalog'
+import { TRABUNDA_STORAGE_KEYS } from '../../../storage/trabundaStorage'
 
-const STORAGE_KEY = 'trabunda-product-catalog-v2'
+const STORAGE_KEY = TRABUNDA_STORAGE_KEYS.productCatalog
 
 function isContaminatedAlias(value: string): boolean {
   return /20\d{2}[-/]\d{1,2}[-/]\d{1,2}/.test(value) && (value.match(/\d[\d.,]*/g)?.length ?? 0) >= 3

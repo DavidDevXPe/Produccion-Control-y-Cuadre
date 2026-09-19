@@ -3,6 +3,7 @@ import {
   BarChart3,
   Activity,
   CalendarDays,
+  Database,
   History,
   LayoutDashboard,
   Menu,
@@ -25,13 +26,14 @@ import {
   getOperationalWeekContextByNumber,
   getLimaShiftLabel,
 } from '../utils/operationalContext'
+import { TRABUNDA_STORAGE_KEYS } from '../storage/trabundaStorage'
 
 const brandLogoUrl = `${import.meta.env.BASE_URL}brand/trabunda-logo-white.png`
 const industrialBackgroundUrl = `${import.meta.env.BASE_URL}brand/trabunda-industrial-bg.png`
 
 type ColorTheme = 'light' | 'dark'
 
-const colorThemeStorageKey = 'trabunda-color-theme'
+const colorThemeStorageKey = TRABUNDA_STORAGE_KEYS.colorTheme
 
 function getInitialColorTheme(): ColorTheme {
   if (typeof document === 'undefined') return 'dark'
@@ -84,6 +86,10 @@ const primaryNavigation: readonly NavigationItem[] = [
   { label: 'Saldos', to: '/saldos', icon: PackageOpen },
   { label: 'Rendimiento', to: '/rendimiento', icon: Activity },
   { label: 'Resumen', to: '/resumen', icon: BarChart3 },
+]
+
+const administrationNavigation: readonly NavigationItem[] = [
+  { label: 'Datos', to: '/datos', icon: Database },
 ]
 
 const upcomingNavigation: readonly UpcomingNavigationItem[] = [
@@ -150,6 +156,22 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
             Administración
           </p>
           <ul className="space-y-1">
+            {administrationNavigation.map((item) => {
+              const Icon = item.icon
+
+              return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    className={navLinkClassName}
+                    onClick={() => onNavigate?.()}
+                  >
+                    <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                </li>
+              )
+            })}
             {upcomingNavigation.map((item) => {
               const Icon = item.icon
 

@@ -32,6 +32,10 @@ import {
   REJO_MP_SHARE_BPS,
 } from './businessConfig'
 import { getProductionProcess } from './productionProcess'
+import {
+  canonicalProductId,
+  productIdsEquivalent,
+} from './productIdentity'
 
 export const KG100_SCALE = 100
 export const BASIS_POINTS_SCALE = 10_000
@@ -126,7 +130,11 @@ function balanceProcessedForProduct(
 ): Kg100 {
   return sumKg100(
     productionDay.receivedBalanceLots.flatMap((lot) =>
-      lot.productId === line.productId && lot.familyId === line.familyId
+      (productIdsEquivalent(lot.productId, line.productId) ||
+        (lot.sourceProductId
+          ? productIdsEquivalent(lot.sourceProductId, line.productId)
+          : false)) &&
+      lot.familyId === line.familyId
         ? lot.uses
             .filter(
               (use) =>
@@ -456,13 +464,14 @@ function collectDayIntegrityIssues(
     validateNonNegative(line.declaredFinishedKg100, 'El producto terminado', {
       productId: line.productId,
     })
-    const first = productsById.get(line.productId)
+    const productId = canonicalProductId(line.productId)
+    const first = productsById.get(productId)
     if (first) {
       issues.push(
         dayIssue({
           code: 'DUPLICATE_PRODUCT_ID',
           message: `El producto ${line.productId} aparece más de una vez en la jornada.`,
-          productId: line.productId,
+          productId,
         }),
       )
 
@@ -471,12 +480,12 @@ function collectDayIntegrityIssues(
           dayIssue({
             code: 'PRODUCT_METADATA_MISMATCH',
             message: `El producto ${line.productId} tiene familia, nombre o grupo inconsistentes.`,
-            productId: line.productId,
+            productId,
           }),
         )
       }
     } else {
-      productsById.set(line.productId, line)
+      productsById.set(productId, line)
     }
   }
 
@@ -587,7 +596,11 @@ function collectDayIntegrityIssues(
       if (use.targetDayId !== productionDay.id) continue
 
       const sameProduct = productionDay.lines.filter(
-        (line) => line.productId === lot.productId,
+        (line) =>
+          productIdsEquivalent(line.productId, lot.productId) ||
+          (lot.sourceProductId
+            ? productIdsEquivalent(line.productId, lot.sourceProductId)
+            : false),
       )
       if (sameProduct.length === 0) {
         issues.push(
@@ -871,7 +884,10 @@ export function calculateOutstandingBalances(
       const matchingUses = laterLots.flatMap((lot) =>
         lot.originDayId === originDay.id &&
         lot.familyId === product.familyId &&
-        (lot.sourceProductId ?? lot.productId) === product.productId
+        (productIdsEquivalent(lot.productId, product.productId) ||
+          (lot.sourceProductId
+            ? productIdsEquivalent(lot.sourceProductId, product.productId)
+            : false))
           ? lot.uses.filter(
               (use) =>
                 laterDayIds.has(use.targetDayId) ||
@@ -1028,17 +1044,18 @@ function collectWeeklyIntegrityIssues(
     datesByProcess.add(dateProcessKey)
 
     for (const line of day.lines) {
-      const first = productsById.get(line.productId)
+      const productId = canonicalProductId(line.productId)
+      const first = productsById.get(productId)
       if (first && !sameProductMetadata(first.line, line)) {
         issues.push({
           code: 'PRODUCT_METADATA_MISMATCH',
-          message: `El producto ${line.productId} cambió de nombre, familia o grupo entre las jornadas ${first.dayId} y ${day.id}.`,
+          message: `El producto ${productId} cambió de nombre, familia o grupo entre las jornadas ${first.dayId} y ${day.id}.`,
           scope: 'WEEK',
           dayId: day.id,
-          productId: line.productId,
+          productId,
         })
       } else if (!first) {
-        productsById.set(line.productId, { line, dayId: day.id })
+        productsById.set(productId, { line, dayId: day.id })
       }
     }
   }

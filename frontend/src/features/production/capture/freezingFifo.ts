@@ -1,5 +1,6 @@
 import { kg100 } from "../model/calculations";
 import type { FreezingAvailabilityPosition } from "../model/freezing";
+import { productIdsEquivalent } from "../model/productIdentity";
 import type { Kg100 } from "../model/types";
 import type { ProductionCatalogItem } from "./productionCatalog";
 import type { ProductionCaptureBalanceUse } from "./productionCapture";
@@ -42,7 +43,7 @@ function matchesTargetProduct(
   if (position.pendingKg100 <= 0) return false;
   if (position.familyId !== product.familyId) return false;
 
-  if (position.productId === product.productId) {
+  if (productIdsEquivalent(position.productId, product.productId)) {
     return true;
   }
 
@@ -121,7 +122,10 @@ export function buildFreezingFifoAllocation({
       (use) =>
         use.productId === targetProduct.productId &&
         use.originDayId === position.originDayId &&
-        (use.sourceProductId ?? use.productId) === position.productId,
+        productIdsEquivalent(
+          use.sourceProductId ?? use.productId,
+          position.productId,
+        ),
     );
 
     const currentDayKg100 = existingUse
@@ -137,7 +141,10 @@ export function buildFreezingFifoAllocation({
         .filter(
           (use) =>
             use.originDayId === position.originDayId &&
-            (use.sourceProductId ?? use.productId) === position.productId,
+            productIdsEquivalent(
+              use.sourceProductId ?? use.productId,
+              position.productId,
+            ),
         )
         .reduce(
           (total, use) =>

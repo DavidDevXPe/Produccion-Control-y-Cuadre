@@ -18,6 +18,10 @@ import {
   type OperationalWeekTemporalStatus,
 } from '../../../utils/operationalContext'
 import {
+  TRABUNDA_LEGACY_STORAGE_KEYS,
+  TRABUNDA_STORAGE_KEYS,
+} from '../../../storage/trabundaStorage'
+import {
   WEEK_36_2026_PRODUCTION_DAYS,
   WEEK_36_2026_SUBSEQUENT_BALANCE_LOTS,
 } from '../data/week36'
@@ -39,12 +43,12 @@ import {
   type WeekClosureBlocker,
 } from '../model/weekLifecycle'
 
-const DAYS_STORAGE_KEY = 'trabunda-production-days-v2'
-const LEGACY_DAYS_STORAGE_KEY = 'trabunda-production-days-v1'
-const ACTIVE_WEEK_STORAGE_KEY = 'trabunda-active-operational-week-v1'
-const ACTIVE_PROCESS_STORAGE_KEY = 'trabunda-active-production-process-v1'
-const WEEK_CLOSURES_STORAGE_KEY = 'trabunda-week-process-closures-v2'
-const LEGACY_WEEK_CLOSURES_STORAGE_KEY = 'trabunda-week-closures-v1'
+const DAYS_STORAGE_KEY = TRABUNDA_STORAGE_KEYS.productionDays
+const LEGACY_DAYS_STORAGE_KEY = TRABUNDA_LEGACY_STORAGE_KEYS.productionDays
+const ACTIVE_WEEK_STORAGE_KEY = TRABUNDA_STORAGE_KEYS.activeOperationalWeek
+const ACTIVE_PROCESS_STORAGE_KEY = TRABUNDA_STORAGE_KEYS.activeProductionProcess
+const WEEK_CLOSURES_STORAGE_KEY = TRABUNDA_STORAGE_KEYS.weekProcessClosures
+const LEGACY_WEEK_CLOSURES_STORAGE_KEY = TRABUNDA_LEGACY_STORAGE_KEYS.weekClosures
 const SEEDED_WEEK_NUMBER = getOperationalWeekContextForIsoDate(
   WEEK_36_2026_PRODUCTION_DAYS[0]!.date,
 ).number

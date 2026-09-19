@@ -1,5 +1,6 @@
 import { kg100, sumKg100 } from "../model/calculations";
 import type { FreezingAvailabilityPosition } from "../model/freezing";
+import { productIdsEquivalent } from "../model/productIdentity";
 import type { Kg100 } from "../model/types";
 import type { ProductionCaptureBalanceUse } from "./productionCapture";
 
@@ -52,7 +53,10 @@ function currentUseForPosition(
           use.requiresProductDistribution !== true &&
           use.originDayId === position.originDayId &&
           use.familyId === position.familyId &&
-          (use.sourceProductId ?? use.productId) === position.productId,
+          productIdsEquivalent(
+            use.sourceProductId ?? use.productId,
+            position.productId,
+          ),
       )
       .flatMap((use) => [
         captureValueToKg100(use.dayKg),

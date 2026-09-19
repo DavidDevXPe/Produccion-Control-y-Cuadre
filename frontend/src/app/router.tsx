@@ -7,6 +7,7 @@ import { ProductionEntryPage } from '../features/production/pages/ProductionEntr
 import { BalancesPage } from '../features/production/pages/BalancesPage'
 import { WeeklySummaryPage } from '../features/production/pages/WeeklySummaryPage'
 import { OperationalPerformancePage } from '../features/performance/pages/OperationalPerformancePage'
+import { DataBackupsPage } from '../features/settings/pages/DataBackupsPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 
 export const router = createBrowserRouter(
@@ -23,6 +24,7 @@ export const router = createBrowserRouter(
         { path: 'saldos', element: <BalancesPage /> },
         { path: 'rendimiento', element: <OperationalPerformancePage /> },
         { path: 'resumen', element: <WeeklySummaryPage /> },
+        { path: 'datos', element: <DataBackupsPage /> },
         { path: '*', element: <NotFoundPage /> },
       ],
     },

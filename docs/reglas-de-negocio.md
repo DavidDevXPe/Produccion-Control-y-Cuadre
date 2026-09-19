@@ -54,6 +54,14 @@ El rendimiento operativo se persiste en un repositorio versionado independiente.
 
 Un uso posterior reduce el pendiente del origen, incluso cuando ocurre otro día o en otra semana. El domingo puede dedicarse completamente a terminar pendientes, con materia prima nueva igual a cero y sin volver a atribuir esos kilos como producción nueva.
 
+## Persistencia, respaldos e identidad histórica
+
+La información local se guarda en claves versionadas de `localStorage` centralizadas en un manifiesto. La exportación de respaldo usa el formato `TRABUNDA_BACKUP` versión 1 e incluye datos operativos, rendimiento, semana/proceso activos, tema visual, cierres semanales y catálogo dinámico cuando exista.
+
+La importación acepta el formato versionado y respaldos antiguos con la forma cruda de `localStorage`. Antes de reemplazar datos locales, el sistema muestra un resumen, genera una copia previa automática y conserva orígenes externos o históricos sin inventar jornadas faltantes.
+
+Los IDs históricos de producto no se reescriben dentro de jornadas antiguas. Se resuelven mediante equivalencias canónicas durante cálculos, saldos, FIFO y trazabilidad, conservando el `sourceProductId` cuando un saldo se reclasifica a una presentación actual.
+
 ## Producción por turno y saldos anteriores
 
 Un saldo conserva su jornada de origen aunque se termine de procesar en una jornada posterior. Debe trazarse por familia, producto, cantidad, jornada de origen y turno que lo procesa.
