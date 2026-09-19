@@ -415,6 +415,66 @@ describe('Nuca semilimpia reference', () => {
       result.integrityIssues.map((issue) => issue.code),
     ).not.toContain('BALANCE_PRODUCT_NOT_FOUND')
   })
+
+  it('prefers exact historical ids when a legacy and canonical product coexist in the same day', () => {
+    const sourceLine = WEDNESDAY_PRODUCTION_DAY.lines[0]
+    expect(sourceLine).toBeDefined()
+
+    const legacyLine = {
+      ...sourceLine!,
+      productId: 'capture-seed-6',
+      shifts: {
+        DAY: { reportedKg100: kg(1_000), adjustments: [] },
+        NIGHT: { reportedKg100: kg(0), adjustments: [] },
+      },
+      declaredFinishedKg100: kg(500),
+    }
+    const canonicalLine = {
+      ...sourceLine!,
+      productId: 'aleta-cruda-block-1000-2000-e',
+      shifts: {
+        DAY: { reportedKg100: kg(0), adjustments: [] },
+        NIGHT: { reportedKg100: kg(0), adjustments: [] },
+      },
+      newClosingBalanceKg100: kg(500),
+      declaredFinishedKg100: kg(500),
+    }
+    const coexistDay: ProductionDay = {
+      ...WEDNESDAY_PRODUCTION_DAY,
+      lines: [legacyLine, canonicalLine, ...WEDNESDAY_PRODUCTION_DAY.lines.slice(1)],
+      receivedBalanceLots: [
+        {
+          id: 'previous-legacy-aleta',
+          originDayId: 'production-day-2026-09-15',
+          familyId: sourceLine!.familyId,
+          productId: 'capture-seed-6',
+          originalKg100: kg(500),
+          uses: [
+            {
+              id: 'previous-legacy-aleta-day-use',
+              targetDayId: WEDNESDAY_PRODUCTION_DAY.id,
+              shift: 'DAY',
+              kg100: kg(500),
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = calculateProductionDay(coexistDay)
+    const legacyProduct = result.products.find(
+      (product) => product.productId === 'capture-seed-6',
+    )
+    const canonicalProduct = result.products.find(
+      (product) => product.productId === 'aleta-cruda-block-1000-2000-e',
+    )
+
+    expect(legacyProduct?.day.previousBalanceProcessedKg100).toBe(kg(500))
+    expect(canonicalProduct?.day.previousBalanceProcessedKg100).toBe(kg(0))
+    expect(
+      result.integrityIssues.map((issue) => issue.code),
+    ).not.toContain('DUPLICATE_PRODUCT_ID')
+  })
 })
 
 describe('weekly summary validation', () => {

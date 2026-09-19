@@ -128,13 +128,27 @@ function balanceProcessedForProduct(
   line: ProductionLine,
   shift: ShiftCode,
 ): Kg100 {
+  const hasExactLineForLot = (lot: BalanceLot) =>
+    productionDay.lines.some(
+      (candidate) =>
+        candidate.familyId === lot.familyId &&
+        candidate.productId === lot.productId,
+    )
+  const lotMatchesLine = (lot: BalanceLot) => {
+    if (lot.familyId !== line.familyId) return false
+    if (hasExactLineForLot(lot)) return lot.productId === line.productId
+
+    return (
+      productIdsEquivalent(lot.productId, line.productId) ||
+      (lot.sourceProductId
+        ? productIdsEquivalent(lot.sourceProductId, line.productId)
+        : false)
+    )
+  }
+
   return sumKg100(
     productionDay.receivedBalanceLots.flatMap((lot) =>
-      (productIdsEquivalent(lot.productId, line.productId) ||
-        (lot.sourceProductId
-          ? productIdsEquivalent(lot.sourceProductId, line.productId)
-          : false)) &&
-      lot.familyId === line.familyId
+      lotMatchesLine(lot)
         ? lot.uses
             .filter(
               (use) =>
@@ -464,14 +478,13 @@ function collectDayIntegrityIssues(
     validateNonNegative(line.declaredFinishedKg100, 'El producto terminado', {
       productId: line.productId,
     })
-    const productId = canonicalProductId(line.productId)
-    const first = productsById.get(productId)
+    const first = productsById.get(line.productId)
     if (first) {
       issues.push(
         dayIssue({
           code: 'DUPLICATE_PRODUCT_ID',
           message: `El producto ${line.productId} aparece más de una vez en la jornada.`,
-          productId,
+          productId: line.productId,
         }),
       )
 
@@ -480,12 +493,12 @@ function collectDayIntegrityIssues(
           dayIssue({
             code: 'PRODUCT_METADATA_MISMATCH',
             message: `El producto ${line.productId} tiene familia, nombre o grupo inconsistentes.`,
-            productId,
+            productId: line.productId,
           }),
         )
       }
     } else {
-      productsById.set(productId, line)
+      productsById.set(line.productId, line)
     }
   }
 
@@ -595,13 +608,19 @@ function collectDayIntegrityIssues(
 
       if (use.targetDayId !== productionDay.id) continue
 
-      const sameProduct = productionDay.lines.filter(
-        (line) =>
-          productIdsEquivalent(line.productId, lot.productId) ||
-          (lot.sourceProductId
-            ? productIdsEquivalent(line.productId, lot.sourceProductId)
-            : false),
+      const exactProduct = productionDay.lines.filter(
+        (line) => line.productId === lot.productId,
       )
+      const sameProduct =
+        exactProduct.length > 0
+          ? exactProduct
+          : productionDay.lines.filter(
+              (line) =>
+                productIdsEquivalent(line.productId, lot.productId) ||
+                (lot.sourceProductId
+                  ? productIdsEquivalent(line.productId, lot.sourceProductId)
+                  : false),
+            )
       if (sameProduct.length === 0) {
         issues.push(
           dayIssue({
@@ -884,10 +903,16 @@ export function calculateOutstandingBalances(
       const matchingUses = laterLots.flatMap((lot) =>
         lot.originDayId === originDay.id &&
         lot.familyId === product.familyId &&
-        (productIdsEquivalent(lot.productId, product.productId) ||
-          (lot.sourceProductId
-            ? productIdsEquivalent(lot.sourceProductId, product.productId)
-            : false))
+        (lot.productId === product.productId ||
+          (!originCalculation.products.some(
+            (candidate) =>
+              candidate.familyId === product.familyId &&
+              candidate.productId === lot.productId,
+          ) &&
+            (productIdsEquivalent(lot.productId, product.productId) ||
+              (lot.sourceProductId
+                ? productIdsEquivalent(lot.sourceProductId, product.productId)
+                : false))))
           ? lot.uses.filter(
               (use) =>
                 laterDayIds.has(use.targetDayId) ||
