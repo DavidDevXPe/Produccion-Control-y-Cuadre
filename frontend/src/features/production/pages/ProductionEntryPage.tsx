@@ -18,6 +18,7 @@ import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { FamilyYieldPanel } from '../components/FamilyYieldPanel'
 import {
   ClosingBalanceRowControl,
@@ -2689,7 +2690,7 @@ const autoLinkAllFreezingProducts = () => {
               type="button"
               onClick={addSelectedProduct}
               disabled={!selectedProductId}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonStyles('secondary')}
             >
               <Plus className="size-4" aria-hidden="true" />
               Agregar
@@ -3034,7 +3035,7 @@ const autoLinkAllFreezingProducts = () => {
                   setSelectedTunnelProductId('')
                 })
               }}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonStyles('secondary')}
             >
               <Plus className="size-4" aria-hidden="true" />
               Agregar a Túnel
@@ -3169,7 +3170,7 @@ const autoLinkAllFreezingProducts = () => {
                 setSelectedTreatmentProductId('')
               })
             }}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonStyles('secondary')}
             >
               <Plus className="size-4" aria-hidden="true" />
               Agregar tratamiento
@@ -4024,7 +4025,7 @@ freezingOriginLedger.length > 0 ? (
               type="button"
               disabled={!selectedBalanceKey}
               onClick={addSelectedBalance}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className={buttonStyles('secondary')}
             >
               <Plus className="size-4" aria-hidden="true" />
               {isFreezing ? 'Vincular producto' : 'Usar saldo'}
@@ -4524,7 +4525,7 @@ freezingOriginLedger.length > 0 ? (
           onClick={() =>
             setIsBulkFreezingLinkConfirmationOpen(false)
           }
-          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#2B5268] px-4 text-sm font-bold text-[#C3D2DC] transition hover:bg-[#123247]"
+          className={buttonStyles('secondary')}
         >
           Cancelar
         </button>
@@ -4535,7 +4536,7 @@ freezingOriginLedger.length > 0 ? (
             autoLinkAllFreezingProducts()
             setIsBulkFreezingLinkConfirmationOpen(false)
           }}
-          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800"
+          className={buttonStyles('warning')}
         >
           Vincular todos FIFO
         </button>
@@ -4787,14 +4788,23 @@ freezingOriginLedger.length > 0 ? (
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => persist(false)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 sm:flex-none">
-              <Save className="size-4" aria-hidden="true" />
-              Guardar borrador
-            </button>
-            <button type="button" disabled={!canClose} onClick={() => persist(true)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 sm:flex-none">
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-              Cerrar jornada
-            </button>
+            <button
+  type="button"
+  onClick={() => persist(false)}
+  className={`${buttonStyles('secondary')} flex-1 sm:flex-none`}
+>
+  <Save className="size-4" aria-hidden="true" />
+  Guardar borrador
+</button>
+            <button
+  type="button"
+  disabled={!canClose}
+  onClick={() => persist(true)}
+  className={`${buttonStyles('primary')} flex-1 sm:flex-none`}
+>
+  <CheckCircle2 className="size-4" aria-hidden="true" />
+  Cerrar jornada
+</button>
           </div>
         </div>
       </div>

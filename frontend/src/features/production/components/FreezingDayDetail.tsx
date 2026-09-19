@@ -10,6 +10,7 @@ import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
 import { kg100, sumKg100 } from '../model/calculations'
 import { calculateFrozenPhysicalKg100 } from '../model/freezing'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import type { ProductionDay } from '../model/types'
 
 interface FreezingDayDetailProps {
@@ -96,7 +97,7 @@ export function FreezingDayDetail({
       type="button"
       disabled={!canClose}
       onClick={onClose}
-      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+      className={buttonStyles('primary')}
     >
       <CheckCircle2 className="size-4" aria-hidden="true" />
       Cerrar jornada

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router-dom'
+import { buttonStyles } from './buttonStyles'
 
 type ActionLinkVariant = 'primary' | 'secondary' | 'ghost'
 type ActionLinkSize = 'sm' | 'md'
@@ -10,12 +11,10 @@ interface ActionLinkProps extends LinkProps {
   size?: ActionLinkSize
 }
 
-const variantClasses: Record<ActionLinkVariant, string> = {
-  primary:
-    'bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900',
-  secondary:
-    'border border-slate-200 bg-white text-brand-800 shadow-sm hover:border-brand-200 hover:bg-brand-50',
-  ghost: 'text-brand-700 hover:bg-brand-50 hover:text-brand-900',
+const variantClasses = {
+  primary: buttonStyles('primary'),
+  secondary: buttonStyles('secondary'),
+  ghost: buttonStyles('ghost'),
 }
 
 const sizeClasses: Record<ActionLinkSize, string> = {
