@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  AlertTriangle,
   BarChart3,
   Boxes,
   CalendarCheck2,
@@ -37,6 +38,7 @@ import {
 } from '../model/calculations'
 import { calculateFreezingComparison } from '../model/freezing'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
+import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { getYieldStatus, yieldVisualStyles } from '../presentation/yieldStatus'
 import { useProductionData } from '../state/ProductionDataContext'
 
@@ -119,10 +121,15 @@ export function DashboardPage() {
     )
   }
 
-  const calculatedDays = productionDays.map((day) => ({
-    day,
-    calculation: calculateProductionDay(day),
-  }))
+  const calculatedDays = productionDays.map((day) => {
+    const operationalState = getProductionDayOperationalState(day)
+
+    return {
+      day,
+      operationalState,
+      calculation: operationalState.calculation,
+    }
+  })
   const latestDay = productionDays.at(-1)!
   const latestCalculation = calculateProductionDay(latestDay)
   const weekSummary = calculateWeeklySummary(productionDays, activeWeek.period)
@@ -146,6 +153,60 @@ export function DashboardPage() {
     0,
     Math.min((latestCalculation.performance.ratio ?? 0) * 100, 100),
   )
+  const attentionItems = calculatedDays.flatMap(({ day, calculation, operationalState }) => {
+    const observations = day.closureObservations?.length
+      ? day.closureObservations
+      : operationalState.validation.warnings
+    const items: {
+      key: string
+      tone: 'danger' | 'warning' | 'info'
+      title: string
+      description: string
+      date: string
+    }[] = []
+
+    if (calculation.differenceKg100 !== 0) {
+      items.push({
+        key: `${day.id}-difference`,
+        tone: 'danger',
+        title: 'Diferencia de cuadre',
+        description: `${formatIsoWeekday(day.date)} presenta ${formatCentiKg(calculation.differenceKg100)} por revisar.`,
+        date: day.date,
+      })
+    }
+    if (
+      calculation.day.detailDifferenceKg100 !== 0 ||
+      calculation.night.detailDifferenceKg100 !== 0
+    ) {
+      items.push({
+        key: `${day.id}-shift-report`,
+        tone: 'danger',
+        title: 'Reporte por turno no conciliado',
+        description: `${formatIsoWeekday(day.date)} requiere revisar Día/Noche contra el detalle por producto.`,
+        date: day.date,
+      })
+    }
+    if (calculation.integrityIssues.length > 0) {
+      items.push({
+        key: `${day.id}-integrity`,
+        tone: 'danger',
+        title: 'Validación bloqueante',
+        description: calculation.integrityIssues[0]?.message ?? 'La jornada tiene una validación de integridad pendiente.',
+        date: day.date,
+      })
+    }
+    if (observations.length > 0) {
+      items.push({
+        key: `${day.id}-observed`,
+        tone: 'warning',
+        title: day.status === 'CLOSED' ? 'Cerrada con observaciones' : 'Lista con observaciones',
+        description: observations[0]?.message ?? 'La jornada tiene observaciones asociadas al cierre.',
+        date: day.date,
+      })
+    }
+
+    return items
+  })
 
   return (
     <div className="space-y-4">
@@ -254,6 +315,65 @@ export function DashboardPage() {
               }
             />
           </section>
+
+          <SectionCard
+            title="Requiere atención"
+            description="Excepciones reales detectadas en las jornadas de la semana seleccionada."
+            action={
+              <StatusBadge tone={attentionItems.length > 0 ? 'warning' : 'success'}>
+                {attentionItems.length > 0
+                  ? `${attentionItems.length} ALERTA${attentionItems.length === 1 ? '' : 'S'}`
+                  : 'SIN ALERTAS'}
+              </StatusBadge>
+            }
+            contentClassName="p-0"
+          >
+            {attentionItems.length > 0 ? (
+              <div className="divide-y divide-slate-100 dark:divide-[#203E50]">
+                {attentionItems.slice(0, 4).map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span
+                        className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg ${
+                          item.tone === 'danger'
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+                        }`}
+                        aria-hidden="true"
+                      >
+                        <AlertTriangle className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                    <ActionLink
+                      to={`/jornadas/${item.date}?process=PACKING`}
+                      variant="ghost"
+                      size="sm"
+                      className="self-start sm:self-center"
+                    >
+                      Revisar
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </ActionLink>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3 text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
+                No hay diferencias, observaciones ni validaciones bloqueantes en las jornadas registradas.
+              </div>
+            )}
+          </SectionCard>
         </div>
       </section>
 
@@ -410,6 +530,8 @@ export function DashboardPage() {
               <tbody>
                 {calculatedDays.map(({ day, calculation }) => {
                   const dayIsBalanced = calculation.status === 'BALANCED'
+                  const dayHasObservations =
+                    (day.closureObservations?.length ?? 0) > 0
                   const dayYieldStatus = getYieldStatus(calculation.performance.percent)
                   const dayYieldStyles = yieldVisualStyles[dayYieldStatus.colorVariant]
                   const isLatest = day.date === latestDay.date
@@ -433,8 +555,20 @@ export function DashboardPage() {
                       </td>
                       <td className="px-2 py-3 text-center align-middle">
                         <div className="flex w-full items-center justify-center">
-                          <StatusBadge tone={dayIsBalanced ? 'success' : 'danger'}>
-                            {dayIsBalanced ? 'CUADRADO' : 'NO CUADRADO'}
+                          <StatusBadge
+                            tone={
+                              dayHasObservations
+                                ? 'warning'
+                                : dayIsBalanced
+                                  ? 'success'
+                                  : 'danger'
+                            }
+                          >
+                            {dayHasObservations
+                              ? 'CUADRADO Â· OBS.'
+                              : dayIsBalanced
+                                ? 'CUADRADO'
+                                : 'NO CUADRADO'}
                           </StatusBadge>
                         </div>
                       </td>

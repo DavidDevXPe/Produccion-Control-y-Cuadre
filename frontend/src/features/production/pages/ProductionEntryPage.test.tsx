@@ -776,6 +776,15 @@ expect(traceabilitySummary).toHaveTextContent(
       window.localStorage.getItem('trabunda-production-days-v2') ?? '[]',
     )
     expect(stored[0]).toMatchObject({ status: 'CLOSED' })
+    expect(stored[0].closureObservations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FAMILY_BELOW_TARGET',
+          message: expect.any(String),
+          closedAt: expect.any(String),
+        }),
+      ]),
+    )
   })
 
   it('saves an incomplete journey as a draft', () => {

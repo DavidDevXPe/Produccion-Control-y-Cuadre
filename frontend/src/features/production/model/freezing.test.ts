@@ -294,6 +294,79 @@ describe("Packing to Freezing lifecycle", () => {
     );
   });
 
+  it("allows a partially traced Freezing day to close with observation", () => {
+    const packing = packingDay("2026-09-07", 1_000);
+
+    const [available] = calculateFreezingAvailability([packing], "2026-09-08");
+
+    const draft: ProductionCaptureDraft = {
+      ...createEmptyCaptureDraft("2026-09-08", "FREEZING"),
+
+      declaredDayTotalKg: "1100",
+      declaredNightTotalKg: "0",
+
+      rows: [freezingRow(1_100)],
+
+      balanceUses: available
+        ? [
+            {
+              key: `${packing.id}-${product.productId}`,
+
+              originDayId: packing.id,
+              originDate: packing.date,
+
+              familyId: product.familyId,
+              familyName: product.familyName,
+
+              productId: product.productId,
+              productName: product.productName,
+
+              availableKg100: available.pendingKg100,
+
+              dayKg: "1000",
+              nightKg: "0",
+            },
+          ]
+        : [],
+    };
+
+    const result = buildProductionDayFromCapture(draft, [packing], []);
+
+    const validation = validateProductionClosure(
+      result.productionDay,
+      result.calculation,
+      {
+        requiredDataComplete: true,
+        inputErrors: result.inputErrors,
+      },
+    );
+
+    expect(result.calculation.processedPreviousBalanceKg100).toBe(kg(1_000));
+
+    expect(result.calculation.reportOwnProductionKg100).toBe(kg(100));
+
+    expect(validation.canClose).toBe(true);
+
+    expect(validation.blockers).not.toContainEqual(
+      expect.objectContaining({
+        code: "FREEZING_WITHOUT_AVAILABILITY",
+      }),
+    );
+
+    expect(validation.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "FREEZING_TRACEABILITY_DIFFERENCE",
+      }),
+    );
+
+    expect(validation.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE",
+        productId: product.productId,
+      }),
+    );
+  });
+
   it("allows an investigation draft but blocks closure without availability", () => {
     const draft: ProductionCaptureDraft = {
       ...createEmptyCaptureDraft("2026-09-08", "FREEZING"),

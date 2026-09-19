@@ -138,6 +138,16 @@ export interface NucaWashAuthorization {
   readonly reason: string
 }
 
+export interface ClosureObservationRecord {
+  readonly closedAt: string
+  readonly code: string
+  readonly message: string
+  readonly familyKey?: string
+  readonly productId?: string
+  readonly kg100?: Kg100
+  readonly userId?: string
+}
+
 /** Optional common metadata reserved for a later productivity module. */
 export interface OperationalPerformanceMetadata {
   readonly supervisor?: string
@@ -170,6 +180,8 @@ export interface ProductionDay {
   readonly operationalPerformance?: OperationalPerformanceMetadata
   /** Preserves whether the web draft had every required capture field completed. */
   readonly captureRequiredDataComplete?: boolean
+  /** Warnings accepted at closure time, kept as an auditable historical record. */
+  readonly closureObservations?: readonly ClosureObservationRecord[]
   /** Sundays default to balance processing; omitted historical records remain normal. */
   readonly operationMode?: ProductionDayOperationMode
   readonly rawMaterialEntries: readonly RawMaterialEntry[]

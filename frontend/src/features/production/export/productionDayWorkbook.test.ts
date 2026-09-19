@@ -50,4 +50,34 @@ describe('production day workbook', () => {
       'Solo se pueden exportar jornadas cerradas y cuadradas.',
     )
   })
+
+  it('includes accepted closure observations in the workbook', () => {
+    const calculation = calculateProductionDay(WEDNESDAY_PRODUCTION_DAY)
+    const workbook = buildProductionDayWorkbook(
+      {
+        ...WEDNESDAY_PRODUCTION_DAY,
+        closureObservations: [
+          {
+            closedAt: '2026-09-02T22:30:00.000Z',
+            code: 'GENERAL_YIELD_BELOW_MIN',
+            message: 'Cierre aceptado con rendimiento bajo referencia.',
+            familyKey: 'ALETA',
+          },
+        ],
+      },
+      calculation,
+    )
+    const worksheet = workbook.getWorksheet('Jornada cerrada')
+    const titleRow = 18 + calculation.products.length + 3
+
+    expect(worksheet?.getCell(`A${titleRow}`).value).toBe(
+      'OBSERVACIONES DE CIERRE',
+    )
+    expect(worksheet?.getCell(`B${titleRow + 2}`).value).toBe(
+      'GENERAL_YIELD_BELOW_MIN',
+    )
+    expect(worksheet?.getCell(`F${titleRow + 2}`).value).toBe(
+      'Cierre aceptado con rendimiento bajo referencia.',
+    )
+  })
 })

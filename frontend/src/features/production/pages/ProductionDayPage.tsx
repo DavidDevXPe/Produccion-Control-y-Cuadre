@@ -32,6 +32,7 @@ import {
   calculateOutstandingBalances,
   sumKg100,
 } from '../model/calculations'
+import type { ClosureMessage } from '../model/businessRules'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { createPortal } from 'react-dom'
@@ -40,7 +41,22 @@ import {
   isFreezingProductionDay,
   isProductionProcess,
 } from '../model/productionProcess'
+import type { ClosureObservationRecord } from '../model/types'
 import { useProductionData } from '../state/ProductionDataContext'
+
+function buildClosureObservations(
+  warnings: readonly ClosureMessage[],
+  closedAt: string,
+): readonly ClosureObservationRecord[] {
+  return warnings.map((warning) => ({
+    closedAt,
+    code: warning.code,
+    message: warning.message,
+    userId: 'local-user',
+    ...(warning.familyKey !== undefined ? { familyKey: warning.familyKey } : {}),
+    ...(warning.productId !== undefined ? { productId: warning.productId } : {}),
+  }) satisfies ClosureObservationRecord)
+}
 
 export function ProductionDayPage() {
   const { date } = useParams()
@@ -97,6 +113,13 @@ export function ProductionDayPage() {
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
   const hasClosureWarnings = operationalState.validation.warnings.length > 0
+  const historicalClosureObservations =
+    productionDay.closureObservations ?? []
+  const visibleClosureObservations =
+    historicalClosureObservations.length > 0
+      ? historicalClosureObservations
+      : operationalState.validation.warnings
+  const hasVisibleClosureObservations = visibleClosureObservations.length > 0
   const isBalanceOnly = isBalanceOnlyProductionDay(productionDay)
   const canExport =
     productionDay.status === 'CLOSED' &&
@@ -119,6 +142,10 @@ export function ProductionDayPage() {
         {
           ...productionDay,
           status: 'CLOSED',
+          closureObservations: buildClosureObservations(
+            operationalState.validation.warnings,
+            new Date().toISOString(),
+          ),
         },
         {
           allowReplace: true,
@@ -430,7 +457,7 @@ if (isFreezing) {
             <StatusBadge
               tone={
               isClosed
-                ? hasClosureWarnings
+                ? hasVisibleClosureObservations
                   ? 'warning'
                   : isBalanced
                     ? 'success'
@@ -443,7 +470,7 @@ if (isFreezing) {
             }
             >
               {isClosed
-                ? hasClosureWarnings
+                ? hasVisibleClosureObservations
                   ? 'CERRADA · CON OBSERVACIONES'
                   : isBalanced
                     ? 'CERRADA · SOLO LECTURA'
@@ -556,7 +583,7 @@ if (isFreezing) {
         }
       />
 
-{hasClosureWarnings ? (
+{hasVisibleClosureObservations ? (
   <SectionCard
     title={
       isClosed
@@ -571,12 +598,12 @@ if (isFreezing) {
     }
   >
     <div className="divide-y divide-amber-100 dark:divide-amber-500/10">
-      {operationalState.validation.warnings.map(
-        (warning) => (
+      {visibleClosureObservations.map(
+        (observation) => (
           <div
-            key={`${warning.code}-${
-              warning.familyKey ??
-              warning.productId ??
+            key={`${observation.code}-${
+              observation.familyKey ??
+              observation.productId ??
               'GENERAL'
             }`}
             className="flex items-start gap-3 px-4 py-3 sm:px-5"
@@ -587,7 +614,7 @@ if (isFreezing) {
             />
 
             <p className="text-xs leading-5 text-slate-700 dark:text-[#C3D2DC]">
-              {warning.message}
+              {observation.message}
             </p>
           </div>
         ),

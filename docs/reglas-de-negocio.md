@@ -15,6 +15,8 @@ La exportación diaria solo se habilita cuando la jornada está cerrada, el cuad
 
 ## Procesos operativos
 
+Las observaciones aceptadas durante el cierre se conservan como historial auditable de la jornada. La exportacion diaria incluye ese historial cuando existe, sin mezclarlo con observaciones de integridad que bloquean la descarga.
+
 El modelo distingue dos procesos sin duplicar rutas, catálogos ni pantallas completas:
 
 - `PACKING` representa **Envasado** y conserva todas las reglas históricas del sistema.
@@ -26,12 +28,17 @@ El cierre semanal se mantiene por proceso. Una semana cerrada para Envasado no b
 
 ## Balance Envasado → Congelamiento
 
-Cada línea de producto de una jornada de Envasado cerrada y cuadrada genera disponibilidad para Congelamiento. Esa disponibilidad mantiene `productId`, familia, jornada y fecha de origen.
+Cada producto de una jornada de Envasado cerrada y cuadrada
+genera una posición trazable para Congelamiento.
+
+La disponibilidad congelable de cada producto se determina por
+la producción física realmente envasada durante la jornada:
 
 ```text
-Disponible para congelar =
-  producto envasado de origen
-  − usos de Congelamiento vinculados al origen
+Producto congelable de la jornada =
+  Envasado Turno Día
+  + Envasado Turno Noche
+  + saldo final dejado al cierre de la jornada
 
 Diferencia no explicada =
   Envasado
@@ -153,6 +160,8 @@ Los indicadores semanales son ponderados: `SUMA kg / SUMA horas efectivas` y `SU
 El estado del cuadre (`BALANCED`/`UNBALANCED`) se calcula independientemente del ciclo de vida (`DRAFT`/`CLOSED`). Una jornada puede ser `DRAFT + BALANCED`: la interfaz la identifica como **LISTA PARA CERRAR**, pero no cambia a `CLOSED` hasta que el usuario confirma el cierre.
 
 `canClose` exige datos completos, cuadre matemático, integridad, conciliación de turnos, saldo declarado consistente, consumos dentro de disponibilidad y aprovechamiento general mínimo de 80% para Envasado. Los objetivos familiares por debajo de referencia son advertencias y permiten **Cerrar de todas formas** cuando no existen bloqueos críticos.
+
+Al confirmar un cierre con advertencias, la jornada guarda `closureObservations` con fecha/hora de cierre, código, mensaje, familia/producto cuando aplique y usuario local. Ese registro histórico se muestra primero; las advertencias recalculadas solo actúan como respaldo para jornadas antiguas.
 
 Los saldos anteriores se asignan explícitamente por producto y turno; no se cargan automáticamente al Día. Si una asignación supera el reporte físico del mismo producto/turno, se muestra el máximo consumible y el exceso exacto. Un saldo legacy sin producto exacto queda como **REQUIERE DISTRIBUCIÓN** hasta que el operador seleccione una presentación del catálogo.
 

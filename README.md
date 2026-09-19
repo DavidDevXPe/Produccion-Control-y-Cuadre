@@ -11,10 +11,13 @@ La identidad visual utiliza el logo corporativo ubicado en `frontend/public/bran
 El MVP es un frontend en React, TypeScript, Vite y Tailwind CSS que incluye:
 
 - dashboard operativo;
+- sección semanal de excepciones **Requiere atención** para diferencias, observaciones y validaciones bloqueantes;
 - listado y detalle de jornadas;
 - cuadre de las jornadas registradas de miércoles a sábado por turno, producto y familia;
 - consulta de saldos y su trazabilidad;
 - captura independiente de jornadas de Envasado y Congelamiento para una misma fecha;
+- carga de capturas de producción por turno con lectura OCR local y revisión editable;
+- catálogo activo acumulativo de productos detectados y confirmados desde capturas;
 - disponibilidad de Congelamiento derivada del producto previamente envasado;
 - comparativo semanal Envasado vs Congelamiento por familia y producto;
 - rendimiento operativo por proceso, jornada y turno, alimentado por los reportes físicos;
@@ -26,7 +29,7 @@ Los datos históricos existentes pertenecen a Envasado. Los registros que no con
 
 La aplicación identifica el periodo 31 AGO–06 SEP como semana operacional 41, aunque corresponda a la semana ISO 36. Desde el 7 de septiembre el contexto del encabezado avanza a la semana operacional 42 (07–13 SEP). La semana histórica se presenta como parcial y no completa jornadas ni cantidades inexistentes. Los saldos pendientes se conservan por jornada de origen hasta que exista un uso posterior explícito. El procesamiento confirmado de los 44,660.00 kg de saldo del sábado durante el domingo se registra como movimiento de saldo y no como nueva producción dominical.
 
-Cada jornada cerrada y cuadrada puede descargarse desde su detalle como un archivo `.xlsx` auditable, con resumen, rendimiento y cuadre por producto. La descarga permanece bloqueada si existe una diferencia u observación de integridad.
+Cada jornada cerrada y cuadrada puede descargarse desde su detalle como un archivo `.xlsx` auditable, con resumen, rendimiento, cuadre por producto y observaciones de cierre aceptadas. La descarga permanece bloqueada si existe una diferencia u observación de integridad.
 
 ## Procesos operativos
 
@@ -37,7 +40,9 @@ Cada jornada cerrada y cuadrada puede descargarse desde su detalle como un archi
 - El balance global es `Envasado = Congelado atribuible + Pendiente trazable + Diferencia no explicada`. El objetivo es que la diferencia no explicada sea `0.00 kg`.
 - Las semanas se cierran por proceso: Envasado puede estar cerrado mientras Congelamiento continúa abierto. El ciclo completo queda cerrado cuando ambos procesos están cerrados y el comparativo está conciliado.
 
-El alcance actual es de uso local por una sola persona, por lo que no requiere autenticación ni administración de usuarios. Las nuevas jornadas pueden registrarse manualmente o precargarse desde el Excel operativo. En ambos casos se revisan en una vista editable, se guardan en el navegador y solo pueden cerrarse cuando el cuadre sea exacto. El Excel importado no se envía a un servidor.
+El alcance actual es de uso local por una sola persona, por lo que no requiere autenticación ni administración de usuarios. Las nuevas jornadas pueden registrarse manualmente, precargarse desde el Excel operativo o cargarse desde capturas PNG, JPG o WEBP. Las imágenes se procesan localmente en el navegador, se revisan en una vista editable y convierten cada aro usando la equivalencia fija de 10 kg. Los productos nuevos detectados se agregan al catálogo local. En todos los casos los datos se guardan en el navegador y solo pueden cerrarse cuando el cuadre sea exacto. El Excel y las imágenes importadas no se envían a un servidor.
+
+El catálogo de nuevas capturas usa productos seed provenientes de los reportes reales y productos dinámicos confirmados por el operador. La resolución de productos históricos se conserva únicamente como capa legacy para que las jornadas antiguas y sus saldos continúen renderizando. Los candidatos nuevos no se persisten hasta que se confirman en la revisión de captura.
 
 ## Despliegue
 

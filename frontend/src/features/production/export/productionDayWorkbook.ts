@@ -294,11 +294,58 @@ export function buildProductionDayWorkbook(
   const totalsRow = lastDetailRow + 1
   addTotalsRow(worksheet, totalsRow, firstDetailRow, lastDetailRow)
 
+  let lastPrintableRow = totalsRow
+  if ((productionDay.closureObservations?.length ?? 0) > 0) {
+    const observationsTitleRow = totalsRow + 2
+    worksheet.mergeCells(observationsTitleRow, 1, observationsTitleRow, 18)
+    worksheet.getCell(observationsTitleRow, 1).value = 'OBSERVACIONES DE CIERRE'
+    styleSectionTitle(worksheet.getRow(observationsTitleRow))
+
+    const observationsHeaderRow = worksheet.getRow(observationsTitleRow + 1)
+    observationsHeaderRow.values = [
+      'Fecha cierre',
+      'Codigo',
+      'Producto',
+      'Familia',
+      'Kg',
+      'Observacion',
+    ]
+    styleTableHeader(observationsHeaderRow)
+
+    productionDay.closureObservations!.forEach((observation, index) => {
+      const rowNumber = observationsTitleRow + 2 + index
+      const row = worksheet.getRow(rowNumber)
+
+      row.values = [
+        observation.closedAt,
+        observation.code,
+        observation.productId ?? '',
+        observation.familyKey ?? '',
+        observation.kg100 === undefined ? '' : toKilograms(observation.kg100),
+        observation.message,
+      ]
+      row.height = 24
+      row.eachCell((cell, columnNumber) => {
+        applyThinBorder(cell)
+        cell.alignment = {
+          horizontal: columnNumber === 5 ? 'right' : 'left',
+          vertical: 'middle',
+          wrapText: columnNumber === 6,
+        }
+        if (columnNumber === 5 && typeof cell.value === 'number') {
+          cell.numFmt = KG_FORMAT
+        }
+      })
+    })
+    lastPrintableRow =
+      observationsTitleRow + 1 + productionDay.closureObservations!.length
+  }
+
   worksheet.autoFilter = {
     from: { row: 18, column: 1 },
     to: { row: lastDetailRow, column: 18 },
   }
-  worksheet.pageSetup.printArea = `A1:R${totalsRow}`
+  worksheet.pageSetup.printArea = `A1:R${lastPrintableRow}`
   worksheet.pageSetup.printTitlesRow = '1:18'
 
   return workbook

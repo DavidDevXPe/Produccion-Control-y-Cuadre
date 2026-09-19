@@ -57,6 +57,7 @@ import {
   calculateReportFamilySubtotals,
   calculateProductionBusinessSummary,
   validateProductionClosure,
+  type ClosureMessage,
 } from '../model/businessRules'
 import {
   calculateOutstandingBalances,
@@ -71,10 +72,24 @@ import {
   isProductionProcess,
   productionDayKey,
 } from '../model/productionProcess'
-import type { ProductionProcess } from '../model/types'
+import type { ClosureObservationRecord, ProductionProcess } from '../model/types'
 import { useProductionData } from '../state/ProductionDataContext'
 
 type CaptureMode = 'MANUAL' | 'EXCEL' | 'SCREENSHOT'
+
+function buildClosureObservations(
+  warnings: readonly ClosureMessage[],
+  closedAt: string,
+): readonly ClosureObservationRecord[] {
+  return warnings.map((warning) => ({
+      closedAt,
+      code: warning.code,
+      message: warning.message,
+      userId: 'local-user',
+      ...(warning.familyKey !== undefined ? { familyKey: warning.familyKey } : {}),
+      ...(warning.productId !== undefined ? { productId: warning.productId } : {}),
+    }) satisfies ClosureObservationRecord)
+}
 
 interface QuantityInputProps {
   label: string
@@ -2004,12 +2019,35 @@ const autoLinkAllFreezingProducts = () => {
     }
 
     try {
-      upsertProductionDay(next.productionDay, {
+      const productionDayToSave =
+        closeDay
+          ? (() => {
+              const closedAt = new Date().toISOString()
+              const validation = validateProductionClosure(
+                next.productionDay,
+                next.calculation,
+                {
+                  requiredDataComplete: hasSufficientCaptureData(draft),
+                  inputErrors: next.inputErrors,
+                },
+              )
+
+              return {
+                ...next.productionDay,
+                closureObservations: buildClosureObservations(
+                  validation.warnings,
+                  closedAt,
+                ),
+              }
+            })()
+          : next.productionDay
+
+      upsertProductionDay(productionDayToSave, {
         allowReplace: Boolean(editingDate),
       })
       setIsCloseConfirmationOpen(false)
       navigate(
-        `/jornadas/${next.productionDay.date}?process=${draft.process}`,
+        `/jornadas/${productionDayToSave.date}?process=${draft.process}`,
       )
     } catch (error) {
       setSaveError(

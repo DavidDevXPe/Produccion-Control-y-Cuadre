@@ -43,6 +43,10 @@ describe('dashboard page', () => {
     expect(screen.getAllByRole('link', { name: /^Ver$/i })).toHaveLength(4)
     expect(await screen.findByTestId('weekly-production-chart')).toBeInTheDocument()
     expect(screen.getByText('Semana 41 · Cerrada · Solo lectura')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Requiere atención' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/ALERTA/)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Nueva jornada' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Envasado vs Congelamiento' }),
