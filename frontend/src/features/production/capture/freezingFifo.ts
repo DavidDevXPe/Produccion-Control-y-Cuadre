@@ -4,6 +4,7 @@ import { productIdsEquivalent } from "../model/productIdentity";
 import type { Kg100 } from "../model/types";
 import type { ProductionCatalogItem } from "./productionCatalog";
 import type { ProductionCaptureBalanceUse } from "./productionCapture";
+import { normalizeCaptureBalanceUses } from "./balanceUseNormalization";
 import { normalizeProductName } from "./productNormalizer";
 
 interface BuildFreezingFifoAllocationArgs {
@@ -36,86 +37,6 @@ function kg100ToCaptureValue(value: Kg100): string {
   return String(Number((value / 100).toFixed(2)));
 }
 
-/**
- * Identidad lógica de un saldo utilizado por Congelamiento.
- *
- * Una misma combinación de:
- * - jornada origen,
- * - familia destino,
- * - producto destino,
- * - producto fuente,
- *
- * representa un único vínculo operativo.
- */
-function balanceUseIdentity(use: ProductionCaptureBalanceUse): string {
-  return [
-    use.originDayId,
-    use.familyId,
-    use.productId,
-    use.sourceProductId ?? use.productId,
-  ].join("|");
-}
-
-/**
- * Normaliza vínculos de saldo duplicados.
- *
- * IMPORTANTE:
- * Si el mismo vínculo aparece dos veces por un error histórico,
- * NO se suman los kg, porque eso duplicaría artificialmente el
- * consumo. Se conserva el mayor valor registrado por turno.
- *
- * Esto permite que FIFO sea idempotente:
- * ejecutar la vinculación más de una vez no debe crear nuevos
- * registros para el mismo origen/producto.
- */
-function normalizeBalanceUses(
-  uses: readonly ProductionCaptureBalanceUse[],
-): ProductionCaptureBalanceUse[] {
-  const usesByIdentity = new Map<string, ProductionCaptureBalanceUse>();
-
-  for (const use of uses) {
-    const identity = balanceUseIdentity(use);
-    const existing = usesByIdentity.get(identity);
-
-    if (!existing) {
-      usesByIdentity.set(identity, { ...use });
-      continue;
-    }
-
-    const existingDayKg100 = captureValueToKg100(existing.dayKg);
-    const incomingDayKg100 = captureValueToKg100(use.dayKg);
-
-    const existingNightKg100 = captureValueToKg100(existing.nightKg);
-    const incomingNightKg100 = captureValueToKg100(use.nightKg);
-
-    const sourceProductId = existing.sourceProductId ?? use.sourceProductId;
-
-    usesByIdentity.set(identity, {
-      ...existing,
-
-      availableKg100: kg100(
-        Math.max(existing.availableKg100, use.availableKg100),
-      ),
-
-      dayKg: kg100ToCaptureValue(
-        kg100(Math.max(existingDayKg100, incomingDayKg100)),
-      ),
-
-      nightKg: kg100ToCaptureValue(
-        kg100(Math.max(existingNightKg100, incomingNightKg100)),
-      ),
-
-      ...(sourceProductId ? { sourceProductId } : {}),
-
-      requiresProductDistribution:
-        existing.requiresProductDistribution === true ||
-        use.requiresProductDistribution === true,
-    });
-  }
-
-  return [...usesByIdentity.values()];
-}
-
 function matchesTargetProduct(
   position: FreezingAvailabilityPosition,
   product: BuildFreezingFifoAllocationArgs["targetProduct"],
@@ -145,7 +66,7 @@ export function buildFreezingFifoAllocation({
    * duplicados que puedan venir de borradores históricos o de una
    * versión anterior de la aplicación.
    */
-  const normalizedExistingUses = normalizeBalanceUses(existingUses);
+  const normalizedExistingUses = normalizeCaptureBalanceUses(existingUses);
 
   const productUses = normalizedExistingUses.filter(
     (use) =>
@@ -319,7 +240,7 @@ export function buildFreezingFifoAllocation({
    * - un segundo clic en "Vincular FIFO" no genere duplicados,
    * - los datos históricos duplicados no se propaguen.
    */
-  const balanceUses = normalizeBalanceUses([
+  const balanceUses = normalizeCaptureBalanceUses([
     ...normalizedExistingUses.map(
       (use) => updatedExistingUses.get(use.key) ?? use,
     ),

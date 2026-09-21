@@ -54,6 +54,7 @@ import {
   PRODUCTION_CATALOG_ITEMS,
   type ProductionCatalogItem,
 } from '../capture/productionCatalog'
+import { normalizeCaptureBalanceUses } from '../capture/balanceUseNormalization'
 import { normalizeProductName } from '../capture/productNormalizer'
 import {
   addActiveProduct,
@@ -1786,9 +1787,11 @@ const freezingOriginLedgerSummary =
               },
             ],
 
-      balanceUses: alreadyExists
-        ? current.balanceUses
-        : [...current.balanceUses, balanceUse],
+      balanceUses: normalizeCaptureBalanceUses(
+        alreadyExists
+          ? current.balanceUses
+          : [...current.balanceUses, balanceUse],
+      ),
     }
   })
 
@@ -1819,7 +1822,7 @@ const freezingOriginLedgerSummary =
     })
     return {
       ...current,
-      balanceUses: allocation.balanceUses,
+      balanceUses: normalizeCaptureBalanceUses(allocation.balanceUses),
     }
   })
   setSaveError('')
@@ -1855,7 +1858,7 @@ const autoLinkAllFreezingProducts = () => {
 
     return {
       ...current,
-      balanceUses: nextBalanceUses,
+      balanceUses: normalizeCaptureBalanceUses(nextBalanceUses),
     }
   })
 
@@ -1879,7 +1882,7 @@ const autoLinkAllFreezingProducts = () => {
     if (!isBalanceOnly) {
       return {
         ...current,
-        balanceUses: nextBalanceUses,
+        balanceUses: normalizeCaptureBalanceUses(nextBalanceUses),
       }
     }
 
@@ -1918,7 +1921,7 @@ const autoLinkAllFreezingProducts = () => {
 
     return {
       ...current,
-      balanceUses: nextBalanceUses,
+      balanceUses: normalizeCaptureBalanceUses(nextBalanceUses),
       rows: nextRows,
     }
   })
@@ -1947,19 +1950,21 @@ const autoLinkAllFreezingProducts = () => {
                 ...current.rows,
                 { ...row, dayReportedKg: '0', nightReportedKg: '0' },
               ],
-        balanceUses: current.balanceUses.map((balance) =>
-          balance.key === key
-            ? {
-                ...balance,
-                familyId: product.familyId,
-                familyName: product.familyName,
-                productId: product.productId,
-                productName: product.productName,
-                sourceProductId:
-                  balance.sourceProductId ?? balance.productId,
-                requiresProductDistribution: false,
-              }
-            : balance,
+        balanceUses: normalizeCaptureBalanceUses(
+          current.balanceUses.map((balance) =>
+            balance.key === key
+              ? {
+                  ...balance,
+                  familyId: product.familyId,
+                  familyName: product.familyName,
+                  productId: product.productId,
+                  productName: product.productName,
+                  sourceProductId:
+                    balance.sourceProductId ?? balance.productId,
+                  requiresProductDistribution: false,
+                }
+              : balance,
+          ),
         ),
       }
     })
@@ -1969,7 +1974,9 @@ const autoLinkAllFreezingProducts = () => {
   const removeBalanceUse = (key: string) => {
     updateDraft(
       'balanceUses',
-      draft.balanceUses.filter((balance) => balance.key !== key),
+      normalizeCaptureBalanceUses(
+        draft.balanceUses.filter((balance) => balance.key !== key),
+      ),
     )
   }
 
@@ -2003,8 +2010,10 @@ const autoLinkAllFreezingProducts = () => {
       rows: current.rows.filter(
         (row) => row.key !== key,
       ),
-      balanceUses: current.balanceUses.filter(
-        (balance) => balance.productId !== productId,
+      balanceUses: normalizeCaptureBalanceUses(
+        current.balanceUses.filter(
+          (balance) => balance.productId !== productId,
+        ),
       ),
     }))
   }

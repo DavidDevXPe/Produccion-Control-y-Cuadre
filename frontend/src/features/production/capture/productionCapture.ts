@@ -8,6 +8,7 @@ import {
   toKilograms,
 } from "../model/calculations";
 import { calculateFreezingAvailability } from "../model/freezing";
+import { normalizeBalanceLots } from "../model/balanceLotNormalization";
 import { productIdsEquivalent } from "../model/productIdentity";
 import { calculateProductionBusinessSummary } from "../model/businessRules";
 import {
@@ -30,6 +31,7 @@ import {
   PRODUCTION_CATALOG_ITEMS,
   type ProductionCatalogItem,
 } from "./productionCatalog";
+import { normalizeCaptureBalanceUses } from "./balanceUseNormalization";
 
 export type CaptureSource = "MANUAL" | "EXCEL";
 export type FinishedTotalMode = "DERIVED_FROM_REPORTS" | "IMPORTED_DECLARED";
@@ -207,51 +209,6 @@ function getInferredReports(
   return allocation;
 }
 
-function deduplicateBalanceLots(
-  lots: readonly BalanceLot[],
-): readonly BalanceLot[] {
-  const lotsById = new Map<string, BalanceLot>();
-
-  for (const lot of lots) {
-    const existingLot = lotsById.get(lot.id);
-
-    if (!existingLot) {
-      lotsById.set(lot.id, {
-        ...lot,
-        uses: [...lot.uses],
-      });
-
-      continue;
-    }
-
-    const usesById = new Map(existingLot.uses.map((use) => [use.id, use]));
-
-    for (const use of lot.uses) {
-      const existingUse = usesById.get(use.id);
-
-      if (!existingUse || use.kg100 > existingUse.kg100) {
-        usesById.set(use.id, use);
-      }
-    }
-
-    const sourceProductId = existingLot.sourceProductId ?? lot.sourceProductId;
-
-    lotsById.set(lot.id, {
-      ...existingLot,
-
-      originalKg100: kg100(
-        Math.max(existingLot.originalKg100, lot.originalKg100),
-      ),
-
-      ...(sourceProductId ? { sourceProductId } : {}),
-
-      uses: [...usesById.values()],
-    });
-  }
-
-  return [...lotsById.values()];
-}
-
 function buildReceivedBalanceLots(
   dayId: string,
   process: ProductionProcess,
@@ -267,7 +224,7 @@ function buildReceivedBalanceLots(
       : calculateOutstandingBalances(previousDays, subsequentLots)
   ).filter((position) => position.pendingKg100 > 0);
 
-  const lots = balanceUses.map((selection) => {
+  const lots = normalizeCaptureBalanceUses(balanceUses).map((selection) => {
     const sourceProductId = selection.sourceProductId ?? selection.productId;
     const position = positions.find(
       (candidate) =>
@@ -329,7 +286,7 @@ function buildReceivedBalanceLots(
     };
   });
 
-  return deduplicateBalanceLots(lots);
+  return normalizeBalanceLots(lots);
 }
 
 export function createEmptyCaptureDraft(
@@ -438,7 +395,7 @@ export function createCaptureDraftFromDay(
         finishedKg: String(toKilograms(line.declaredFinishedKg100)),
       };
     }),
-    balanceUses: deduplicateBalanceLots(productionDay.receivedBalanceLots).map(
+    balanceUses: normalizeBalanceLots(productionDay.receivedBalanceLots).map(
       (lot, index) => {
         const product = productionDay.lines.find(
           (line) => line.productId === lot.productId,

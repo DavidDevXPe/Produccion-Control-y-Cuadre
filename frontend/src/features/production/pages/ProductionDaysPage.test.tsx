@@ -56,7 +56,7 @@ describe('production days page', () => {
       'Aprovechamiento',
       'Acción',
     ])
-    expect(table).toHaveClass('table-fixed', 'min-w-[64rem]')
+    expect(table).toHaveClass('table-fixed', 'min-w-[72rem]')
     expect(
       [...table.querySelectorAll('col')].map((column) => column.className),
     ).toEqual([

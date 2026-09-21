@@ -2,6 +2,7 @@ import { kg100, sumKg100 } from "../model/calculations";
 import type { FreezingAvailabilityPosition } from "../model/freezing";
 import { productIdsEquivalent } from "../model/productIdentity";
 import type { Kg100 } from "../model/types";
+import { normalizeCaptureBalanceUses } from "./balanceUseNormalization";
 import type { ProductionCaptureBalanceUse } from "./productionCapture";
 
 export type FreezingOriginLedgerStatus = "COMPLETE" | "PENDING" | "EXCESS";
@@ -47,7 +48,7 @@ function currentUseForPosition(
   currentUses: readonly ProductionCaptureBalanceUse[],
 ): Kg100 {
   return sumKg100(
-    currentUses
+    normalizeCaptureBalanceUses(currentUses)
       .filter(
         (use) =>
           use.requiresProductDistribution !== true &&

@@ -3,6 +3,8 @@ import {
   isFreezingProductionDay,
   isPackingProductionDay,
 } from "./productionProcess";
+import { normalizeBalanceLots } from "./balanceLotNormalization";
+import { productIdsEquivalent } from "./productIdentity";
 import type {
   Kg100,
   ProductionDay,
@@ -92,9 +94,12 @@ export function calculateFreezingAvailability(
       }
 
       const matchingUses = freezingDays.flatMap((freezingDay) =>
-        freezingDay.receivedBalanceLots.flatMap((lot) =>
+        normalizeBalanceLots(freezingDay.receivedBalanceLots).flatMap((lot) =>
           lot.originDayId === originDay.id &&
-          (lot.sourceProductId ?? lot.productId) === line.productId &&
+          productIdsEquivalent(
+            lot.sourceProductId ?? lot.productId,
+            line.productId,
+          ) &&
           lot.familyId === line.familyId
             ? lot.uses.filter((use) => use.targetDayId === freezingDay.id)
             : [],
@@ -245,11 +250,11 @@ export function calculateFreezingComparison(
             line.shifts.NIGHT.reportedKg100,
           ]);
           const linkedKg100 = sumKg100(
-            day.receivedBalanceLots
+            normalizeBalanceLots(day.receivedBalanceLots)
               .filter(
                 (lot) =>
                   lot.familyId === line.familyId &&
-                  lot.productId === line.productId,
+                  productIdsEquivalent(lot.productId, line.productId),
               )
               .flatMap((lot) =>
                 lot.uses

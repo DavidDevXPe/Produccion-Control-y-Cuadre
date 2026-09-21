@@ -203,4 +203,45 @@ describe("freezing FIFO allocation", () => {
       }),
     );
   });
+
+  it("deduplicates identical existing uses without summing their quantities", () => {
+    const duplicatedUse = {
+      key: "balance-packing-old-manto-estandar",
+      originDayId: "packing-old",
+      originDate: "2026-09-14",
+      familyId: "manto-crudo",
+      familyName: "MANTO CRUDO",
+      productId: "manto-estandar",
+      productName: "MANTO ESTANDAR",
+      availableKg100: kg100(100 * 100),
+      dayKg: "40",
+      nightKg: "0",
+      requiresProductDistribution: false,
+    };
+
+    const result = buildFreezingFifoAllocation({
+      targetProduct: product,
+      reportedDayKg100: kg100(60 * 100),
+      reportedNightKg100: kg100(0),
+      positions: [position("packing-old", "2026-09-14", 100)],
+      existingUses: [
+        duplicatedUse,
+        {
+          ...duplicatedUse,
+          key: "historical-duplicate-copy",
+        },
+      ],
+    });
+
+    expect(result.balanceUses).toHaveLength(1);
+    expect(result.balanceUses[0]).toEqual(
+      expect.objectContaining({
+        originDayId: "packing-old",
+        dayKg: "60",
+        nightKg: "0",
+      }),
+    );
+    expect(result.allocatedKg100).toBe(kg100(20 * 100));
+    expect(result.remainingDayKg100).toBe(0);
+  });
 });

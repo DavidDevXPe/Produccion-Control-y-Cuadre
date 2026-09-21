@@ -5,7 +5,10 @@ import {
   type ProductionCaptureDraft,
   type ProductionCaptureRow,
 } from "../capture/productionCapture";
-import { PRODUCTION_CATALOG_ITEMS } from "../capture/productionCatalog";
+import {
+  CAPTURE_CATALOG_ITEMS,
+  PRODUCTION_CATALOG_ITEMS,
+} from "../capture/productionCatalog";
 import { validateProductionClosure } from "./businessRules";
 import { calculateOutstandingBalances, kg, kg100 } from "./calculations";
 import {
@@ -429,6 +432,98 @@ describe("Packing to Freezing lifecycle", () => {
 
     expect(comparison.unexplainedDifferenceKg100).toBe(kg(-2_000));
     expect(comparison.status).toBe("REVIEW");
+  });
+
+  it("does not double count duplicated Freezing balance lots when rebuilding availability", () => {
+    const packing = packingDay("2026-09-16", 46_970);
+    const baseFreezing = freezingDay("2026-09-17", 46_970, packing);
+    const duplicatedLot = baseFreezing.productionDay.receivedBalanceLots[0]!;
+    const freezing: ProductionDay = {
+      ...baseFreezing.productionDay,
+      receivedBalanceLots: [
+        duplicatedLot,
+        {
+          ...duplicatedLot,
+          id: `${duplicatedLot.id}-copy`,
+          uses: duplicatedLot.uses.map((use) => ({
+            ...use,
+            id: `${use.id}-copy`,
+          })),
+        },
+      ],
+    };
+
+    const [position] = calculateFreezingAvailability([packing, freezing]);
+
+    expect(position?.generatedKg100).toBe(kg(46_970));
+    expect(position?.processedTotalKg100).toBe(kg(46_970));
+    expect(position?.excessKg100).toBe(kg(0));
+  });
+
+  it("applies historical product id equivalence when discounting Freezing uses", () => {
+    const aleta = CAPTURE_CATALOG_ITEMS.find(
+      (item) => item.productId === "aleta-cruda-block-1000-2000-e",
+    )!;
+    const amount = kg(46_970);
+    const packing: ProductionDay = {
+      ...packingDay("2026-09-16", 46_970),
+      lines: [
+        {
+          ...packingDay("2026-09-16", 46_970).lines[0]!,
+          ...aleta,
+          source: { sheet: "TEST", cell: "A1" },
+          declaredFinishedKg100: amount,
+          shifts: {
+            DAY: { reportedKg100: amount, adjustments: [] },
+            NIGHT: { reportedKg100: kg100(0), adjustments: [] },
+          },
+        },
+      ],
+    };
+    const legacyFreezing: ProductionDay = {
+      ...packingDay("2026-09-17", 46_970),
+      id: "production-day-freezing-2026-09-17",
+      process: "FREEZING",
+      declaredRawMaterialKg100: kg100(0),
+      lines: [
+        {
+          ...packing.lines[0]!,
+          source: { sheet: "FREEZING", cell: "A1" },
+          shifts: {
+            DAY: { reportedKg100: amount, adjustments: [] },
+            NIGHT: { reportedKg100: kg100(0), adjustments: [] },
+          },
+          declaredFinishedKg100: amount,
+        },
+      ],
+      receivedBalanceLots: [
+        {
+          id: "balance-lot-freezing-legacy-aleta",
+          process: "FREEZING",
+          originDayId: packing.id,
+          familyId: aleta.familyId,
+          productId: "capture-seed-6",
+          sourceProductId: "capture-seed-6",
+          originalKg100: amount,
+          uses: [
+            {
+              id: "balance-use-freezing-legacy-aleta-day",
+              targetDayId: "production-day-freezing-2026-09-17",
+              shift: "DAY",
+              kg100: amount,
+            },
+          ],
+        },
+      ],
+    };
+
+    const [position] = calculateFreezingAvailability([
+      packing,
+      legacyFreezing,
+    ]);
+
+    expect(position?.pendingKg100).toBe(kg(0));
+    expect(position?.processedTotalKg100).toBe(kg(46_970));
   });
 
   it("keeps the Packing balance ledger separate from Freezing uses", () => {

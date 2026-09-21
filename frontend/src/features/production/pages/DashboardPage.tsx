@@ -563,9 +563,10 @@ export function DashboardPage() {
                                   ? 'success'
                                   : 'danger'
                             }
+                            truncateText={false}
                           >
                             {dayHasObservations
-                              ? 'CUADRADO Â· OBS.'
+                              ? 'CUADRADO · OBSERVADO'
                               : dayIsBalanced
                                 ? 'CUADRADO'
                                 : 'NO CUADRADO'}
