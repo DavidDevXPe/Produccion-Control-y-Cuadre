@@ -4,7 +4,7 @@ import { normalizeProductName } from './productNormalizer'
 import { SEED_CAPTURE_PRODUCTS } from './seedProducts'
 
 describe('product normalization and matching', () => {
-  it('matches accents, OCR punctuation and spacing', () => {
+  it('matches accents, import punctuation and spacing', () => {
     expect(normalizeProductName('MANTO JAPONÉS  2 KG-4 KG')).toBe(
       normalizeProductName('MANTO JAPONES 2 KG - 4 KG'),
     )

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAPTURE_CATALOG_ITEMS,
+  createUnconfirmedCatalogItem,
   filterCaptureCatalogItems,
   filterProductionCatalogItems,
   PRODUCTION_CATALOG_ITEMS,
@@ -153,5 +154,13 @@ describe("active capture catalog", () => {
           product.productId.trim().length > 0,
       ),
     ).toBe(true);
+  });
+
+  it("does not assign incomplete imported fragments to Aleta or Manto by default", () => {
+    const item = createUnconfirmedCatalogItem("3000 q 100% P.N. 18");
+
+    expect(item.familyId).toBe("unclassified");
+    expect(item.familyName).toBe("REQUIERE CLASIFICACIÓN");
+    expect(item.technicalClassification).toBe("UNCLASSIFIED");
   });
 });

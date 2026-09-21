@@ -1,7 +1,16 @@
-export function normalizeProductName(value: string): string {
+export function repairProductMojibake(value: string): string {
   return value
-    .replace(/Ã‘/gi, 'N')
-    .replace(/Ã‰/gi, 'E')
+    .replace(/ESPAÃƒâ€˜A/gi, 'ESPAÑA')
+    .replace(/ESPAÃ‘A/gi, 'ESPAÑA')
+    .replace(/JAPONÃƒâ€°S/gi, 'JAPONÉS')
+    .replace(/JAPONÃ‰S/gi, 'JAPONÉS')
+    .replace(/JAPONÃ‰/gi, 'JAPONÉ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function normalizeProductName(value: string): string {
+  return repairProductMojibake(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\bP\.N\.?\b/gi, 'PN')

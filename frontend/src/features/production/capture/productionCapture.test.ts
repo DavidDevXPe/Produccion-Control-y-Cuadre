@@ -429,7 +429,7 @@ describe('production capture', () => {
     expect(result.productionDay.status).toBe('DRAFT')
   })
 
-  it('reconciles product shifts for an imported sheet while retaining confidence', () => {
+  it('reconciles product shifts for an imported sheet while retaining allocation certainty', () => {
     const draft = {
       ...createEmptyCaptureDraft('2026-09-08'),
       source: 'EXCEL' as const,

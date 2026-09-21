@@ -1,56 +1,59 @@
 import { Workbook, type CellValue, type Worksheet } from 'exceljs'
-import type { SummaryGroupId } from '../model/types'
 import {
-  findCatalogItemByName,
+  createUnconfirmedCatalogItem,
   type ProductionCatalogItem,
 } from './productionCatalog'
 import type {
-  ImportedBalanceNotice,
   ProductionCaptureDraft,
   ProductionCaptureRow,
 } from './productionCapture'
-import { isSundayIsoDate } from '../model/productionDayMode'
+import { matchProduct, type ProductMatchKind } from './productMatcher'
+import {
+  normalizeProductName,
+  repairProductMojibake,
+} from './productNormalizer'
+import { normalizeProductionDate } from './productionDate'
 
-interface ProductRowDefinition {
-  row: number
-  product: ProductionCatalogItem
-  finishedKg: number
-  treatmentKg: number
+export type ExcelImportShift = 'DAY' | 'NIGHT'
+export type ExcelImportRowStatus =
+  | 'COINCIDENCIA EXACTA'
+  | 'COINCIDENCIA NORMALIZADA'
+  | 'ALIAS'
+  | 'REQUIERE REVISIÓN'
+  | 'NUEVO PRODUCTO'
+  | 'FILA IGNORADA'
+  | 'FECHA REQUIERE REVISIÓN'
+
+export interface ParsedPackingReportRow {
+  rowNumber: number
+  rawProductName: string
+  productName: string
+  rowCalendarDate: string | null
+  totalKg: number
+  product: ProductionCatalogItem | null
+  matchKind: ProductMatchKind | 'NORMALIZED'
+  status: ExcelImportRowStatus
+  ignoredReason?: string
 }
 
-export interface ParsedProductionSheet {
+export interface ParsedPackingReportImport {
+  fileName: string
   sheetName: string
-  date: string
-  rawMaterialKg: number
-  declaredDayTotalKg: number
-  declaredNightTotalKg: number
-  declaredFinishedTotalKg: number
-  reproductorAllocationKg: number
-  products: readonly ProductRowDefinition[]
-  balances: readonly ImportedBalanceNotice[]
+  operationalDate: string
+  shift: ExcelImportShift
+  rows: readonly ParsedPackingReportRow[]
+  ignoredRows: readonly ParsedPackingReportRow[]
   warnings: readonly string[]
+  missingColumns: readonly string[]
+  footerTotalKg: number | null
+  reconstructedTotalKg: number
+  productiveRows: number
+  recognizedRows: number
+  reviewRows: number
+  status: 'EXCEL RECONCILIADO' | 'EXCEL REQUIERE REVISIÓN' | 'ARCHIVO NO COMPATIBLE'
 }
 
-const weekdaySheetNames = new Set([
-  'LUNES',
-  'MARTES',
-  'MIERCOLES',
-  'MIÉRCOLES',
-  'JUEVES',
-  'VIERNES',
-  'SABADO',
-  'SÁBADO',
-  'DOMINGO',
-])
-
-const productRows = [
-  10, 11, 15, 16, 17, 18, 19, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-  35, 36, 37, 38, 43, 44, 45, 46, 47, 48, 49, 53, 54, 55, 56, 60,
-  61, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
-  84, 85, 86, 87, 88, 92, 95, 96, 97, 98, 99, 100,
-] as const
-
-const treatmentRows = new Set([18, 29, 30, 31, 35, 36, 37, 38, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80])
+const REQUIRED_COLUMNS = ['Producto', 'Horario', 'Total KG'] as const
 
 function getFormulaResult(value: CellValue): unknown {
   if (value && typeof value === 'object' && 'result' in value) {
@@ -59,198 +62,330 @@ function getFormulaResult(value: CellValue): unknown {
   return value
 }
 
-function getNumber(worksheet: Worksheet, address: string): number {
-  const value = getFormulaResult(worksheet.getCell(address).value)
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string') {
-    const parsed = Number(value.replace(',', '.'))
-    return Number.isFinite(parsed) ? parsed : 0
+function cellText(value: CellValue): string {
+  const resolved = getFormulaResult(value)
+  if (resolved instanceof Date) return resolved.toISOString().slice(0, 10)
+  if (typeof resolved === 'object' && resolved !== null && 'text' in resolved) {
+    return String((resolved as { text?: unknown }).text ?? '').trim()
   }
-  return 0
+  return String(resolved ?? '').trim()
 }
 
-function getText(worksheet: Worksheet, address: string): string {
-  const value = getFormulaResult(worksheet.getCell(address).value)
-  if (typeof value === 'string') return value.trim()
-  if (value instanceof Date) return value.toISOString()
-  return String(value ?? '').trim()
+function parseExcelNumber(value: CellValue): number | null {
+  const resolved = getFormulaResult(value)
+  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved
+  const text = cellText(value)
+  if (!text) return null
+  const compact = text.replace(/\s/g, '')
+  const lastComma = compact.lastIndexOf(',')
+  const lastDot = compact.lastIndexOf('.')
+  const normalized =
+    lastComma >= 0 && lastDot >= 0
+      ? lastComma > lastDot
+        ? compact.replace(/\./g, '').replace(',', '.')
+        : compact.replace(/,/g, '')
+      : compact.replace(',', '.')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-function parseSheetDate(value: string): string | null {
-  const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-  if (!match) return null
-  const [, day, month, year] = match
-  return `${year}-${month!.padStart(2, '0')}-${day!.padStart(2, '0')}`
+function parseExcelDate(value: CellValue): string | null {
+  const resolved = getFormulaResult(value)
+  if (resolved instanceof Date) return resolved.toISOString().slice(0, 10)
+  return normalizeProductionDate(cellText(value))
 }
 
-function slugify(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('es-PE')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 72)
+function addDaysToIsoDate(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
-function metadataForRow(row: number, productName: string): ProductionCatalogItem {
-  const catalogItem = findCatalogItemByName(productName)
-  if (catalogItem) return catalogItem
-  const isNucaSemilimpia = productName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleUpperCase('es-PE')
-    .includes('SEMI LIMPI')
-
-  const group: {
-    familyId: string
-    familyName: string
-    summaryGroupId: SummaryGroupId
-  } =
-    row <= 11
-      ? { familyId: 'aleta-cruda', familyName: 'ALETA CRUDA', summaryGroupId: 'ALETA' }
-      : row <= 19
-        ? { familyId: 'manto-crudo', familyName: 'MANTO CRUDO', summaryGroupId: 'MANTO' }
-        : row <= 31
-          ? { familyId: 'anillas', familyName: 'ANILLAS', summaryGroupId: 'ANILLAS' }
-          : row <= 38
-            ? { familyId: 'boton', familyName: 'BOTÓN', summaryGroupId: 'BOTON' }
-            : row <= 49
-              ? { familyId: 'recorte-crudo', familyName: 'RECORTE CRUDO', summaryGroupId: 'RECORTE_CRUDO' }
-              : row <= 56
-                ? { familyId: 'recorte-cocido', familyName: 'RECORTE COCIDO', summaryGroupId: 'RECORTE_COCIDO' }
-                : row <= 61
-                  ? { familyId: 'rejos-especial', familyName: 'REJOS ESPECIAL', summaryGroupId: 'REJOS_SPECIAL' }
-                  : row <= 80
-                    ? { familyId: 'rejos-crudo', familyName: 'REJOS CRUDO', summaryGroupId: 'REJOS' }
-                    : row <= 88
-                      ? { familyId: 'reproductor-crudo', familyName: 'REPRODUCTOR CRUDO', summaryGroupId: 'REPRODUCTOR' }
-                      : row <= 92
-                        ? { familyId: 'pico', familyName: 'PICO', summaryGroupId: 'PICO' }
-                        : isNucaSemilimpia
-                          ? { familyId: 'nuca-semilimpia', familyName: 'NUCA SEMILIMPIA', summaryGroupId: 'NUCA_SEMILIMPIA' }
-                          : { familyId: 'nuca-bikini', familyName: 'NUCA BIKINI', summaryGroupId: 'NUCA_BIKINI' }
-
-  return {
-    familyId: group.familyId,
-    familyName: group.familyName,
-    productId: `excel-${slugify(productName)}`,
-    productName,
-    summaryGroupId: group.summaryGroupId,
-  }
+function isDateAccepted(
+  rowCalendarDate: string | null,
+  operationalDate: string,
+  shift: ExcelImportShift,
+): boolean {
+  if (!rowCalendarDate) return false
+  if (rowCalendarDate === operationalDate) return true
+  return shift === 'NIGHT' && rowCalendarDate === addDaysToIsoDate(operationalDate, 1)
 }
 
-function parseBalances(worksheet: Worksheet): readonly ImportedBalanceNotice[] {
-  const balances: ImportedBalanceNotice[] = []
+function normalizeHeader(value: string): string {
+  return normalizeProductName(value)
+    .replace(/\bDESCRIPCION\b/g, '')
+    .replace(/\bSUMA\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-  for (let row = 10; row <= 22; row += 1) {
-    const label = getText(worksheet, `H${row}`)
-    const kg = getNumber(worksheet, `I${row}`)
-    if (!label || label.toLocaleUpperCase('es-PE') === 'TOTAL' || kg <= 0) continue
-    balances.push({ label, kg })
+function detectColumns(worksheet: Worksheet): {
+  headerRow: number
+  productColumn?: number
+  dateColumn?: number
+  totalKgColumn?: number
+} | null {
+  for (let rowNumber = 1; rowNumber <= Math.min(worksheet.rowCount, 20); rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber)
+    const detected: ReturnType<typeof detectColumns> = { headerRow: rowNumber }
+
+    row.eachCell((cell, columnNumber) => {
+      const header = normalizeHeader(cellText(cell.value))
+      if (header.includes('PRODUCTO')) detected.productColumn = columnNumber
+      if (header === 'HORARIO' || header.includes('FECHA')) detected.dateColumn = columnNumber
+      if (header === 'TOTAL KG' || header === 'TOTAL KGS') detected.totalKgColumn = columnNumber
+    })
+
+    if (detected.productColumn || detected.dateColumn || detected.totalKgColumn) return detected
   }
 
-  return balances
+  return null
 }
 
-function parseProductionSheet(worksheet: Worksheet): ParsedProductionSheet | null {
-  const date = parseSheetDate(getText(worksheet, 'A5'))
-  if (!date) return null
+function buildMissingColumns(columns: ReturnType<typeof detectColumns>): readonly string[] {
+  if (!columns) return REQUIRED_COLUMNS
+  return [
+    columns.productColumn ? null : 'Producto',
+    columns.dateColumn ? null : 'Horario',
+    columns.totalKgColumn ? null : 'Total KG',
+  ].filter((value): value is string => value !== null)
+}
 
-  const products = productRows.flatMap((row) => {
-    const productName = getText(worksheet, `A${row}`)
-    const finishedKg = getNumber(worksheet, `B${row}`)
-    if (!productName || finishedKg <= 0) return []
-    return [
-      {
-        row,
-        product: metadataForRow(row, productName),
-        finishedKg,
-        treatmentKg: treatmentRows.has(row) ? finishedKg : 0,
-      },
-    ]
-  })
+function isFooterProductName(value: string): boolean {
+  return /total general|ajuste|total \(?aros/i.test(value)
+}
+
+function rowStatusFor(matchKind: ProductMatchKind | 'NORMALIZED'): ExcelImportRowStatus {
+  if (matchKind === 'EXACT') return 'COINCIDENCIA EXACTA'
+  if (matchKind === 'ALIAS') return 'ALIAS'
+  if (matchKind === 'NORMALIZED' || matchKind === 'LIKELY_MATCH') return 'COINCIDENCIA NORMALIZADA'
+  return 'NUEVO PRODUCTO'
+}
+
+function parsePackingReportWorksheet(
+  worksheet: Worksheet,
+  options: {
+    fileName: string
+    operationalDate: string
+    shift: ExcelImportShift
+  },
+): ParsedPackingReportImport {
+  const columns = detectColumns(worksheet)
+  const missingColumns = buildMissingColumns(columns)
   const warnings: string[] = []
-  const balances = parseBalances(worksheet)
+  const rows: ParsedPackingReportRow[] = []
+  const ignoredRows: ParsedPackingReportRow[] = []
+  let footerTotalKg: number | null = null
 
-  if (products.length === 0) {
-    warnings.push('La hoja no contiene productos con cantidades mayores a cero.')
+  if (missingColumns.length > 0 || !columns?.productColumn || !columns.dateColumn || !columns.totalKgColumn) {
+    return {
+      fileName: options.fileName,
+      sheetName: worksheet.name,
+      operationalDate: options.operationalDate,
+      shift: options.shift,
+      rows: [],
+      ignoredRows: [],
+      warnings: [`ARCHIVO NO COMPATIBLE. Falta columna: ${missingColumns.join(', ')}.`],
+      missingColumns,
+      footerTotalKg: null,
+      reconstructedTotalKg: 0,
+      productiveRows: 0,
+      recognizedRows: 0,
+      reviewRows: 0,
+      status: 'ARCHIVO NO COMPATIBLE',
+    }
   }
-  if (balances.length > 0) {
+
+  for (let rowNumber = columns.headerRow + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber)
+    const rawProductName = cellText(row.getCell(columns.productColumn).value)
+    const totalKg = parseExcelNumber(row.getCell(columns.totalKgColumn).value)
+    const fallbackFooterKg = parseExcelNumber(row.getCell(Math.max(columns.totalKgColumn - 1, 1)).value)
+
+    if (!rawProductName) continue
+
+    if (isFooterProductName(rawProductName)) {
+      if (/total \(?aros/i.test(rawProductName) && fallbackFooterKg !== null) {
+        footerTotalKg = fallbackFooterKg
+      }
+      continue
+    }
+
+    const productName = repairProductMojibake(rawProductName)
+    const rowCalendarDate = parseExcelDate(row.getCell(columns.dateColumn).value)
+
+    if (rowCalendarDate === null || totalKg === null) {
+      ignoredRows.push({
+        rowNumber,
+        rawProductName,
+        productName,
+        rowCalendarDate,
+        totalKg: totalKg ?? 0,
+        product: null,
+        matchKind: 'NEW_PRODUCT',
+        status: 'FILA IGNORADA',
+        ignoredReason: rowCalendarDate === null ? 'Fecha inválida' : 'Total KG inválido',
+      })
+      continue
+    }
+
+    const match = matchProduct(productName)
+    const product = match.product ?? createUnconfirmedCatalogItem(productName)
+    const matchKind: ProductMatchKind | 'NORMALIZED' =
+      match.kind === 'EXACT' && rawProductName !== productName ? 'NORMALIZED' : match.kind
+    const dateAccepted = isDateAccepted(rowCalendarDate, options.operationalDate, options.shift)
+    const status = dateAccepted ? rowStatusFor(matchKind) : 'FECHA REQUIERE REVISIÓN'
+
+    rows.push({
+      rowNumber,
+      rawProductName,
+      productName,
+      rowCalendarDate,
+      totalKg,
+      product,
+      matchKind,
+      status,
+    })
+  }
+
+  const reconstructedTotalKg = rows.reduce((sum, row) => sum + row.totalKg, 0)
+  const reviewRows = rows.filter((row) =>
+    row.status === 'NUEVO PRODUCTO' ||
+    row.status === 'REQUIERE REVISIÓN' ||
+    row.status === 'FECHA REQUIERE REVISIÓN',
+  ).length + ignoredRows.length
+  const recognizedRows = rows.length - rows.filter((row) => row.status === 'NUEVO PRODUCTO').length
+
+  if (footerTotalKg !== null && Math.abs(footerTotalKg - reconstructedTotalKg) > 0.01) {
     warnings.push(
-      'Asigna los saldos importados al producto correcto antes de cerrar la jornada.',
+      `El total del footer es ${footerTotalKg.toLocaleString('es-PE')} kg, pero la suma de Total KG es ${reconstructedTotalKg.toLocaleString('es-PE')} kg.`,
     )
   }
+  if (ignoredRows.length > 0) {
+    warnings.push(`${ignoredRows.length} fila(s) fueron ignoradas por datos incompletos.`)
+  }
+  if (rows.some((row) => row.status === 'FECHA REQUIERE REVISIÓN')) {
+    warnings.push('Hay filas con fecha fuera del turno seleccionado.')
+  }
 
   return {
+    fileName: options.fileName,
     sheetName: worksheet.name,
-    date,
-    rawMaterialKg: getNumber(worksheet, 'D3'),
-    declaredDayTotalKg: getNumber(worksheet, 'B107'),
-    declaredNightTotalKg: getNumber(worksheet, 'C107'),
-    declaredFinishedTotalKg: getNumber(worksheet, 'B104'),
-    reproductorAllocationKg: getNumber(worksheet, 'C89'),
-    products,
-    balances,
+    operationalDate: options.operationalDate,
+    shift: options.shift,
+    rows,
+    ignoredRows,
     warnings,
+    missingColumns,
+    footerTotalKg,
+    reconstructedTotalKg,
+    productiveRows: rows.length,
+    recognizedRows,
+    reviewRows,
+    status:
+      warnings.length === 0 && (footerTotalKg === null || Math.abs(footerTotalKg - reconstructedTotalKg) <= 0.01)
+        ? 'EXCEL RECONCILIADO'
+        : 'EXCEL REQUIERE REVISIÓN',
   }
 }
 
 export async function parseProductionWorkbook(
   file: ArrayBuffer,
-): Promise<readonly ParsedProductionSheet[]> {
+  options: {
+    fileName?: string
+    operationalDate: string
+    shift: ExcelImportShift
+  },
+): Promise<ParsedPackingReportImport> {
   const workbook = new Workbook()
   await workbook.xlsx.load(file)
+  const worksheet = workbook.getWorksheet('Reporte') ?? workbook.worksheets[0]
+  if (!worksheet) {
+    return {
+      fileName: options.fileName ?? 'archivo.xlsx',
+      sheetName: 'Sin hoja',
+      operationalDate: options.operationalDate,
+      shift: options.shift,
+      rows: [],
+      ignoredRows: [],
+      warnings: ['ARCHIVO NO COMPATIBLE. El libro no contiene hojas.'],
+      missingColumns: REQUIRED_COLUMNS,
+      footerTotalKg: null,
+      reconstructedTotalKg: 0,
+      productiveRows: 0,
+      recognizedRows: 0,
+      reviewRows: 0,
+      status: 'ARCHIVO NO COMPATIBLE',
+    }
+  }
 
-  return workbook.worksheets.flatMap((worksheet) => {
-    const normalizedName = worksheet.name
-      .trim()
-      .toLocaleUpperCase('es-PE')
-    if (!weekdaySheetNames.has(normalizedName)) return []
-    const parsed = parseProductionSheet(worksheet)
-    return parsed ? [parsed] : []
+  return parsePackingReportWorksheet(worksheet, {
+    fileName: options.fileName ?? 'archivo.xlsx',
+    operationalDate: options.operationalDate,
+    shift: options.shift,
   })
 }
 
-export function createCaptureDraftFromImportedSheet(
-  sheet: ParsedProductionSheet,
+function rowFromImport(
+  row: ParsedPackingReportRow,
+  index: number,
+  shift: ExcelImportShift,
+): ProductionCaptureRow | null {
+  if (!row.product) return null
+  return {
+    key: `excel-${row.product.productId}-${index}`,
+    product: row.product,
+    dayReportedKg: shift === 'DAY' ? String(row.totalKg) : '0',
+    dayPreviousBalanceKg: '0',
+    nightReportedKg: shift === 'NIGHT' ? String(row.totalKg) : '0',
+    nightPreviousBalanceKg: '0',
+    tunnelDayKg: '0',
+    tunnelNightKg: '0',
+    treatmentKg: '0',
+    closingBalanceKg: '0',
+    finishedKg: '',
+  }
+}
+
+export function mergePackingReportIntoDraft(
+  draft: ProductionCaptureDraft,
+  parsed: ParsedPackingReportImport,
 ): ProductionCaptureDraft {
-  const rows: readonly ProductionCaptureRow[] = sheet.products.map(
-    (product, index) => ({
-      key: `excel-${sheet.sheetName}-${product.row}-${index}`,
-      product: product.product,
-      dayReportedKg: '',
-      dayPreviousBalanceKg: '0',
-      nightReportedKg: '',
-      nightPreviousBalanceKg: '0',
-      tunnelDayKg: '0',
-      tunnelNightKg: '0',
-      treatmentKg: String(product.treatmentKg),
-      closingBalanceKg: '0',
-      finishedKg: String(product.finishedKg),
-    }),
+  const shift = parsed.shift
+  const rows = draft.rows.map((row) =>
+    shift === 'DAY'
+      ? { ...row, dayReportedKg: '0' }
+      : { ...row, nightReportedKg: '0' },
   )
 
+  for (const [index, parsedRow] of parsed.rows.entries()) {
+    if (!parsedRow.product || parsedRow.status === 'FECHA REQUIERE REVISIÓN') continue
+    const existing = rows.find((row) => row.product.productId === parsedRow.product?.productId)
+    if (!existing) {
+      const next = rowFromImport(parsedRow, index, shift)
+      if (next) rows.push(next)
+      continue
+    }
+    const currentValue = Number(shift === 'DAY' ? existing.dayReportedKg : existing.nightReportedKg) || 0
+    const value = String(currentValue + parsedRow.totalKg)
+    const replacement =
+      shift === 'DAY'
+        ? { ...existing, dayReportedKg: value }
+        : { ...existing, nightReportedKg: value }
+    rows[rows.indexOf(existing)] = replacement
+  }
+
+  const totalKg = parsed.rows
+    .filter((row) => row.status !== 'FECHA REQUIERE REVISIÓN')
+    .reduce((sum, row) => sum + row.totalKg, 0)
+
   return {
-    date: sheet.date,
-    process: 'PACKING',
+    ...draft,
     source: 'EXCEL',
-    sourceSheet: sheet.sheetName,
-    shiftAllocationMode: 'RECONCILED_INFERENCE',
-    operationMode:
-      isSundayIsoDate(sheet.date) && sheet.rawMaterialKg === 0
-        ? 'BALANCE_ONLY'
-        : 'NORMAL',
-    rawMaterialKg: String(sheet.rawMaterialKg),
-    declaredDayTotalKg: String(sheet.declaredDayTotalKg),
-    declaredNightTotalKg: String(sheet.declaredNightTotalKg),
-    declaredFinishedTotalKg: String(sheet.declaredFinishedTotalKg),
-    reproductorAllocationKg: String(sheet.reproductorAllocationKg),
-    hasTunnelProduction: false,
-    nucaWashConfirmed: false,
-    nucaWashReference: '',
+    sourceSheet: parsed.sheetName,
+    shiftAllocationMode: 'EXPLICIT',
+    declaredDayTotalKg: shift === 'DAY' ? String(totalKg) : draft.declaredDayTotalKg || '0',
+    declaredNightTotalKg: shift === 'NIGHT' ? String(totalKg) : draft.declaredNightTotalKg || '0',
     rows,
-    balanceUses: [],
-    importedBalances: sheet.balances,
   }
 }

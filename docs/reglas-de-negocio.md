@@ -24,7 +24,7 @@ El modelo distingue dos procesos sin duplicar rutas, catálogos ni pantallas com
 
 Una jornada se identifica de forma única por `fecha + proceso`; por tanto, Envasado y Congelamiento pueden registrar la misma fecha. Todo registro histórico sin `process` se interpreta como Envasado. Los lotes sin proceso explícito también pertenecen al libro de saldos de Envasado.
 
-El cierre semanal se mantiene por proceso. Una semana cerrada para Envasado no bloquea las capturas ni consultas de Congelamiento. El ciclo semanal completo solo se considera cerrado cuando ambos procesos están cerrados y la diferencia no explicada entre ellos es cero.
+El cierre semanal se mantiene por proceso. Una semana cerrada para Envasado no bloquea los registros ni consultas de Congelamiento. El ciclo semanal completo solo se considera cerrado cuando ambos procesos están cerrados y la diferencia no explicada entre ellos es cero.
 
 ## Balance Envasado → Congelamiento
 

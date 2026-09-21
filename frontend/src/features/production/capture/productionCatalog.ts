@@ -127,7 +127,7 @@ export const PRODUCTION_CATALOG_ITEMS: ProductionCatalogItem[] = [
   ),
 ]
 
-/** Products that have appeared in an imported production screenshot. */
+/** Products that have appeared in an imported production report. */
 export const CAPTURE_CATALOG_ITEMS: ProductionCatalogItem[] = [
   ...getActiveProducts(),
 ]
@@ -163,7 +163,11 @@ function catalogMetadataForName(productName: string): Pick<
   if (normalized.includes('nuca')) return { familyId: 'nuca-semilimpia', familyName: 'NUCA SEMILIMPIA', summaryGroupId: 'NUCA_SEMILIMPIA' }
   if (normalized.includes('pico')) return { familyId: 'pico', familyName: 'PICO', summaryGroupId: 'PICO' }
   if (normalized.includes('recorte')) return { familyId: 'recorte-crudo', familyName: 'RECORTE CRUDO', summaryGroupId: 'RECORTE_CRUDO' }
-  return { familyId: 'producto-importado', familyName: 'PRODUCTO IMPORTADO', summaryGroupId: 'MANTO' }
+  return {
+    familyId: 'unclassified',
+    familyName: 'REQUIERE CLASIFICACIÓN',
+    summaryGroupId: 'MANTO',
+  }
 }
 
 export function addProductionCatalogItem(productName: string): ProductionCatalogItem {
