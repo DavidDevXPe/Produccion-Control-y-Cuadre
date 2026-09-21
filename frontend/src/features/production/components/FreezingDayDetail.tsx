@@ -1,4 +1,14 @@
-import {AlertTriangle, ArrowLeft, Boxes, CheckCircle2, Moon, Pencil, Scale, Snowflake, Sun } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Boxes,
+  CheckCircle2,
+  Moon,
+  Pencil,
+  Scale,
+  Snowflake,
+  Sun,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
@@ -39,63 +49,58 @@ export function FreezingDayDetail({
   const hasClosureWarnings = operationalState.validation.warnings.length > 0
   const reconciliationObserved = differenceKg100 !== 0 && hasClosureWarnings
   const freezingOriginRows = productionDay.receivedBalanceLots.map((lot) => {
-  const line = productionDay.lines.find(
-    (candidate) => candidate.productId === lot.productId,
+    const line = productionDay.lines.find(
+      (candidate) => candidate.productId === lot.productId,
+    )
+
+    const originDay = allProductionDays.find(
+      (candidate) => candidate.id === lot.originDayId,
+    )
+
+    const usedKg100 = sumKg100(lot.uses.map((use) => use.kg100))
+    const pendingKg100 = kg100(
+      Math.max(lot.originalKg100 - usedKg100, 0),
+    )
+    const originDate = originDay?.date
+
+    const originKind =
+      originDate && originDate < productionDay.date
+        ? 'PREVIOUS'
+        : originDate === productionDay.date
+          ? 'CURRENT'
+          : 'UNKNOWN'
+
+    return {
+      lot,
+      line,
+      originDay,
+      usedKg100,
+      pendingKg100,
+      originKind,
+    }
+  })
+
+  const previousOriginUsedKg100 = sumKg100(
+    freezingOriginRows
+      .filter((row) => row.originKind === 'PREVIOUS')
+      .map((row) => row.usedKg100),
   )
 
-  const originDay = allProductionDays.find(
-    (candidate) => candidate.id === lot.originDayId,
+  const currentOriginUsedKg100 = sumKg100(
+    freezingOriginRows
+      .filter((row) => row.originKind === 'CURRENT')
+      .map((row) => row.usedKg100),
   )
 
-  const usedKg100 = sumKg100(
-    lot.uses.map((use) => use.kg100),
-  )
-
-  const pendingKg100 = kg100(
-    Math.max(lot.originalKg100 - usedKg100, 0),
-  )
-
-  const originDate = originDay?.date
-
-  const originKind =
-    originDate && originDate < productionDay.date
-      ? 'PREVIOUS'
-      : originDate === productionDay.date
-        ? 'CURRENT'
-        : 'UNKNOWN'
-
-  return {
-    lot,
-    line,
-    originDay,
-    usedKg100,
-    pendingKg100,
-    originKind,
-  }
-})
-
-const previousOriginUsedKg100 = sumKg100(
-  freezingOriginRows
-    .filter((row) => row.originKind === 'PREVIOUS')
-    .map((row) => row.usedKg100),
-)
-
-const currentOriginUsedKg100 = sumKg100(
-  freezingOriginRows
-    .filter((row) => row.originKind === 'CURRENT')
-    .map((row) => row.usedKg100),
-)
-
-const unsupportedFrozenKg100 = kg100(
-  Math.max(differenceKg100, 0),
-)
-
-const excessLinkedKg100 = kg100(
-  Math.max(-differenceKg100, 0),
-)
-
-const hasTraceabilityDifference =
-  differenceKg100 !== 0
+  const unsupportedFrozenKg100 = kg100(Math.max(differenceKg100, 0))
+  const excessLinkedKg100 = kg100(Math.max(-differenceKg100, 0))
+  const hasTraceabilityDifference = differenceKg100 !== 0
+  const traceabilityDifferenceLabel =
+    excessLinkedKg100 > 0
+      ? 'Vinculado en exceso'
+      : unsupportedFrozenKg100 > 0
+        ? 'Sin origen suficiente'
+        : 'Diferencia de trazabilidad'
 
   return (
     <div className="space-y-5">
@@ -263,25 +268,21 @@ const hasTraceabilityDifference =
       </SectionCard>
 
 <SectionCard
-  title="Trazabilidad por origen"
-  description="Detalle FIFO de cada origen de Envasado utilizado y del saldo que permanece disponible después de esta jornada."
+  title="Origen del congelamiento"
+  description="Resumen de cómo se compone el congelamiento entre saldos anteriores y disponibilidad generada por Envasado en esta jornada."
   action={
     <StatusBadge
-  tone={hasTraceabilityDifference ? 'warning' : 'success'}
->
-  {hasTraceabilityDifference
-    ? 'CON OBSERVACIÓN'
-    : 'ORIGEN COMPLETO'}
-</StatusBadge>
+      tone={hasTraceabilityDifference ? 'warning' : 'success'}
+    >
+      {hasTraceabilityDifference ? 'CON OBSERVACIÓN' : 'ORIGEN COMPLETO'}
+    </StatusBadge>
   }
 >
   <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-[#203E50]">
     <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
       <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
-  {excessLinkedKg100 > 0
-    ? 'Vinculado en exceso'
-    : 'Sin origen suficiente'}
-</p>
+        Saldo anterior utilizado
+      </p>
 
       <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-amber-700 dark:text-amber-300">
         {formatCentiKg(previousOriginUsedKg100)}
@@ -322,7 +323,7 @@ const hasTraceabilityDifference =
 
     <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
       <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
-        Sin origen suficiente
+        {traceabilityDifferenceLabel}
       </p>
 
       <p
@@ -333,10 +334,10 @@ const hasTraceabilityDifference =
         }`}
       >
         {formatCentiKg(
-  excessLinkedKg100 > 0
-    ? excessLinkedKg100
-    : unsupportedFrozenKg100,
-)}
+          excessLinkedKg100 > 0
+            ? excessLinkedKg100
+            : unsupportedFrozenKg100,
+        )}
       </p>
 
       <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
@@ -405,7 +406,7 @@ const hasTraceabilityDifference =
         </DataTableScroll>
       </SectionCard>
 
-      <SectionCard title="Origen Envasado y saldo" description="Trazabilidad de la disponibilidad utilizada por esta jornada.">
+      <SectionCard title="Detalle FIFO por origen" description="Trazabilidad de la disponibilidad de Envasado utilizada por producto y jornada origen.">
         <DataTableScroll label="Origen del producto congelado">
           <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse">
             <thead>

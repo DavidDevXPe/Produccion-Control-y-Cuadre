@@ -280,7 +280,12 @@ describe('Freezing production day page', () => {
 
     expect(screen.getByText('Detalle de jornada · Congelamiento')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Productos congelados' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Origen Envasado y saldo' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Origen del congelamiento' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Detalle FIFO por origen' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Aprovechamiento general' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Exportar Excel' })).toBeNull()
     window.localStorage.clear()

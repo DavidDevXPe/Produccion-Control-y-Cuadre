@@ -213,12 +213,12 @@ describe('ProductionEntryPage product selector', () => {
     )
     expect(screen.queryByLabelText(/^MP descarga/)).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Disponibilidad para congelar' }),
+      screen.getByRole('heading', { name: 'Origen y consumo de saldos de Envasado' }),
     ).toBeInTheDocument()
 
     const freezingAvailabilitySection = screen
       .getByRole('heading', {
-        name: 'Disponibilidad para congelar',
+        name: 'Origen y consumo de saldos de Envasado',
       })
       .closest('section')!
     

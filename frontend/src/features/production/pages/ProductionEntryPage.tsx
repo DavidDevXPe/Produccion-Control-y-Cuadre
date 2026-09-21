@@ -2,6 +2,7 @@
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   FileSpreadsheet,
   Plus,
   Save,
@@ -582,6 +583,7 @@ export function ProductionEntryPage() {
       ),
   )
   const [selectedBalanceKey, setSelectedBalanceKey] = useState('')
+  const [isFreezingOriginsOpen, setIsFreezingOriginsOpen] = useState(false)
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
   const [isBulkFreezingLinkConfirmationOpen, setIsBulkFreezingLinkConfirmationOpen] = useState(false)
   const [tunnelToggleError, setTunnelToggleError] = useState('')
@@ -702,6 +704,49 @@ export function ProductionEntryPage() {
     () => buildBalanceShiftDiagnostics(buildResult.calculation),
     [buildResult.calculation],
   )
+  const freezingBalanceUseSummary = useMemo(() => {
+    if (!isFreezing) return null
+
+    const diagnosticProductIds = new Set(
+      balanceShiftDiagnostics.map((diagnostic) => diagnostic.productId),
+    )
+
+    return draft.balanceUses.reduce(
+      (summary, balance) => {
+        const position = captureBalancePosition(balance)
+        const requiresReview =
+          balance.requiresProductDistribution === true ||
+          position.overusedKg100 > 0 ||
+          diagnosticProductIds.has(balance.productId)
+
+        return {
+          originCount: summary.originCount + 1,
+          availableKg100: kg100(
+            summary.availableKg100 + balance.availableKg100,
+          ),
+          usedKg100: kg100(
+            summary.usedKg100 + position.processedKg100,
+          ),
+          remainingKg100: kg100(
+            summary.remainingKg100 + position.pendingKg100,
+          ),
+          reviewCount: summary.reviewCount + (requiresReview ? 1 : 0),
+        }
+      },
+      {
+        originCount: 0,
+        availableKg100: kg100(0),
+        usedKg100: kg100(0),
+        remainingKg100: kg100(0),
+        reviewCount: 0,
+      },
+    )
+  }, [balanceShiftDiagnostics, draft.balanceUses, isFreezing])
+
+  const shouldShowBalanceUseDetails =
+    !isFreezing ||
+    isFreezingOriginsOpen ||
+    (freezingBalanceUseSummary?.reviewCount ?? 0) > 0
   const dayHasReportData =
     draft.declaredDayTotalKg.trim() !== '' && draft.rows.length > 0
   const nightHasReportData =
@@ -4426,10 +4471,10 @@ const applyFreezingExcelPreview =
       ) : null}
 
       <SectionCard
-        title={isFreezing ? 'Disponibilidad para congelar' : 'Saldos anteriores procesados'}
+        title={isFreezing ? 'Origen y consumo de saldos de Envasado' : 'Saldos anteriores procesados'}
         description={
           isFreezing
-            ? 'Cada producto conserva su jornada de Envasado como origen hasta quedar congelado al 100%. Puedes vincularlo manualmente o usar FIFO para consumir primero la jornada pendiente más antigua.'
+            ? 'Revisa de qué jornada de Envasado proviene cada saldo, cuánto se consume por turno y cuánto queda pendiente. FIFO prioriza los orígenes más antiguos.'
             : isBalanceOnly
             ? 'Fuente principal del domingo: vincula cada kg procesado con su jornada de origen y turno.'
             : 'Selecciona lotes pendientes reales y distribuye su consumo entre Día y Noche.'
@@ -5123,7 +5168,7 @@ freezingOriginLedger.length > 0 ? (
           <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[1fr_auto] lg:items-end">
             <label className="min-w-0">
               <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                {isFreezing ? 'Producto disponible para congelar' : 'Saldo pendiente disponible'}
+                {isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
               </span>
               <select
                 value={selectedBalanceKey}
@@ -5226,188 +5271,341 @@ freezingOriginLedger.length > 0 ? (
               className={buttonStyles('secondary')}
             >
               <Plus className="size-4" aria-hidden="true" />
-              {isFreezing ? 'Vincular producto' : 'Usar saldo'}
+              {isFreezing ? 'Vincular origen' : 'Usar saldo'}
             </button>
           </div>
 
           {draft.balanceUses.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-slate-500">
+            <p className="px-5 py-8 text-center text-sm text-slate-500 dark:text-[#A5BED0]">
               {isFreezing
                 ? 'No se ha vinculado producto disponible desde Envasado.'
                 : 'No se han asignado saldos de jornadas anteriores.'}
             </p>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {draft.balanceUses.map((balance) => {
-                const position = captureBalancePosition(balance)
-                const requiresProductDistribution =
-                  balance.requiresProductDistribution === true
-                const productShiftDiagnostics = balanceShiftDiagnostics.filter(
-                  (diagnostic) => diagnostic.productId === balance.productId,
-                )
+            <>
+              {isFreezing && freezingBalanceUseSummary ? (
+                <div className="border-b border-slate-200 bg-slate-50/55 dark:border-[#203E50] dark:bg-[#07141F]/45">
+                  <dl className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-[#203E50]">
+                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                        Orígenes vinculados
+                      </dt>
+                      <dd className="mt-1 text-base font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+                        {freezingBalanceUseSummary.originCount}
+                      </dd>
+                    </div>
 
-                return (
-                  <div key={balance.key} className="px-4 py-4 sm:px-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900">
-                          {balance.familyName} · {balance.productName}
-                        </p>
-                        <p className="mt-1 text-[0.6875rem] text-slate-500">
-                          Origen: {balance.originDate ? formatIsoDate(balance.originDate) : balance.originDayId} ·
-                          Disponible: {formatCentiKg(balance.availableKg100)}
-                        </p>
+                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                        Disponible vinculado
+                      </dt>
+                      <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+                        {formatCentiKg(freezingBalanceUseSummary.availableKg100)}
+                      </dd>
+                    </div>
+
+                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                        Total utilizado
+                      </dt>
+                      <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-sky-700 dark:text-sky-300">
+                        {formatCentiKg(freezingBalanceUseSummary.usedKg100)}
+                      </dd>
+                    </div>
+
+                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                        Saldo restante
+                      </dt>
+                      <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-amber-700 dark:text-amber-300">
+                        {formatCentiKg(freezingBalanceUseSummary.remainingKg100)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="px-4 py-3 sm:px-5">
+                    {freezingBalanceUseSummary.reviewCount > 0 ? (
+                      <div
+                        role="status"
+                        className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.08] dark:text-amber-200"
+                      >
+                        <AlertTriangle
+                          className="size-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                        El detalle permanece abierto porque{' '}
+                        {freezingBalanceUseSummary.reviewCount}{' '}
+                        {freezingBalanceUseSummary.reviewCount === 1
+                          ? 'origen requiere'
+                          : 'orígenes requieren'}{' '}
+                        revisión.
                       </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => removeBalanceUse(balance.key)}
-                        className="grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700"
-                        aria-label={`Quitar saldo de ${balance.productName}`}
+                        onClick={() =>
+                          setIsFreezingOriginsOpen((current) => !current)
+                        }
+                        aria-expanded={isFreezingOriginsOpen}
+                        className="flex w-full items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:bg-[#0D2534]"
                       >
-                        <Trash2 className="size-4" aria-hidden="true" />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                            Detalle de orígenes vinculados
+                          </span>
+                          <span className="mt-0.5 block text-[0.6875rem] leading-5 text-slate-500 dark:text-[#A5BED0]">
+                            Revisa el consumo Día/Noche y el saldo restante de cada jornada origen.
+                          </span>
+                        </span>
+
+                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-brand-700 dark:text-[#58C8EA]">
+                          {isFreezingOriginsOpen
+                            ? 'Ocultar detalle'
+                            : 'Ver detalle'}
+                          <ChevronDown
+                            className={`size-4 transition-transform ${
+                              isFreezingOriginsOpen ? 'rotate-180' : ''
+                            }`}
+                            aria-hidden="true"
+                          />
+                        </span>
                       </button>
-                    </div>
-                    {requiresProductDistribution ? (
-                      <div
-                        role="alert"
-                        className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em] text-amber-900">
-                              Requiere distribución
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-amber-800">
-                              Este saldo histórico solo identifica la familia. Selecciona el producto comercial exacto; el sistema no lo asignará automáticamente.
-                            </p>
-                          </div>
-                          <label className="min-w-0 sm:w-[28rem]">
-                            <span className="mb-1 block text-[0.6875rem] font-bold text-amber-900">
-                              Producto exacto
-                            </span>
-                            <select
-                              value=""
-                              onChange={(event) =>
-                                distributeLegacyBalance(
-                                  balance.key,
-                                  event.target.value,
-                                )
-                              }
-                              className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-                            >
-                              <option value="">Seleccionar producto…</option>
-                              {catalogItems
-                                .filter(
-                                  (product) =>
-                                    product.familyId === balance.familyId &&
-                                    product.active !== false,
-                                )
-                                .map((product) => (
-                                <option
-                                  key={product.productId}
-                                  value={product.productId}
-                                >
-                                  {product.productName}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                          Disponible
-                        </p>
-                        <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900">
-                          {formatCentiKg(balance.availableKg100)}
-                        </p>
-                      </div>
-                      <QuantityInput
-                        label="Procesado Día"
-                        value={balance.dayKg}
-                        onChange={(value) => updateBalanceUse(balance.key, 'dayKg', value)}
-                      />
-                      <QuantityInput
-                        label="Procesado Noche"
-                        value={balance.nightKg}
-                        onChange={(value) => updateBalanceUse(balance.key, 'nightKg', value)}
-                      />
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                          Total procesado
-                        </p>
-                        <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900">
-                          {formatCentiKg(position.processedKg100)}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                          Pendiente
-                        </p>
-                        <p className={`number-tabular mt-1 text-sm font-extrabold ${position.overusedKg100 > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
-                          {position.overusedKg100 > 0
-                            ? `Exceso ${formatCentiKg(position.overusedKg100)}`
-                            : formatCentiKg(position.pendingKg100)}
-                        </p>
-                      </div>
-                      <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2">
-                        <StatusBadge
-                          tone={
-                            requiresProductDistribution ||
-                            position.overusedKg100 > 0 ||
-                            productShiftDiagnostics.length > 0
-                              ? requiresProductDistribution
-                                ? 'warning'
-                                : 'danger'
-                              : position.pendingKg100 === 0
-                                ? 'success'
-                                : 'warning'
-                          }
-                        >
-                          {requiresProductDistribution
-                            ? 'REQUIERE DISTRIBUCIÓN'
-                            : position.overusedKg100 > 0 ||
-                          productShiftDiagnostics.length > 0
-                            ? 'REVISAR'
-                            : position.pendingKg100 === 0
-                              ? 'CONSUMIDO'
-                              : 'PENDIENTE'}
-                        </StatusBadge>
-                      </div>
-                    </div>
-                    {productShiftDiagnostics.length > 0 ? (
-                      <div
-                        role="alert"
-                        className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-rose-900"
-                      >
-                        <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em]">
-                          Saldo anterior mal distribuido
-                        </p>
-                        {productShiftDiagnostics.map((diagnostic) => (
-                          <div
-                            key={`${diagnostic.productId}-${diagnostic.shift}`}
-                            className="mt-2 text-xs leading-5"
-                          >
-                            <p className="font-bold">{diagnostic.productName} · Turno {diagnostic.shift === 'DAY' ? 'Día' : 'Noche'}</p>
-                            <p>
-                              Reporte físico: {formatCentiKg(diagnostic.reportedKg100)} ·
-                              Saldo asignado: {formatCentiKg(diagnostic.assignedBalanceKg100)} ·
-                              Máximo consumible: {formatCentiKg(diagnostic.maximumConsumableKg100)} ·
-                              Exceso: {formatCentiKg(diagnostic.excessKg100)}
-                            </p>
-                            <p className="mt-1">
-                              El saldo asignado supera los kg físicamente reportados para este producto. Redistribuye el consumo entre Día/Noche o deja el remanente pendiente.
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                    )}
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              ) : null}
+
+              {shouldShowBalanceUseDetails ? (
+                <div className="divide-y divide-slate-100 dark:divide-[#203E50]">
+                  {draft.balanceUses.map((balance) => {
+                    const position = captureBalancePosition(balance)
+                    const requiresProductDistribution =
+                      balance.requiresProductDistribution === true
+                    const productShiftDiagnostics =
+                      balanceShiftDiagnostics.filter(
+                        (diagnostic) =>
+                          diagnostic.productId === balance.productId,
+                      )
+
+                    return (
+                      <div
+                        key={balance.key}
+                        className="px-4 py-4 sm:px-5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                              {balance.familyName} · {balance.productName}
+                            </p>
+                            <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]">
+                              {isFreezing ? 'Origen Envasado' : 'Origen'}:{' '}
+                              {balance.originDate
+                                ? formatIsoDate(balance.originDate)
+                                : balance.originDayId}{' '}
+                              ·{' '}
+                              {isFreezing
+                                ? 'Saldo disponible del origen'
+                                : 'Disponible'}
+                              : {formatCentiKg(balance.availableKg100)}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeBalanceUse(balance.key)}
+                            className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
+                            aria-label={`Quitar saldo de ${balance.productName}`}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        {requiresProductDistribution ? (
+                          <div
+                            role="alert"
+                            className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                              <div>
+                                <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-200">
+                                  Requiere distribución
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-100">
+                                  Este saldo histórico solo identifica la familia.
+                                  Selecciona el producto comercial exacto; el sistema no
+                                  lo asignará automáticamente.
+                                </p>
+                              </div>
+
+                              <label className="min-w-0 sm:w-[28rem]">
+                                <span className="mb-1 block text-[0.6875rem] font-bold text-amber-900 dark:text-amber-200">
+                                  Producto exacto
+                                </span>
+                                <select
+                                  value=""
+                                  onChange={(event) =>
+                                    distributeLegacyBalance(
+                                      balance.key,
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-amber-500/30 dark:bg-[#07141F] dark:text-[#F3F8FB]"
+                                >
+                                  <option value="">Seleccionar producto…</option>
+                                  {catalogItems
+                                    .filter(
+                                      (product) =>
+                                        product.familyId === balance.familyId &&
+                                        product.active !== false,
+                                    )
+                                    .map((product) => (
+                                      <option
+                                        key={product.productId}
+                                        value={product.productId}
+                                      >
+                                        {product.productName}
+                                      </option>
+                                    ))}
+                                </select>
+                              </label>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                              {isFreezing
+                                ? 'Saldo disponible del origen'
+                                : 'Disponible'}
+                            </p>
+                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                              {formatCentiKg(balance.availableKg100)}
+                            </p>
+                          </div>
+
+                          <QuantityInput
+                            label={
+                              isFreezing ? 'Utilizado Turno Día' : 'Procesado Día'
+                            }
+                            value={balance.dayKg}
+                            onChange={(value) =>
+                              updateBalanceUse(balance.key, 'dayKg', value)
+                            }
+                          />
+
+                          <QuantityInput
+                            label={
+                              isFreezing
+                                ? 'Utilizado Turno Noche'
+                                : 'Procesado Noche'
+                            }
+                            value={balance.nightKg}
+                            onChange={(value) =>
+                              updateBalanceUse(balance.key, 'nightKg', value)
+                            }
+                          />
+
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                              {isFreezing ? 'Total utilizado' : 'Total procesado'}
+                            </p>
+                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                              {formatCentiKg(position.processedKg100)}
+                            </p>
+                          </div>
+
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                              {isFreezing ? 'Saldo restante' : 'Pendiente'}
+                            </p>
+                            <p
+                              className={`number-tabular mt-1 text-sm font-extrabold ${
+                                position.overusedKg100 > 0
+                                  ? 'text-rose-700 dark:text-rose-300'
+                                  : 'text-slate-900 dark:text-[#F3F8FB]'
+                              }`}
+                            >
+                              {position.overusedKg100 > 0
+                                ? `Exceso ${formatCentiKg(
+                                    position.overusedKg100,
+                                  )}`
+                                : formatCentiKg(position.pendingKg100)}
+                            </p>
+                          </div>
+
+                          <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
+                            <StatusBadge
+                              tone={
+                                requiresProductDistribution ||
+                                position.overusedKg100 > 0 ||
+                                productShiftDiagnostics.length > 0
+                                  ? requiresProductDistribution
+                                    ? 'warning'
+                                    : 'danger'
+                                  : position.pendingKg100 === 0
+                                    ? 'success'
+                                    : 'warning'
+                              }
+                            >
+                              {requiresProductDistribution
+                                ? 'REQUIERE DISTRIBUCIÓN'
+                                : position.overusedKg100 > 0 ||
+                                    productShiftDiagnostics.length > 0
+                                  ? 'REVISAR'
+                                  : position.pendingKg100 === 0
+                                    ? 'CONSUMIDO'
+                                    : 'PENDIENTE'}
+                            </StatusBadge>
+                          </div>
+                        </div>
+
+                        {productShiftDiagnostics.length > 0 ? (
+                          <div
+                            role="alert"
+                            className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
+                          >
+                            <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em]">
+                              Saldo anterior mal distribuido
+                            </p>
+                            {productShiftDiagnostics.map((diagnostic) => (
+                              <div
+                                key={`${diagnostic.productId}-${diagnostic.shift}`}
+                                className="mt-2 text-xs leading-5"
+                              >
+                                <p className="font-bold">
+                                  {diagnostic.productName} · Turno{' '}
+                                  {diagnostic.shift === 'DAY' ? 'Día' : 'Noche'}
+                                </p>
+                                <p>
+                                  Reporte físico:{' '}
+                                  {formatCentiKg(diagnostic.reportedKg100)} ·
+                                  Saldo asignado:{' '}
+                                  {formatCentiKg(
+                                    diagnostic.assignedBalanceKg100,
+                                  )}{' '}
+                                  · Máximo consumible:{' '}
+                                  {formatCentiKg(
+                                    diagnostic.maximumConsumableKg100,
+                                  )}{' '}
+                                  · Exceso: {formatCentiKg(diagnostic.excessKg100)}
+                                </p>
+                                <p className="mt-1">
+                                  El saldo asignado supera los kg físicamente
+                                  reportados para este producto. Redistribuye el
+                                  consumo entre Día/Noche o deja el remanente
+                                  pendiente.
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </>
           )}
         </fieldset>
       </SectionCard>

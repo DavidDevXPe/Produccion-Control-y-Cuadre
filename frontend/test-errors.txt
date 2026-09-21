@@ -1,0 +1,7 @@
+
+> trabunda-produccion-frontend@0.1.0 test
+> vitest run --reporter=verbose
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.0 [39m[90mC:/Users/David/Desktop/Control-saldos-Trabunda/Producci-n-Control-y-cuadre/frontend[39m
+

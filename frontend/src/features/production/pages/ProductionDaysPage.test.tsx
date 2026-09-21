@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
+import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { ProductionDaysPage } from './ProductionDaysPage'
 
 describe('production days page', () => {
@@ -20,7 +20,7 @@ describe('production days page', () => {
       ...screen.queryAllByText('CUADRADO'),
       ...screen.queryAllByText('CUADRADO · OBSERVADO'),
     ]
-    
+
     expect(squaredStatuses).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: /Ver detalle/i })).toHaveLength(4)
     expect(screen.getByText('Último registro disponible')).toBeInTheDocument()
@@ -60,21 +60,23 @@ describe('production days page', () => {
     expect(
       [...table.querySelectorAll('col')].map((column) => column.className),
     ).toEqual([
-      'w-[15%]',
-      'w-[12%]',
       'w-[14%]',
+      'w-[11%]',
+      'w-[12%]',
       'w-[10%]',
       'w-[9%]',
-      'w-[11%]',
-      'w-[18%]',
-      'w-[11%]',
+      'w-[17%]',
+      'w-[15%]',
+      'w-[12%]',
     ])
+
     headers.forEach((header) => {
       expect(header).toHaveClass('px-3', 'text-center', 'align-middle')
     })
 
     const latestRow = screen.getByText('LUNES').closest('tr')
     expect(latestRow).not.toBeNull()
+
     const journeyCell = within(latestRow!).getByRole('rowheader')
     const cells = within(latestRow!).getAllByRole('cell')
 
@@ -85,6 +87,7 @@ describe('production days page', () => {
       'items-center',
       'text-center',
     )
+
     cells.forEach((cell) => {
       expect(cell).toHaveClass('px-3', 'text-center', 'align-middle')
     })
@@ -107,10 +110,9 @@ describe('production days page', () => {
       'justify-center',
     )
 
-    expect(within(latestRow!).getByText('CUADRADO').closest('td')?.firstElementChild).toHaveClass(
-      'w-full',
-      'justify-center',
-    )
+    expect(
+      within(latestRow!).getByText('CUADRADO').closest('td')?.firstElementChild,
+    ).toHaveClass('w-full', 'justify-center')
 
     const utilization = within(latestRow!).getByLabelText(/^Aprovechamiento /)
     expect(utilization).toHaveClass(
@@ -120,6 +122,7 @@ describe('production days page', () => {
       'justify-center',
     )
     expect(utilization).not.toHaveClass('xl:flex-row')
+
     expect(
       within(latestRow!).getByRole('link', { name: /Ver detalle/i })
         .parentElement,
@@ -140,19 +143,38 @@ describe('production days page', () => {
       </ProductionDataProvider>,
     )
 
-    expect(screen.getByText(/07 SEP — 13 SEP · Abierta · 1 de 7/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Nueva jornada' })).toBeInTheDocument()
+    expect(
+      screen.getByText(/07 SEP — 13 SEP · Abierta · 1 de 7/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Nueva jornada' }),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar semana' }))
-    const dialog = screen.getByRole('dialog', { name: 'Cerrar semana 42 · Envasado' })
-    expect(within(dialog).getByText('Martes 08/09/2026 · SIN REGISTRO')).toBeInTheDocument()
-    expect(within(dialog).getByText('Domingo 13/09/2026 · SIN REGISTRO')).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', {
+      name: 'Cerrar semana 42 · Envasado',
+    })
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar semana' }))
+    expect(
+      within(dialog).getByText('Martes 08/09/2026 · SIN REGISTRO'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('Domingo 13/09/2026 · SIN REGISTRO'),
+    ).toBeInTheDocument()
 
-    expect(screen.getByText(/07 SEP — 13 SEP · Cerrada · Solo lectura/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Nueva jornada' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Cerrar semana' })).not.toBeInTheDocument()
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Cerrar semana' }),
+    )
+
+    expect(
+      screen.getByText(/07 SEP — 13 SEP · Cerrada · Solo lectura/),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Nueva jornada' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Cerrar semana' }),
+    ).not.toBeInTheDocument()
   })
 
   it('identifies a registered draft that blocks manual week closure', () => {
@@ -162,13 +184,15 @@ describe('production days page', () => {
     window.localStorage.setItem('trabunda-active-operational-week-v1', '42')
     window.localStorage.setItem(
       'trabunda-production-days-v1',
-      JSON.stringify([{
-        ...WEDNESDAY_PRODUCTION_DAY,
-        id: 'production-day-2026-09-08',
-        date: '2026-09-08',
-        displayName: 'Martes 08/09/2026',
-        status: 'DRAFT',
-      }]),
+      JSON.stringify([
+        {
+          ...WEDNESDAY_PRODUCTION_DAY,
+          id: 'production-day-2026-09-08',
+          date: '2026-09-08',
+          displayName: 'Martes 08/09/2026',
+          status: 'DRAFT',
+        },
+      ]),
     )
 
     render(
@@ -180,10 +204,18 @@ describe('production days page', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar semana' }))
-    const dialog = screen.getByRole('dialog', { name: 'Cerrar semana 42 · Envasado' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'Cerrar semana 42 · Envasado',
+    })
 
-    expect(within(dialog).getByText(/Martes 08\/09\/2026 todavía está en estado DRAFT/)).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Cerrar semana' })).toBeDisabled()
+    expect(
+      within(dialog).getByText(
+        /Martes 08\/09\/2026 todavía está en estado DRAFT/,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Cerrar semana' }),
+    ).toBeDisabled()
   })
 })
 
