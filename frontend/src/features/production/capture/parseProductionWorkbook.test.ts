@@ -67,8 +67,12 @@ describe('production workbook import', () => {
     expect(parsed.reconstructedTotalKg).toBe(227_640)
     expect(parsed.footerTotalKg).toBe(227_640)
     expect(parsed.ignoredRows).toHaveLength(0)
+    expect(parsed.recognizedRows).toBe(21)
+    expect(parsed.newRows).toBe(1)
     expect(parsed.rows.some((row) => row.productName.includes('ESPAÑA'))).toBe(true)
     expect(parsed.rows.some((row) => row.productName.includes('JAPONÉS'))).toBe(true)
+    expect(parsed.rows.find((row) => row.product?.productId === 'membranas-cocidas')?.status).toBe('COINCIDENCIA EXACTA')
+    expect(parsed.rows.find((row) => row.productName.includes('100-300'))?.status).toBe('NUEVO PRODUCTO')
   })
 
   it('uses Total KG as the authoritative productive value', async () => {

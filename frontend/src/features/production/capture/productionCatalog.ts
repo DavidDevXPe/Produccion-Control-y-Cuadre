@@ -133,16 +133,9 @@ export const CAPTURE_CATALOG_ITEMS: ProductionCatalogItem[] = [
 ]
 
 function persistStoredCatalogItems() {
-  if (typeof window === 'undefined') return
-
-  try {
-    window.localStorage.setItem(
-      PRODUCTION_CATALOG_STORAGE_KEY,
-      JSON.stringify(CAPTURE_CATALOG_ITEMS),
-    )
-  } catch {
-    // The in-memory catalog remains available for the current session.
-  }
+  // La persistencia activa del catálogo vive en productCatalogRepository
+  // (`trabunda-product-catalog-v2`). Esta función queda como compatibilidad
+  // interna para no reactivar la clave legacy.
 }
 
 function normalizeProductKey(value: string): string {
@@ -196,6 +189,7 @@ export function addProductionCatalogItem(productName: string): ProductionCatalog
   }
   PRODUCTION_CATALOG_ITEMS.push(item)
   CAPTURE_CATALOG_ITEMS.push(item)
+  addActiveProduct(item)
   PRODUCTION_CATALOG_ITEMS.sort(
     (first, second) =>
       first.familyName.localeCompare(second.familyName, 'es-PE') ||

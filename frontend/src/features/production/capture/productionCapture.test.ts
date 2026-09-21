@@ -220,6 +220,37 @@ describe('production capture', () => {
     expect(result.calculation.newClosingBalanceKg100).toBe(kg100(2_000))
   })
 
+  it('derives finished product from Day and Night reports for Excel-imported Packing', () => {
+    const draft = {
+      ...createEmptyCaptureDraft('2026-09-18'),
+      source: 'EXCEL' as const,
+      sourceSheet: 'Reporte',
+      rawMaterialKg: '383670',
+      declaredDayTotalKg: '227640',
+      declaredNightTotalKg: '156030',
+      declaredFinishedTotalKg: '0',
+      rows: [
+        row({
+          dayReportedKg: '227640',
+          nightReportedKg: '156030',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+        }),
+      ],
+    }
+
+    const result = buildProductionDayFromCapture(draft, [], [], 'CLOSED')
+
+    expect(result.inputErrors).toEqual([])
+    expect(result.productionDay.declaredFinishedTotalKg100).toBe(
+      kg100(38_367_000),
+    )
+    expect(result.productionDay.lines[0]?.declaredFinishedKg100).toBe(
+      kg100(38_367_000),
+    )
+    expect(result.calculation.differenceKg100).toBe(kg100(0))
+  })
+
   it('splits a traceable 10,820 kg balance between Day and Night', () => {
     const originDraft = {
       ...createEmptyCaptureDraft('2026-09-06'),

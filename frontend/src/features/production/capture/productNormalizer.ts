@@ -15,6 +15,7 @@ export function normalizeProductName(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\bP\.N\.?\b/gi, 'PN')
     .replace(/\bS\/TTO\.?\b/gi, 'STTO')
+    .replace(/\bS\s+TTO\.?\b/gi, 'STTO')
     .replace(/\s*-\s*/g, '-')
     .replace(/[^A-Z0-9-]+/gi, ' ')
     .replace(/\s+/g, ' ')

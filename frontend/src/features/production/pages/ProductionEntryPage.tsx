@@ -25,8 +25,16 @@ import {
 } from '../components/ClosingBalanceYieldControl'
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { ProcessSelector } from '../components/ProcessSelector'
+import {
+  freezingTraceabilityStatus,
+  packingProductStatus,
+} from './captureProductStatus'
 import { usePageTitle } from '../../../hooks/usePageTitle'
-import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
+import {
+  formatCentiKg,
+  formatCentiKgValue,
+  formatIsoDate,
+} from '../../../utils/formatters'
 import { getOperationalWeekContextForIsoDate } from '../../../utils/operationalContext'
 import {
   buildProductionDayFromCapture,
@@ -47,7 +55,11 @@ import {
   type ProductionCatalogItem,
 } from '../capture/productionCatalog'
 import { normalizeProductName } from '../capture/productNormalizer'
-import { getActiveProducts } from '../capture/productCatalogRepository'
+import {
+  addActiveProduct,
+  addAliasToActiveProduct,
+  getActiveProducts,
+} from '../capture/productCatalogRepository'
 import type { ParsedPackingReportImport } from '../capture/parseProductionWorkbook'
 import {
   buildBalanceShiftDiagnostics,
@@ -285,62 +297,6 @@ function captureProductAvailability(
   }
 }
 
-function freezingTraceabilityStatus(
-  reportedKg100: ReturnType<typeof kg100>,
-  availableKg100: ReturnType<typeof kg100>,
-  linkedKg100: ReturnType<typeof kg100>,
-) {
-  const pendingToLinkKg100 = kg100(
-    Math.max(reportedKg100 - linkedKg100, 0),
-  )
-
-  if (reportedKg100 === 0 && linkedKg100 === 0) {
-    return {
-      tone: 'neutral' as const,
-      label: 'SIN MOVIMIENTO',
-      pendingToLinkKg100,
-    }
-  }
-
-  if (linkedKg100 > reportedKg100) {
-    return {
-      tone: 'danger' as const,
-      label: 'REVISAR VÍNCULO',
-      pendingToLinkKg100,
-    }
-  }
-
-  if (availableKg100 === 0) {
-    return {
-      tone: 'danger' as const,
-      label: 'SIN ORIGEN TRAZABLE',
-      pendingToLinkKg100,
-    }
-  }
-
-  if (availableKg100 < reportedKg100) {
-    return {
-      tone: 'danger' as const,
-      label: 'ORIGEN INSUFICIENTE',
-      pendingToLinkKg100,
-    }
-  }
-
-  if (linkedKg100 < reportedKg100) {
-    return {
-      tone: 'warning' as const,
-      label: 'PENDIENTE VINCULAR',
-      pendingToLinkKg100,
-    }
-  }
-
-  return {
-    tone: 'success' as const,
-    label: 'TRAZABLE',
-    pendingToLinkKg100,
-  }
-}
-
 export function ProductionEntryPage() {
   const { date: editingDate } = useParams()
   const navigate = useNavigate()
@@ -458,7 +414,9 @@ export function ProductionEntryPage() {
   const [importState, setImportState] = useState<
     'IDLE' | 'READING' | 'READY' | 'ERROR'
   >('IDLE')
-  const [catalogItems] = useState<ProductionCatalogItem[]>(() => getActiveProducts())
+  const [excelImportMessage, setExcelImportMessage] = useState('')
+  const [catalogItems, setCatalogItems] = useState<ProductionCatalogItem[]>(() => getActiveProducts())
+  const [excelExistingProductByRow, setExcelExistingProductByRow] = useState<Record<number, string>>({})
   const [saveError, setSaveError] = useState('')
   const isSunday = isSundayIsoDate(draft.date)
   const isFreezing = draft.process === 'FREEZING'
@@ -491,9 +449,13 @@ export function ProductionEntryPage() {
     [buildResult],
   )
   const reportFamilySubtotals = useMemo(
-    () => calculateReportFamilySubtotals(buildResult.productionDay),
-    [buildResult.productionDay],
-  )
+  () =>
+    calculateReportFamilySubtotals(
+      buildResult.productionDay,
+      buildResult.calculation,
+    ),
+  [buildResult],
+)
   const closureValidation = useMemo(
     () =>
       validateProductionClosure(
@@ -1264,6 +1226,8 @@ const freezingOriginLedgerSummary =
     setExcelPreview(null)
     setFileName('')
     setImportState('IDLE')
+    setExcelImportMessage('')
+    setExcelExistingProductByRow({})
     setClosingProductIds(new Set())
     setSaveError('')
     setExcelPreview(null)
@@ -1818,6 +1782,8 @@ const autoLinkAllFreezingProducts = () => {
     setImportState('READING')
     setFileName(file.name)
     setSaveError('')
+    setExcelImportMessage('')
+    setExcelExistingProductByRow({})
     setExcelPreview(null)
 
     try {
@@ -1844,8 +1810,103 @@ const autoLinkAllFreezingProducts = () => {
     }
   }
 
+  const changeExcelShift = (shift: 'DAY' | 'NIGHT') => {
+    setExcelShift(shift)
+    setExcelPreview(null)
+    setFileName('')
+    setImportState('IDLE')
+    setExcelImportMessage('')
+    setExcelExistingProductByRow({})
+    setSaveError('')
+  }
+
+  const unresolvedExcelRows = excelPreview?.rows.filter((row) =>
+    row.totalKg > 0 &&
+    (row.status === 'NUEVO PRODUCTO' ||
+      row.status === 'REQUIERE REVISIÓN' ||
+      row.status === 'FECHA REQUIERE REVISIÓN')
+  ) ?? []
+
+  const resolveExcelRowWithProduct = (
+    rowNumber: number,
+    product: ProductionCatalogItem,
+    status: 'COINCIDENCIA EXACTA' | 'ALIAS CONOCIDO',
+    matchReason?: string,
+  ) => {
+    setExcelPreview((current) => {
+      if (!current) return current
+      const rows = current.rows.map((row) =>
+        row.rowNumber === rowNumber
+          ? {
+              ...row,
+              product,
+              status,
+              matchKind: status === 'ALIAS CONOCIDO' ? 'ALIAS' as const : 'EXACT' as const,
+              matchReason,
+            }
+          : row,
+      )
+      const newRows = rows.filter((row) => row.status === 'NUEVO PRODUCTO').length
+      const normalizedRows = rows.filter((row) => row.status === 'COINCIDENCIA NORMALIZADA').length
+      const aliasRows = rows.filter((row) => row.status === 'ALIAS CONOCIDO').length
+      const reviewRows = rows.filter((row) =>
+        row.totalKg > 0 &&
+        (row.status === 'NUEVO PRODUCTO' ||
+          row.status === 'REQUIERE REVISIÓN' ||
+          row.status === 'FECHA REQUIERE REVISIÓN')
+      ).length + current.ignoredRows.length
+
+      return {
+        ...current,
+        rows,
+        newRows,
+        normalizedRows,
+        aliasRows,
+        reviewRows,
+        recognizedRows: rows.length - newRows - rows.filter((row) => row.status === 'FECHA REQUIERE REVISIÓN').length,
+        status:
+          reviewRows === 0 && current.warnings.length === 0
+            ? 'EXCEL RECONCILIADO'
+            : 'EXCEL REQUIERE REVISIÓN',
+      }
+    })
+  }
+
+  const addExcelRowToCatalog = (rowNumber: number) => {
+    const row = excelPreview?.rows.find((candidate) => candidate.rowNumber === rowNumber)
+    if (!row?.product) return
+    const confirmed = addActiveProduct({
+      ...row.product,
+      productName: row.product.canonicalName ?? row.product.productName,
+      canonicalName: row.product.canonicalName ?? row.product.productName,
+      active: true,
+      source: 'MANUAL',
+    })
+    setCatalogItems(getActiveProducts())
+    resolveExcelRowWithProduct(rowNumber, confirmed, 'COINCIDENCIA EXACTA')
+  }
+
+  const associateExcelRowToExisting = (rowNumber: number) => {
+    const productId = excelExistingProductByRow[rowNumber]
+    const row = excelPreview?.rows.find((candidate) => candidate.rowNumber === rowNumber)
+    const product = catalogItems.find((candidate) => candidate.productId === productId)
+    if (!row || !product) return
+    addAliasToActiveProduct(product.productId, row.rawProductName)
+    setCatalogItems(getActiveProducts())
+    resolveExcelRowWithProduct(
+      rowNumber,
+      { ...product, aliases: [...new Set([...(product.aliases ?? []), row.rawProductName])] },
+      'ALIAS CONOCIDO',
+      'Alias confirmado manualmente',
+    )
+  }
+
   const applyExcelPreview = async () => {
     if (!excelPreview || excelPreview.status === 'ARCHIVO NO COMPATIBLE') return
+    if (unresolvedExcelRows.length > 0) {
+      setSaveError(`${unresolvedExcelRows.length} producto(s) requieren revisión antes de importar.`)
+      return
+    }
     const shiftHasData = draft.rows.some((row) =>
       excelPreview.shift === 'DAY'
         ? captureQuantityKg100(row.dayReportedKg) > 0
@@ -1863,6 +1924,11 @@ const autoLinkAllFreezingProducts = () => {
       '../capture/parseProductionWorkbook'
     )
     setDraft((current) => mergePackingReportIntoDraft(current, excelPreview))
+    setExcelImportMessage(
+      `Turno ${excelPreview.shift === 'DAY' ? 'Día' : 'Noche'} importado: ${formatCentiKg(
+        captureQuantityKg100(String(excelPreview.reconstructedTotalKg)),
+      )}. Revisa el cuadre antes de guardar.`,
+    )
     setSaveError('')
   }
 
@@ -2058,22 +2124,24 @@ const autoLinkAllFreezingProducts = () => {
           description="Lee la hoja Reporte del archivo estructurado; primero verás una vista previa y luego decides si aplicarla al turno."
           action={<FileSpreadsheet className="size-5 text-emerald-700" aria-hidden="true" />}
         >
-          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[14rem_1fr_auto] lg:items-end">
+          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(12rem,0.65fr)_minmax(24rem,2fr)_auto] lg:items-end">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
                 Turno a importar
               </span>
               <select
                 value={excelShift}
-                onChange={(event) => setExcelShift(event.target.value as 'DAY' | 'NIGHT')}
-                className="h-10 w-full rounded-lg border border-[#2B5268] bg-[#07141F] px-3 text-sm font-semibold text-[#F3F8FB] focus:border-[#169FD0]"
+                onChange={(event) =>
+                  changeExcelShift(event.target.value as 'DAY' | 'NIGHT')
+                }
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
               >
                 <option value="DAY">Turno Día</option>
                 <option value="NIGHT">Turno Noche</option>
               </select>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
                 Archivo de producción
               </span>
               <span className="relative block">
@@ -2081,89 +2149,141 @@ const autoLinkAllFreezingProducts = () => {
                 <input
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="block h-10 w-full cursor-pointer rounded-lg border border-dashed border-[#2B5268] bg-[#07141F] pl-9 text-xs font-semibold text-[#F3F8FB] file:mr-3 file:h-10 file:border-0 file:border-r file:border-[#2B5268] file:bg-transparent file:px-3 file:text-xs file:font-bold file:text-[#58C8EA] focus:outline-none focus:ring-2 focus:ring-[#169FD0]"
+                  className="block h-10 w-full cursor-pointer rounded-lg border border-dashed border-slate-300 bg-white pl-9 text-xs font-semibold text-slate-800 file:mr-3 file:h-10 file:border-0 file:border-r file:border-slate-200 file:bg-transparent file:px-3 file:text-xs file:font-bold file:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:file:border-[#2B5268] dark:file:text-[#58C8EA] dark:focus:ring-[#169FD0]"
                   aria-describedby="excel-file-status"
                   onChange={handleWorkbook}
                 />
               </span>
-              <span id="excel-file-status" className="mt-1 block truncate text-[0.6875rem] text-slate-500">
+              <span id="excel-file-status" className="mt-1 block truncate text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]">
                 {fileName || 'Archivo .xlsx con hoja Reporte.'}
               </span>
             </label>
             <button
               type="button"
-              disabled={!excelPreview || excelPreview.status === 'ARCHIVO NO COMPATIBLE'}
+              disabled={!excelPreview || excelPreview.status === 'ARCHIVO NO COMPATIBLE' || unresolvedExcelRows.length > 0}
               onClick={applyExcelPreview}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-[#203E50]"
             >
               Confirmar importación
             </button>
           </div>
+          {excelImportMessage ? (
+            <p className="mx-5 mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-[#1B7B4F] dark:bg-[#06351F] dark:text-[#32D094]" role="status">
+              {excelImportMessage}
+            </p>
+          ) : null}
           {importState === 'READING' ? (
-            <p className="px-5 pb-4 text-xs font-semibold text-brand-800" role="status">
+            <p className="px-5 pb-4 text-xs font-semibold text-brand-800 dark:text-[#58C8EA]" role="status">
               Leyendo y validando la hoja Reporte…
             </p>
           ) : null}
           {importState === 'ERROR' ? (
-            <p className="mx-5 mb-5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800" role="alert">
+            <p className="mx-5 mb-5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:bg-rose-500/15 dark:text-rose-300" role="alert">
               No se pudo leer el reporte de Envasado. Verifica que el archivo tenga hoja Reporte y columna Total KG.
             </p>
           ) : null}
           {excelPreview?.warnings.length ? (
-            <div className="mx-5 mb-5 rounded-lg border border-[#805f22] bg-[#2a2414] px-3 py-2 text-xs leading-5 text-[#f2c866]" role="status">
+            <div className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]" role="status">
               {excelPreview.warnings.map((warning) => <p key={warning}>{warning}</p>)}
             </div>
           ) : null}
           {excelPreview ? (
-            <div className="mx-5 mb-5 grid gap-2 rounded-lg border border-[#203E50] bg-[#07141F] p-3 text-xs sm:grid-cols-4 lg:grid-cols-7" role="region" aria-label="Validación de Excel">
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Archivo</p><p className="mt-1 truncate font-bold text-[#F3F8FB]">{excelPreview.fileName}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Hoja</p><p className="mt-1 font-bold text-[#F3F8FB]">{excelPreview.sheetName}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Turno</p><p className="mt-1 font-bold text-[#F3F8FB]">{excelPreview.shift === 'DAY' ? 'Día' : 'Noche'}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Filas productivas</p><p className="number-tabular mt-1 font-bold text-[#F3F8FB]">{excelPreview.productiveRows}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Reconocidas</p><p className="number-tabular mt-1 font-bold text-[#F3F8FB]">{excelPreview.recognizedRows}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Total KG</p><p className="number-tabular mt-1 font-bold text-[#F3F8FB]">{formatCentiKg(captureQuantityKg100(String(excelPreview.reconstructedTotalKg)))}</p></div>
-              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">Estado</p><p className={`mt-1 font-extrabold ${excelPreview.status === 'EXCEL RECONCILIADO' ? 'text-[#32D094]' : excelPreview.status === 'EXCEL REQUIERE REVISIÓN' ? 'text-[#E4AC35]' : 'text-[#ff6b6b]'}`}>{excelPreview.status}</p></div>
+            <div className="mx-5 mb-5 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs sm:grid-cols-4 lg:grid-cols-9 dark:border-[#203E50] dark:bg-[#07141F]" role="region" aria-label="Validación de Excel">
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Archivo</p><p className="mt-1 truncate font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.fileName}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Hoja</p><p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.sheetName}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Turno</p><p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.shift === 'DAY' ? 'Día' : 'Noche'}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Filas productivas</p><p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.productiveRows}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Reconocidas</p><p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.recognizedRows}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Normalizadas / alias</p><p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.normalizedRows} / {excelPreview.aliasRows}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Nuevas / revisión</p><p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{excelPreview.newRows} / {excelPreview.reviewRows}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Total KG</p><p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">{formatCentiKg(captureQuantityKg100(String(excelPreview.reconstructedTotalKg)))}</p></div>
+              <div><p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">Estado</p><p className={`mt-1 font-extrabold ${excelPreview.status === 'EXCEL RECONCILIADO' ? 'text-emerald-700 dark:text-[#32D094]' : excelPreview.status === 'EXCEL REQUIERE REVISIÓN' ? 'text-amber-700 dark:text-[#E4AC35]' : 'text-rose-700 dark:text-[#ff6b6b]'}`}>{excelPreview.status}</p></div>
             </div>
           ) : null}
+          {unresolvedExcelRows.length > 0 ? (
+            <p className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]" role="status">
+              {unresolvedExcelRows.length} producto(s) requieren revisión antes de confirmar la importación.
+            </p>
+          ) : null}
           {excelPreview?.rows.length ? (
-            <div className="mx-5 mb-5 overflow-hidden rounded-lg border border-[#203E50] bg-[#07141F]" role="region" aria-label="Vista previa Excel de Envasado">
-              <div className="border-b border-[#203E50] px-4 py-3">
-                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-[#F3F8FB]">
+            <div className="mx-5 mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-[#203E50] dark:bg-[#07141F]" role="region" aria-label="Vista previa Excel de Envasado">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-[#203E50]">
+                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-950 dark:text-[#F3F8FB]">
                   Vista previa de Envasado
                 </p>
-                <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
                   Cada fila usa únicamente Producto, Horario y la columna Total KG.
                 </p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[56rem] text-left text-xs">
-                  <thead className="bg-[#0D2534] text-[0.625rem] uppercase tracking-[0.08em] text-[#A5BED0]">
+                <table className="w-full min-w-[72rem] text-left text-xs">
+                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-[#0D2534] dark:text-[#A5BED0]">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
                       <th className="px-4 py-2.5 text-center">Fecha calendario</th>
                       <th className="px-4 py-2.5 text-right">Total KG</th>
                       <th className="px-4 py-2.5 text-center">Estado</th>
+                      <th className="px-4 py-2.5 text-center">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {excelPreview.rows.map((row, index) => (
-                      <tr key={`${row.productName}-${row.rowCalendarDate ?? 'sin-fecha'}-${index}`} className="border-t border-[#203E50] text-[#F3F8FB]">
+                      <tr key={`${row.productName}-${row.rowCalendarDate ?? 'sin-fecha'}-${index}`} className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-[#203E50] dark:text-[#F3F8FB] dark:hover:bg-[#0D2534]">
                         <td className="px-4 py-2.5 font-semibold">{row.productName}</td>
-                        <td className="px-4 py-2.5 text-[#A5BED0]">{row.product?.canonicalName ?? row.product?.productName ?? '—'}</td>
-                        <td className="px-4 py-2.5 text-center text-[#A5BED0]">{row.rowCalendarDate ?? 'No confirmada'}</td>
-                        <td className="number-tabular px-4 py-2.5 text-right font-bold">{formatCentiKg(captureQuantityKg100(String(row.totalKg)))}</td>
+                        <td className="px-4 py-2.5 text-slate-600 dark:text-[#A5BED0]">{row.product?.canonicalName ?? row.product?.productName ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-center text-slate-600 dark:text-[#A5BED0]">{row.rowCalendarDate ?? 'No confirmada'}</td>
+                        <td className="number-tabular px-4 py-2.5 text-right font-bold">{formatCentiKgValue(captureQuantityKg100(String(row.totalKg)))}</td>
                         <td className="px-4 py-2.5 text-center">
                           <span className={`inline-flex rounded-full border px-2 py-1 text-[0.625rem] font-extrabold uppercase tracking-[0.06em] ${
-                            row.status === 'COINCIDENCIA EXACTA' || row.status === 'COINCIDENCIA NORMALIZADA' || row.status === 'ALIAS'
-                              ? 'border-[#1B7B4F] bg-[#06351F] text-[#32D094]'
+                            row.status === 'COINCIDENCIA EXACTA' || row.status === 'COINCIDENCIA NORMALIZADA' || row.status === 'ALIAS CONOCIDO'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-[#1B7B4F] dark:bg-[#06351F] dark:text-[#32D094]'
                               : row.status === 'NUEVO PRODUCTO'
-                                ? 'border-[#2B5268] bg-[#123247] text-[#58C8EA]'
-                                : 'border-[#805f22] bg-[#2a2414] text-[#f2c866]'
+                                ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-[#2B5268] dark:bg-[#123247] dark:text-[#58C8EA]'
+                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]'
                           }`}
+                          title={row.matchReason}
                           >
                             {row.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {row.totalKg > 0 && (row.status === 'NUEVO PRODUCTO' || row.status === 'REQUIERE REVISIÓN') ? (
+                            <div className="flex min-w-72 flex-col gap-2">
+                              <button
+                                type="button"
+                                className="rounded-lg bg-brand-700 px-3 py-2 text-xs font-bold text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-[#169FD0] dark:hover:bg-[#58C8EA] dark:hover:text-[#07141F] dark:focus:ring-[#58C8EA]"
+                                onClick={() => addExcelRowToCatalog(row.rowNumber)}
+                              >
+                                Revisar / Agregar al catálogo
+                              </button>
+                              <div className="flex gap-2">
+                                <select
+                                  aria-label={`Asociar ${row.productName} a producto existente`}
+                                  value={excelExistingProductByRow[row.rowNumber] ?? ''}
+                                  onChange={(event) => setExcelExistingProductByRow((current) => ({ ...current, [row.rowNumber]: event.target.value }))}
+                                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
+                                >
+                                  <option value="">Asociar a existente…</option>
+                                  {catalogItems.map((product) => (
+                                    <option key={product.productId} value={product.productId}>
+                                      {product.canonicalName ?? product.productName}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  disabled={!excelExistingProductByRow[row.rowNumber]}
+                                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-brand-300 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2B5268] dark:text-[#A5BED0] dark:hover:border-[#58C8EA] dark:hover:text-[#F3F8FB]"
+                                  onClick={() => associateExcelRowToExisting(row.rowNumber)}
+                                >
+                                  Asociar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-[#7F9BAD]">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2550,21 +2670,24 @@ const autoLinkAllFreezingProducts = () => {
                         calculated?.day.reportedKg100 ?? kg100(0),
                         calculated?.night.reportedKg100 ?? kg100(0),
                       ])
-                      const linkedAvailability = captureProductAvailability(
-                        draft,
-                        productId,
-                      )
-                      
-                      const availableKg100 =
-                        getFreezingPotentialAvailabilityKg100(productId)
-                      
-                      const linkedKg100 = linkedAvailability.frozenKg100
-                      
-                      const traceabilityStatus = freezingTraceabilityStatus(
-                        totalKg100,
-                        availableKg100,
-                        linkedKg100,
-                      )
+                      const linkedAvailability = isFreezing
+                        ? captureProductAvailability(draft, productId)
+                        : null
+                      const availableKg100 = isFreezing
+                        ? getFreezingPotentialAvailabilityKg100(productId)
+                        : kg100(0)
+                      const linkedKg100 =
+                        linkedAvailability?.frozenKg100 ?? kg100(0)
+                      const productStatus = isFreezing
+                        ? freezingTraceabilityStatus(
+                            totalKg100,
+                            availableKg100,
+                            linkedKg100,
+                          )
+                        : {
+                            ...packingProductStatus(totalKg100),
+                            pendingToLinkKg100: kg100(0),
+                          }
                       return (
                     <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
                       <th className="sticky left-0 z-10 bg-white px-4 py-2.5">
@@ -2595,25 +2718,25 @@ const autoLinkAllFreezingProducts = () => {
                       <td
                         className={`number-tabular px-3 py-2.5 text-right text-xs ${
                           isFreezing &&
-                          traceabilityStatus.pendingToLinkKg100 > 0
+                          productStatus.pendingToLinkKg100 > 0
                             ? 'font-bold text-amber-700'
                             : 'text-slate-400'
                         }`}
                       >
                         {isFreezing
                           ? formatCentiKg(
-                              traceabilityStatus.pendingToLinkKg100,
+                              productStatus.pendingToLinkKg100,
                             )
                           : '—'}
                       </td>
                       <td className="px-3 py-2.5 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
-                          <StatusBadge tone={traceabilityStatus.tone}>
-                            {traceabilityStatus.label}
+                          <StatusBadge tone={productStatus.tone}>
+                            {productStatus.label}
                           </StatusBadge>
 
                           {isFreezing &&
-                          traceabilityStatus.pendingToLinkKg100 > 0 &&
+                          productStatus.pendingToLinkKg100 > 0 &&
                           availableKg100 > linkedKg100 ? (
                             <button
                               type="button"

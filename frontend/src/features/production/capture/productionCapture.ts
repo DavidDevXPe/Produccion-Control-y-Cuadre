@@ -32,6 +32,7 @@ import {
 } from './productionCatalog'
 
 export type CaptureSource = 'MANUAL' | 'EXCEL'
+export type FinishedTotalMode = 'DERIVED_FROM_REPORTS' | 'IMPORTED_DECLARED'
 export type ShiftAllocationMode = 'EXPLICIT' | 'RECONCILED_INFERENCE'
 
 export interface ProductionCaptureRow {
@@ -76,6 +77,7 @@ export interface ProductionCaptureDraft {
   process: ProductionProcess
   source: CaptureSource
   sourceSheet: string
+  finishedTotalMode: FinishedTotalMode
   shiftAllocationMode: ShiftAllocationMode
   operationMode: ProductionDayOperationMode
   rawMaterialKg: string
@@ -274,6 +276,7 @@ export function createEmptyCaptureDraft(
     process,
     source: 'MANUAL',
     sourceSheet: 'CAPTURA WEB',
+    finishedTotalMode: 'DERIVED_FROM_REPORTS',
     shiftAllocationMode: 'EXPLICIT',
     operationMode,
     rawMaterialKg:
@@ -305,6 +308,7 @@ export function createCaptureDraftFromDay(
         ? 'MANUAL'
         : 'EXCEL',
     sourceSheet: productionDay.lines.at(0)?.source.sheet ?? 'CAPTURA WEB',
+    finishedTotalMode: 'DERIVED_FROM_REPORTS',
     shiftAllocationMode:
       productionDay.lines.at(0)?.shiftBreakdownConfidence === 'EXPLICIT'
         ? 'EXPLICIT'
@@ -428,7 +432,7 @@ export function buildProductionDayFromCapture(
   const isFreezing = draft.process === 'FREEZING'
   const usesExternalAvailability = isBalanceOnly || isFreezing
   const keepsImportedFinishedTotals =
-    draft.source === 'EXCEL' && !usesExternalAvailability
+    draft.finishedTotalMode === 'IMPORTED_DECLARED' && !usesExternalAvailability
   const quantityFor = (value: string, label: string) =>
     parseQuantity(value, label, errors)
   const rawMaterial = usesExternalAvailability

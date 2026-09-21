@@ -4,7 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
-import { ProductionEntryPage } from './ProductionEntryPage'
+import { kg100 } from '../model/calculations'
+import {
+  freezingTraceabilityStatus,
+  packingProductStatus,
+} from './captureProductStatus'
+import {
+  ProductionEntryPage,
+} from './ProductionEntryPage'
 
 function renderNewEntry(initialEntry = '/jornadas/nueva') {
   return render(
@@ -387,6 +394,25 @@ expect(
 expect(traceabilitySummary).toHaveTextContent(
   /0\.00\s*kg\s+de\s+10\.00\s*kg\s+con origen vinculado\./i,
 )
+})
+
+describe('capture product status labels', () => {
+  it('keeps traceability labels exclusive to Freezing and uses operational labels for Packing', () => {
+    expect(packingProductStatus(kg100(1_000))).toMatchObject({
+      tone: 'success',
+      label: 'REGISTRADO',
+    })
+    expect(packingProductStatus(kg100(0))).toMatchObject({
+      tone: 'neutral',
+      label: 'SIN MOVIMIENTO',
+    })
+    expect(
+      freezingTraceabilityStatus(kg100(1_000), kg100(0), kg100(0)),
+    ).toMatchObject({
+      tone: 'danger',
+      label: 'SIN ORIGEN TRAZABLE',
+    })
+  })
 })
 
   it('changes process immediately while the form is empty', () => {

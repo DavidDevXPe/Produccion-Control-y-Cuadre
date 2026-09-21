@@ -18,7 +18,7 @@ export type ExcelImportShift = 'DAY' | 'NIGHT'
 export type ExcelImportRowStatus =
   | 'COINCIDENCIA EXACTA'
   | 'COINCIDENCIA NORMALIZADA'
-  | 'ALIAS'
+  | 'ALIAS CONOCIDO'
   | 'REQUIERE REVISIÓN'
   | 'NUEVO PRODUCTO'
   | 'FILA IGNORADA'
@@ -31,8 +31,9 @@ export interface ParsedPackingReportRow {
   rowCalendarDate: string | null
   totalKg: number
   product: ProductionCatalogItem | null
-  matchKind: ProductMatchKind | 'NORMALIZED'
+  matchKind: ProductMatchKind
   status: ExcelImportRowStatus
+  matchReason?: string | undefined
   ignoredReason?: string
 }
 
@@ -49,6 +50,9 @@ export interface ParsedPackingReportImport {
   reconstructedTotalKg: number
   productiveRows: number
   recognizedRows: number
+  normalizedRows: number
+  aliasRows: number
+  newRows: number
   reviewRows: number
   status: 'EXCEL RECONCILIADO' | 'EXCEL REQUIERE REVISIÓN' | 'ARCHIVO NO COMPATIBLE'
 }
@@ -155,10 +159,11 @@ function isFooterProductName(value: string): boolean {
   return /total general|ajuste|total \(?aros/i.test(value)
 }
 
-function rowStatusFor(matchKind: ProductMatchKind | 'NORMALIZED'): ExcelImportRowStatus {
+function rowStatusFor(matchKind: ProductMatchKind): ExcelImportRowStatus {
   if (matchKind === 'EXACT') return 'COINCIDENCIA EXACTA'
-  if (matchKind === 'ALIAS') return 'ALIAS'
-  if (matchKind === 'NORMALIZED' || matchKind === 'LIKELY_MATCH') return 'COINCIDENCIA NORMALIZADA'
+  if (matchKind === 'ALIAS') return 'ALIAS CONOCIDO'
+  if (matchKind === 'NORMALIZED_ENCODING' || matchKind === 'NORMALIZED_FORMAT') return 'COINCIDENCIA NORMALIZADA'
+  if (matchKind === 'REVIEW_REQUIRED') return 'REQUIERE REVISIÓN'
   return 'NUEVO PRODUCTO'
 }
 
@@ -191,6 +196,9 @@ function parsePackingReportWorksheet(
       reconstructedTotalKg: 0,
       productiveRows: 0,
       recognizedRows: 0,
+      normalizedRows: 0,
+      aliasRows: 0,
+      newRows: 0,
       reviewRows: 0,
       status: 'ARCHIVO NO COMPATIBLE',
     }
@@ -231,10 +239,8 @@ function parsePackingReportWorksheet(
 
     const match = matchProduct(productName)
     const product = match.product ?? createUnconfirmedCatalogItem(productName)
-    const matchKind: ProductMatchKind | 'NORMALIZED' =
-      match.kind === 'EXACT' && rawProductName !== productName ? 'NORMALIZED' : match.kind
     const dateAccepted = isDateAccepted(rowCalendarDate, options.operationalDate, options.shift)
-    const status = dateAccepted ? rowStatusFor(matchKind) : 'FECHA REQUIERE REVISIÓN'
+    const status = dateAccepted ? rowStatusFor(match.kind) : 'FECHA REQUIERE REVISIÓN'
 
     rows.push({
       rowNumber,
@@ -243,18 +249,24 @@ function parsePackingReportWorksheet(
       rowCalendarDate,
       totalKg,
       product,
-      matchKind,
+      matchKind: match.kind,
       status,
+      matchReason: match.reason,
     })
   }
 
   const reconstructedTotalKg = rows.reduce((sum, row) => sum + row.totalKg, 0)
   const reviewRows = rows.filter((row) =>
-    row.status === 'NUEVO PRODUCTO' ||
-    row.status === 'REQUIERE REVISIÓN' ||
-    row.status === 'FECHA REQUIERE REVISIÓN',
+    row.totalKg > 0 && (
+      row.status === 'NUEVO PRODUCTO' ||
+      row.status === 'REQUIERE REVISIÓN' ||
+      row.status === 'FECHA REQUIERE REVISIÓN'
+    ),
   ).length + ignoredRows.length
-  const recognizedRows = rows.length - rows.filter((row) => row.status === 'NUEVO PRODUCTO').length
+  const newRows = rows.filter((row) => row.status === 'NUEVO PRODUCTO').length
+  const normalizedRows = rows.filter((row) => row.status === 'COINCIDENCIA NORMALIZADA').length
+  const aliasRows = rows.filter((row) => row.status === 'ALIAS CONOCIDO').length
+  const recognizedRows = rows.length - newRows - rows.filter((row) => row.status === 'FECHA REQUIERE REVISIÓN').length
 
   if (footerTotalKg !== null && Math.abs(footerTotalKg - reconstructedTotalKg) > 0.01) {
     warnings.push(
@@ -281,9 +293,14 @@ function parsePackingReportWorksheet(
     reconstructedTotalKg,
     productiveRows: rows.length,
     recognizedRows,
+    normalizedRows,
+    aliasRows,
+    newRows,
     reviewRows,
     status:
-      warnings.length === 0 && (footerTotalKg === null || Math.abs(footerTotalKg - reconstructedTotalKg) <= 0.01)
+      reviewRows === 0 &&
+      warnings.length === 0 &&
+      (footerTotalKg === null || Math.abs(footerTotalKg - reconstructedTotalKg) <= 0.01)
         ? 'EXCEL RECONCILIADO'
         : 'EXCEL REQUIERE REVISIÓN',
   }
@@ -314,6 +331,9 @@ export async function parseProductionWorkbook(
       reconstructedTotalKg: 0,
       productiveRows: 0,
       recognizedRows: 0,
+      normalizedRows: 0,
+      aliasRows: 0,
+      newRows: 0,
       reviewRows: 0,
       status: 'ARCHIVO NO COMPATIBLE',
     }
@@ -359,7 +379,12 @@ export function mergePackingReportIntoDraft(
   )
 
   for (const [index, parsedRow] of parsed.rows.entries()) {
-    if (!parsedRow.product || parsedRow.status === 'FECHA REQUIERE REVISIÓN') continue
+    if (
+      !parsedRow.product ||
+      parsedRow.status === 'FECHA REQUIERE REVISIÓN' ||
+      parsedRow.status === 'NUEVO PRODUCTO' ||
+      parsedRow.status === 'REQUIERE REVISIÓN'
+    ) continue
     const existing = rows.find((row) => row.product.productId === parsedRow.product?.productId)
     if (!existing) {
       const next = rowFromImport(parsedRow, index, shift)
@@ -376,13 +401,18 @@ export function mergePackingReportIntoDraft(
   }
 
   const totalKg = parsed.rows
-    .filter((row) => row.status !== 'FECHA REQUIERE REVISIÓN')
+    .filter((row) =>
+      row.status !== 'FECHA REQUIERE REVISIÓN' &&
+      row.status !== 'NUEVO PRODUCTO' &&
+      row.status !== 'REQUIERE REVISIÓN',
+    )
     .reduce((sum, row) => sum + row.totalKg, 0)
 
   return {
     ...draft,
     source: 'EXCEL',
     sourceSheet: parsed.sheetName,
+    finishedTotalMode: 'DERIVED_FROM_REPORTS',
     shiftAllocationMode: 'EXPLICIT',
     declaredDayTotalKg: shift === 'DAY' ? String(totalKg) : draft.declaredDayTotalKg || '0',
     declaredNightTotalKg: shift === 'NIGHT' ? String(totalKg) : draft.declaredNightTotalKg || '0',

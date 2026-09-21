@@ -109,4 +109,28 @@ describe('Trabunda backup service', () => {
     expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.productionDays)).toBe('[]')
     expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.productCatalog)).toBeNull()
   })
+
+  it('exports and restores dynamic products with aliases', () => {
+    const catalog = JSON.stringify([
+      {
+        productId: 'nuca-semilimpia-100-300',
+        productName: 'NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N.',
+        canonicalName: 'NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N.',
+        familyId: 'nuca-semilimpia',
+        familyName: 'NUCA SEMILIMPIA',
+        summaryGroupId: 'NUCA_SEMILIMPIA',
+        aliases: ['NUCA SEMILIMPIA 100-300 EXTERNO'],
+        active: true,
+      },
+    ])
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.productCatalog, catalog)
+
+    const backup = createTrabundaBackup()
+    localStorage.clear()
+    const preview = parseTrabundaBackup(JSON.stringify(backup))
+    restoreTrabundaBackup(preview)
+
+    expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.productCatalog)).toBe(catalog)
+    expect(parseTrabundaBackup(JSON.stringify(backup)).catalogProducts).toBe(1)
+  })
 })

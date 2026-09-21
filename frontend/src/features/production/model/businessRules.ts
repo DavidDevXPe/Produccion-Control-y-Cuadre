@@ -80,9 +80,21 @@ export interface ReportFamilySubtotal {
   key: string;
   label: string;
   productIds: readonly string[];
+
+  /** Producción física reportada por los supervisores. */
   dayKg100: Kg100;
   nightKg100: Kg100;
   totalKg100: Kg100;
+
+  /** Saldo histórico realmente procesado dentro de estos reportes. */
+  previousBalanceProcessedKg100: Kg100;
+
+  /**
+   * Producción que pertenece realmente a la MP de esta jornada:
+   * reportado + ajustes - saldo anterior procesado.
+   */
+  ownProductionKg100: Kg100;
+
   preliminaryYieldPercent: number | null;
   targetPercent: number | null;
   missingToTargetKg100: Kg100;
@@ -369,6 +381,7 @@ function operationalFamily(line: ProductionDay["lines"][number]) {
 /** Report-only family control. Tunnel, treatment and closing balances are intentionally excluded. */
 export function calculateReportFamilySubtotals(
   productionDay: ProductionDay,
+  calculation: ProductionDayCalculation,
 ): readonly ReportFamilySubtotal[] {
   const buckets = new Map<
     string,
@@ -427,6 +440,25 @@ export function calculateReportFamilySubtotals(
 
   return [...buckets.entries()].map(([key, bucket]) => {
     const totalKg100 = sumKg100([bucket.dayKg100, bucket.nightKg100]);
+    const familyProductIds = new Set(bucket.productIds);
+
+    const familyCalculatedProducts = calculation.products.filter((product) =>
+      familyProductIds.has(product.productId),
+    );
+
+    const previousBalanceProcessedKg100 = sumKg100(
+      familyCalculatedProducts.flatMap((product) => [
+        product.day.previousBalanceProcessedKg100,
+        product.night.previousBalanceProcessedKg100,
+      ]),
+    );
+
+    const ownProductionKg100 = sumKg100(
+      familyCalculatedProducts.flatMap((product) => [
+        product.day.ownProductionKg100,
+        product.night.ownProductionKg100,
+      ]),
+    );
     const configured =
       key === "ALETA"
         ? {
@@ -455,16 +487,18 @@ export function calculateReportFamilySubtotals(
                   }
                 : null;
     const preliminaryYieldPercent = configured
-      ? percent(totalKg100, configured.rawKg100)
+      ? percent(ownProductionKg100, configured.rawKg100)
       : null;
     const targetKg100 =
       configured?.target == null
         ? null
         : kg100(Math.round(configured.rawKg100 * configured.target));
     const status: FamilyYieldStatus =
-      configured && configured.rawKg100 > 0 && totalKg100 > configured.rawKg100
+      configured &&
+      configured.rawKg100 > 0 &&
+      ownProductionKg100 > configured.rawKg100
         ? "INTEGRITY_ERROR"
-        : targetKg100 !== null && totalKg100 < targetKg100
+        : targetKg100 !== null && ownProductionKg100 < targetKg100
           ? "BELOW_TARGET"
           : targetKg100 !== null
             ? "COMPLIES"
@@ -477,13 +511,15 @@ export function calculateReportFamilySubtotals(
       dayKg100: bucket.dayKg100,
       nightKg100: bucket.nightKg100,
       totalKg100,
+      previousBalanceProcessedKg100,
+      ownProductionKg100,
       preliminaryYieldPercent,
       targetPercent:
         configured?.target == null ? null : configured.target * 100,
       missingToTargetKg100:
         targetKg100 === null
           ? ZERO
-          : kg100(Math.max(targetKg100 - totalKg100, 0)),
+          : kg100(Math.max(targetKg100 - ownProductionKg100, 0)),
       status,
     };
   });

@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAPTURE_CATALOG_ITEMS,
+  confirmProductionCatalogItem,
   createUnconfirmedCatalogItem,
   filterCaptureCatalogItems,
   filterProductionCatalogItems,
   PRODUCTION_CATALOG_ITEMS,
 } from "./productionCatalog";
 import { SEED_CAPTURE_PRODUCTS } from "./seedProducts";
+import { addAliasToActiveProduct, getActiveProducts } from "./productCatalogRepository";
 
 describe("production catalog filtering", () => {
   it.each(["aleta", "MANTO", "nuca", "semi limpia"])(
@@ -162,5 +164,47 @@ describe("active capture catalog", () => {
     expect(item.familyId).toBe("unclassified");
     expect(item.familyName).toBe("REQUIERE CLASIFICACIÓN");
     expect(item.technicalClassification).toBe("UNCLASSIFIED");
+  });
+
+  it("keeps Membranas on its historical product id with the new canonical name", () => {
+    expect(SEED_CAPTURE_PRODUCTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "membranas-cocidas",
+          canonicalName: "MEMBRANAS COCIDAS CONGELADAS BLOCK S/TTO 100% P.N.",
+          aliases: expect.arrayContaining([
+            "MEMBRANAS COCIDAS CONGELADAS 100% P.N.",
+          ]),
+        }),
+      ]),
+    );
+  });
+
+  it("persists dynamic products and aliases through the active catalog repository", () => {
+    const dynamic = confirmProductionCatalogItem({
+      ...createUnconfirmedCatalogItem(
+        "NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N.",
+      ),
+      productId: "nuca-semilimpia-100-300",
+      familyId: "nuca-semilimpia",
+      familyName: "NUCA SEMILIMPIA",
+      summaryGroupId: "NUCA_SEMILIMPIA",
+      source: "MANUAL",
+    });
+
+    addAliasToActiveProduct(dynamic.productId, "NUCA SEMILIMPIA 100-300 EXTERNO");
+
+    expect(getActiveProducts()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "nuca-semilimpia-100-300",
+          familyId: "nuca-semilimpia",
+          aliases: expect.arrayContaining(["NUCA SEMILIMPIA 100-300 EXTERNO"]),
+        }),
+      ]),
+    );
+    expect(window.localStorage.getItem("trabunda-product-catalog-v2")).toContain(
+      "nuca-semilimpia-100-300",
+    );
   });
 });

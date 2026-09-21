@@ -12,7 +12,9 @@ function isContaminatedAlias(value: string): boolean {
 function readDynamicProducts(): ProductionCatalogItem[] {
   if (typeof window === 'undefined') return []
   try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]')
+    const current = window.localStorage.getItem(STORAGE_KEY)
+    const legacy = window.localStorage.getItem(TRABUNDA_STORAGE_KEYS.legacyProductionCatalog)
+    const parsed: unknown = JSON.parse(current ?? legacy ?? '[]')
     return Array.isArray(parsed) ? parsed.filter((item): item is ProductionCatalogItem => Boolean(item && typeof item === 'object' && typeof (item as { productId?: unknown }).productId === 'string')).map((item) => ({
       ...item,
       aliases: (item.aliases ?? []).filter((alias) => typeof alias === 'string' && !isContaminatedAlias(alias)),
@@ -64,13 +66,26 @@ export function getActiveProducts(): ProductionCatalogItem[] {
 
 export function addActiveProduct(product: ProductionCatalogItem): ProductionCatalogItem {
   const existing = dynamicProducts.find((item) => item.productId === product.productId)
-  if (!existing) dynamicProducts.push(product)
+  if (!existing) {
+    dynamicProducts.push(product)
+  } else {
+    Object.assign(existing, {
+      ...product,
+      aliases: [...new Set([...(existing.aliases ?? []), ...(product.aliases ?? [])])],
+    })
+  }
   persist()
   return existing ?? product
 }
 
 export function createStableProductId(canonicalName: string): string {
-  const base = `capture-${productNameSlug(canonicalName)}`
+  const slug = productNameSlug(canonicalName)
+  const base =
+    slug.includes('nucas-crudas-congeladas-block-stto-semi-limpias-100-300')
+      ? 'nuca-semilimpia-100-300'
+      : slug.startsWith('nuca') && slug.includes('100-300')
+        ? 'nuca-semilimpia-100-300'
+        : slug
   const active = getActiveProducts()
   if (!active.some((item) => item.productId === base)) return base
   let suffix = 2
@@ -89,4 +104,8 @@ export function addAliasToActiveProduct(productId: string, alias: string): void 
     dynamicProducts.push({ ...active, aliases: [...(active.aliases ?? []), alias] })
   }
   persist()
+}
+
+export function resetActiveProductCatalogForTests(): void {
+  dynamicProducts.splice(0, dynamicProducts.length, ...readDynamicProducts())
 }

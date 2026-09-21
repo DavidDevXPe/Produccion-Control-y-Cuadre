@@ -89,7 +89,7 @@ const seedNames = [
     "NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 300-UP 100% P.N.",
     "NUCA_SEMILIMPIA",
   ],
-  ["MEMBRANAS COCIDAS CONGELADAS 100% P.N.", "MEMBRANA"],
+  ["MEMBRANAS COCIDAS CONGELADAS BLOCK S/TTO 100% P.N.", "MEMBRANA"],
 ] as const;
 
 const seedIds = [
@@ -203,7 +203,10 @@ export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] =
     productName: canonicalName,
     canonicalName,
     normalizedName: normalizeProductName(canonicalName),
-    aliases: [],
+    aliases:
+      seedIds[index] === "membranas-cocidas"
+        ? ["MEMBRANAS COCIDAS CONGELADAS 100% P.N."]
+        : [],
     source: "CAPTURE" as const,
     createdAt: "2026-09-15T00:00:00.000Z",
     active: true,

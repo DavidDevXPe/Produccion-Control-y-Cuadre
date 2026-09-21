@@ -10,6 +10,36 @@ describe('product normalization and matching', () => {
     )
   })
 
+  it('reports safe normalization reasons without fuzzy matching', () => {
+    const encoding = matchProduct(
+      'ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÃ‘A P POLAR SM SP ST MIXTA 100% P.N.',
+      SEED_CAPTURE_PRODUCTS,
+    )
+    const format = matchProduct(
+      'MANTO JAPONES CRUDO CONGELADO BLOCK S TTO 2 KG - 4 KG SB 100% PN',
+      SEED_CAPTURE_PRODUCTS,
+    )
+
+    expect(encoding.kind).toBe('NORMALIZED_ENCODING')
+    expect(format.kind).toBe('NORMALIZED_FORMAT')
+  })
+
+  it('resolves Membranas with the new canonical name and the historical alias', () => {
+    const current = matchProduct(
+      'MEMBRANAS COCIDAS CONGELADAS BLOCK S/TTO 100% P.N.',
+      SEED_CAPTURE_PRODUCTS,
+    )
+    const legacy = matchProduct(
+      'MEMBRANAS COCIDAS CONGELADAS 100% P.N.',
+      SEED_CAPTURE_PRODUCTS,
+    )
+
+    expect(current.kind).toBe('EXACT')
+    expect(current.product?.productId).toBe('membranas-cocidas')
+    expect(legacy.kind).toBe('ALIAS')
+    expect(legacy.product?.productId).toBe('membranas-cocidas')
+  })
+
   it('does not merge different sizes', () => {
     const first = matchProduct('ALETA CRUDA CONGELADA BLOCK S/TTO 500 g - 1000 g 100% P.N.', SEED_CAPTURE_PRODUCTS)
     const second = matchProduct('ALETA CRUDA CONGELADA BLOCK S/TTO 1000 g - 2000 g (E) 100% P.N.', SEED_CAPTURE_PRODUCTS)
@@ -20,6 +50,16 @@ describe('product normalization and matching', () => {
     const result = matchProduct('PRODUCTO TOTALMENTE NUEVO 9000', SEED_CAPTURE_PRODUCTS)
     expect(result.kind).toBe('NEW_PRODUCT')
     expect(result.product).toBeUndefined()
+  })
+
+  it('keeps Nuca semilimpia 100-300 as a real new product before human confirmation', () => {
+    const result = matchProduct(
+      'NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N.',
+      SEED_CAPTURE_PRODUCTS,
+    )
+
+    expect(result.kind).toBe('NEW_PRODUCT')
+    expect(result.product?.familyId).not.toBe('nuca-bikini')
   })
 
   it('extracts presentation ranges without dropping product numbers', () => {

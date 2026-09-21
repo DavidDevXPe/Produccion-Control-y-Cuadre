@@ -726,197 +726,298 @@ if (isFreezing) {
         ) : null}
       </div>
       {isCloseConfirmationOpen
-        ? createPortal(
-            <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#020914]/90 p-4">
-              <section
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="day-close-title"
-                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+  ? createPortal(
+      <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-[1px] dark:bg-[#020914]/90">
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="day-close-title"
+          className="
+            my-auto w-full max-w-2xl overflow-hidden
+            rounded-2xl border border-slate-200
+            bg-white shadow-2xl
+            dark:border-[#203E50]
+            dark:bg-[#0D2534]
+          "
+        >
+          {/* Encabezado */}
+          <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
+            <div className="flex items-start gap-3">
+              <span
+                className="
+                  grid size-9 shrink-0 place-items-center
+                  rounded-lg bg-amber-100 text-amber-700
+                  dark:bg-amber-500/10 dark:text-[#FFD166]
+                "
               >
-                <div className="border-b border-[#203E50] px-5 py-4 sm:px-6">
-                  <div className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500/10 text-amber-400">
-                      <AlertTriangle className="size-4" aria-hidden="true" />
-                    </span>
+                <AlertTriangle
+                  className="size-4"
+                  aria-hidden="true"
+                />
+              </span>
 
-                    <div>
-                      <h2
-                        id="day-close-title"
-                        className="text-base font-bold text-[#F3F8FB]"
+              <div className="min-w-0">
+                <h2
+                  id="day-close-title"
+                  className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
+                >
+                  Cerrar jornada
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
+                  Después del cierre, esta jornada quedará en solo lectura.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Contenido */}
+          <div className="px-5 py-4 sm:px-6">
+            <dl
+              className="
+                grid gap-x-6 gap-y-4
+                rounded-xl border border-slate-200
+                bg-slate-50 p-4
+                sm:grid-cols-3
+                dark:border-[#203E50]
+                dark:bg-[#07141F]/70
+              "
+            >
+              {[
+                ['Fecha', formatIsoDate(productionDay.date)],
+                [
+                  'Materia prima',
+                  formatCentiKg(
+                    productionDay.declaredRawMaterialKg100,
+                  ),
+                ],
+                [
+                  'Producto terminado',
+                  formatCentiKg(
+                    calculation.declaredFinishedKg100,
+                  ),
+                ],
+                [
+                  'Saldo final',
+                  formatCentiKg(
+                    calculation.newClosingBalanceKg100,
+                  ),
+                ],
+                [
+                  'Diferencia',
+                  formatCentiKg(
+                    calculation.differenceKg100,
+                  ),
+                ],
+                [
+                  'Estado',
+                  isReadyToClose
+                    ? operationalState.validation.warnings.length > 0
+                      ? 'Lista para cerrar con observación'
+                      : 'Lista para cerrar'
+                    : 'Requiere revisión',
+                ],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="min-w-0"
+                >
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                    {label}
+                  </dt>
+
+                  <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            {/* Advertencias */}
+            {operationalState.validation.warnings.length > 0 ? (
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
+                    Advertencias antes del cierre
+                  </p>
+
+                  <span
+                    className="
+                      shrink-0 rounded-full
+                      border border-amber-300
+                      bg-amber-50
+                      px-2.5 py-1
+                      text-[0.625rem] font-extrabold
+                      text-amber-800
+                      dark:border-[#8A6A1F]
+                      dark:bg-[#2A2414]
+                      dark:text-[#FFD166]
+                    "
+                  >
+                    {operationalState.validation.warnings.length}{' '}
+                    {operationalState.validation.warnings.length === 1
+                      ? 'advertencia'
+                      : 'advertencias'}
+                  </span>
+                </div>
+
+                <div
+                  className="
+                    overflow-hidden rounded-xl
+                    border border-amber-300
+                    bg-amber-50
+                    dark:border-[#72581D]
+                    dark:bg-[#211D12]
+                  "
+                >
+                  {operationalState.validation.warnings.map(
+                    (warning, index) => (
+                      <div
+                        key={`${warning.code}-${
+                          warning.familyKey ??
+                          warning.productId ??
+                          'GENERAL'
+                        }`}
+                        className={`flex items-start gap-3 px-4 py-3 ${
+                          index > 0
+                            ? 'border-t border-amber-200 dark:border-amber-500/10'
+                            : ''
+                        }`}
                       >
-                        Cerrar jornada
-                      </h2>
+                        <AlertTriangle
+                          className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
+                          aria-hidden="true"
+                        />
 
-                      <p className="mt-1 text-xs leading-5 text-[#A5BED0]">
-                        Después del cierre, esta jornada quedará en solo lectura.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-5 py-4 sm:px-6">
-                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-[#203E50] bg-[#07141F]/70 p-4 sm:grid-cols-3">
-                    {[
-                      ['Fecha', formatIsoDate(productionDay.date)],
-                      [
-                        'Materia prima',
-                        formatCentiKg(
-                          productionDay.declaredRawMaterialKg100,
-                        ),
-                      ],
-                      [
-                        'Producto terminado',
-                        formatCentiKg(
-                          calculation.declaredFinishedKg100,
-                        ),
-                      ],
-                      [
-                        'Saldo final',
-                        formatCentiKg(
-                          calculation.newClosingBalanceKg100,
-                        ),
-                      ],
-                      [
-                        'Diferencia',
-                        formatCentiKg(
-                          calculation.differenceKg100,
-                        ),
-                      ],
-                      [
-                        'Estado',
-                        isReadyToClose
-                          ? 'Lista para cerrar'
-                          : 'Requiere revisión',
-                      ],
-                    ].map(([label, value]) => (
-                      <div key={label} className="min-w-0">
-                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-[#7F9BAD]">
-                          {label}
-                        </dt>
-
-                        <dd className="number-tabular mt-1 text-sm font-bold text-[#F3F8FB]">
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  {operationalState.validation.warnings.length > 0 ? (
-                    <div className="mt-5">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-[#A5BED0]">
-                          Advertencias antes del cierre
+                        <p className="text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
+                          {warning.message}
                         </p>
-
-                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[0.625rem] font-bold text-amber-300">
-                          {operationalState.validation.warnings.length}{' '}
-                          {operationalState.validation.warnings.length === 1
-                            ? 'advertencia'
-                            : 'advertencias'}
-                        </span>
                       </div>
-
-                      <div className="overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
-                        {operationalState.validation.warnings.map(
-                          (warning, index) => (
-                            <div
-                              key={`${warning.code}-${warning.familyKey ?? warning.productId ?? 'GENERAL'}`}
-                              className={`flex items-start gap-3 px-4 py-3 ${
-                                index > 0
-                                  ? 'border-t border-amber-500/10'
-                                  : ''
-                              }`}
-                            >
-                              <AlertTriangle
-                                className="mt-0.5 size-4 shrink-0 text-amber-400"
-                                aria-hidden="true"
-                              />
-
-                              <div>
-                                <p className="text-xs font-bold text-amber-200">
-                                  Advertencia
-                                </p>
-
-                                <p className="mt-1 text-xs leading-5 text-[#C3D2DC]">
-                                  {warning.message}
-                                </p>
-                              </div>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {closeError ? (
-                    <div
-                      role="alert"
-                      className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200"
-                    >
-                      {closeError}
-                    </div>
-                  ) : null}
+                    ),
+                  )}
                 </div>
+              </div>
+            ) : null}
 
-                <div className="flex flex-col-reverse gap-2 border-t border-[#203E50] bg-[#0A1A27] px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCloseConfirmationOpen(false)
-                      setCloseError('')
-                    }}
-                    className="
-                      inline-flex min-h-10 items-center justify-center
-                      rounded-lg border border-slate-300
-                      bg-white px-4
-                      text-sm font-bold text-slate-700
-                      transition
-                      hover:bg-slate-100 hover:text-slate-950
+            {closeError ? (
+              <div
+                role="alert"
+                className="
+                  mt-4 rounded-lg
+                  border border-rose-300
+                  bg-rose-50
+                  px-3 py-2
+                  text-xs font-semibold text-rose-800
+                  dark:border-rose-500/30
+                  dark:bg-rose-500/10
+                  dark:text-rose-200
+                "
+              >
+                {closeError}
+              </div>
+            ) : null}
+          </div>
 
-                      dark:border-[#2B5268]
-                      dark:bg-transparent
-                      dark:text-[#C3D2DC]
-                      dark:hover:bg-[#123247]
-                      dark:hover:text-white
-                    "
-                  >
-                    Volver a revisar
-                  </button>
+          {/* Acciones */}
+          <div
+            className="
+              flex flex-col-reverse gap-2
+              border-t border-slate-200
+              bg-slate-50 px-5 py-4
+              sm:flex-row sm:justify-end sm:px-6
+              dark:border-[#203E50]
+              dark:bg-[#0A1A27]
+            "
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIsCloseConfirmationOpen(false)
+                setCloseError('')
+              }}
+              className="
+                inline-flex min-h-10 items-center justify-center
+                rounded-lg border border-slate-300
+                bg-white px-4
+                text-sm font-bold text-slate-700
+                shadow-sm transition
 
-                  <button
-                    type="button"
-                    onClick={confirmCloseDay}
-                    className="
-                      inline-flex min-h-10 items-center justify-center
-                      rounded-lg border border-emerald-700
-                      bg-emerald-700 px-5
-                      text-sm font-extrabold text-white
-                      shadow-sm transition
+                hover:border-slate-400
+                hover:bg-slate-100
+                hover:text-slate-950
 
-                      hover:border-emerald-800
-                      hover:bg-emerald-800
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-brand-400
+                focus-visible:ring-offset-2
 
-                      focus-visible:outline-none
-                      focus-visible:ring-2
-                      focus-visible:ring-emerald-500
-                      focus-visible:ring-offset-2
+                dark:border-[#2B5268]
+                dark:bg-transparent
+                dark:text-[#C3D2DC]
+                dark:shadow-none
+                dark:hover:bg-[#123247]
+                dark:hover:text-white
+              "
+            >
+              Volver a revisar
+            </button>
 
-                      dark:border-emerald-500
-                      dark:bg-emerald-600
-                      dark:hover:bg-emerald-500
-                    "
-                  >
-                    {operationalState.validation.warnings.length > 0
-                      ? 'Cerrar con observación'
-                      : 'Cerrar jornada'}
-                  </button>
-                </div>
-              </section>
-            </div>,
-            document.body,
-          )
-        : null}
+            <button
+              type="button"
+              onClick={confirmCloseDay}
+              className={
+                operationalState.validation.warnings.length > 0
+                  ? `
+                    inline-flex min-h-10 items-center justify-center
+                    rounded-lg border border-amber-600
+                    bg-amber-500 px-5
+                    text-sm font-extrabold text-amber-950
+                    shadow-sm transition
+
+                    hover:border-amber-700
+                    hover:bg-amber-600
+
+                    focus-visible:outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-amber-500
+                    focus-visible:ring-offset-2
+
+                    dark:border-amber-500
+                    dark:bg-amber-500
+                    dark:text-[#07141F]
+                    dark:hover:bg-amber-400
+                  `
+                  : `
+                    inline-flex min-h-10 items-center justify-center
+                    rounded-lg border border-emerald-700
+                    bg-emerald-700 px-5
+                    text-sm font-extrabold text-white
+                    shadow-sm transition
+
+                    hover:border-emerald-800
+                    hover:bg-emerald-800
+
+                    focus-visible:outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-emerald-500
+                    focus-visible:ring-offset-2
+
+                    dark:border-emerald-500
+                    dark:bg-emerald-600
+                    dark:hover:bg-emerald-500
+                  `
+              }
+            >
+              {operationalState.validation.warnings.length > 0
+                ? 'Cerrar con observación'
+                : 'Cerrar jornada'}
+            </button>
+          </div>
+        </section>
+      </div>,
+      document.body,
+    )
+  : null}
     </div>
   )
 }
