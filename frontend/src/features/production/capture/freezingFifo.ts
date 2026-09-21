@@ -36,6 +36,86 @@ function kg100ToCaptureValue(value: Kg100): string {
   return String(Number((value / 100).toFixed(2)));
 }
 
+/**
+ * Identidad lógica de un saldo utilizado por Congelamiento.
+ *
+ * Una misma combinación de:
+ * - jornada origen,
+ * - familia destino,
+ * - producto destino,
+ * - producto fuente,
+ *
+ * representa un único vínculo operativo.
+ */
+function balanceUseIdentity(use: ProductionCaptureBalanceUse): string {
+  return [
+    use.originDayId,
+    use.familyId,
+    use.productId,
+    use.sourceProductId ?? use.productId,
+  ].join("|");
+}
+
+/**
+ * Normaliza vínculos de saldo duplicados.
+ *
+ * IMPORTANTE:
+ * Si el mismo vínculo aparece dos veces por un error histórico,
+ * NO se suman los kg, porque eso duplicaría artificialmente el
+ * consumo. Se conserva el mayor valor registrado por turno.
+ *
+ * Esto permite que FIFO sea idempotente:
+ * ejecutar la vinculación más de una vez no debe crear nuevos
+ * registros para el mismo origen/producto.
+ */
+function normalizeBalanceUses(
+  uses: readonly ProductionCaptureBalanceUse[],
+): ProductionCaptureBalanceUse[] {
+  const usesByIdentity = new Map<string, ProductionCaptureBalanceUse>();
+
+  for (const use of uses) {
+    const identity = balanceUseIdentity(use);
+    const existing = usesByIdentity.get(identity);
+
+    if (!existing) {
+      usesByIdentity.set(identity, { ...use });
+      continue;
+    }
+
+    const existingDayKg100 = captureValueToKg100(existing.dayKg);
+    const incomingDayKg100 = captureValueToKg100(use.dayKg);
+
+    const existingNightKg100 = captureValueToKg100(existing.nightKg);
+    const incomingNightKg100 = captureValueToKg100(use.nightKg);
+
+    const sourceProductId = existing.sourceProductId ?? use.sourceProductId;
+
+    usesByIdentity.set(identity, {
+      ...existing,
+
+      availableKg100: kg100(
+        Math.max(existing.availableKg100, use.availableKg100),
+      ),
+
+      dayKg: kg100ToCaptureValue(
+        kg100(Math.max(existingDayKg100, incomingDayKg100)),
+      ),
+
+      nightKg: kg100ToCaptureValue(
+        kg100(Math.max(existingNightKg100, incomingNightKg100)),
+      ),
+
+      ...(sourceProductId ? { sourceProductId } : {}),
+
+      requiresProductDistribution:
+        existing.requiresProductDistribution === true ||
+        use.requiresProductDistribution === true,
+    });
+  }
+
+  return [...usesByIdentity.values()];
+}
+
 function matchesTargetProduct(
   position: FreezingAvailabilityPosition,
   product: BuildFreezingFifoAllocationArgs["targetProduct"],
@@ -60,7 +140,14 @@ export function buildFreezingFifoAllocation({
   positions,
   existingUses,
 }: BuildFreezingFifoAllocationArgs): FreezingFifoAllocationResult {
-  const productUses = existingUses.filter(
+  /*
+   * Antes de calcular cualquier asignación FIFO limpiamos vínculos
+   * duplicados que puedan venir de borradores históricos o de una
+   * versión anterior de la aplicación.
+   */
+  const normalizedExistingUses = normalizeBalanceUses(existingUses);
+
+  const productUses = normalizedExistingUses.filter(
     (use) =>
       use.productId === targetProduct.productId &&
       use.requiresProductDistribution !== true,
@@ -92,7 +179,6 @@ export function buildFreezingFifoAllocation({
   let remainingNightKg100 = initialRemainingNightKg100;
 
   const updatedExistingUses = new Map<string, ProductionCaptureBalanceUse>();
-
   const newUses: ProductionCaptureBalanceUse[] = [];
 
   const matchingPositions = [...positions]
@@ -118,7 +204,11 @@ export function buildFreezingFifoAllocation({
       break;
     }
 
-    const existingUse = existingUses.find(
+    /*
+     * Buscamos el vínculo ya normalizado. Así evitamos trabajar
+     * sobre una segunda copia duplicada del mismo origen.
+     */
+    const existingUse = normalizedExistingUses.find(
       (use) =>
         use.productId === targetProduct.productId &&
         use.originDayId === position.originDayId &&
@@ -136,8 +226,13 @@ export function buildFreezingFifoAllocation({
       ? captureValueToKg100(existingUse.nightKg)
       : kg100(0);
 
+    /*
+     * También calculamos el consumo previo desde la colección
+     * normalizada. Si había dos copias del mismo vínculo, ya no
+     * se contabilizan dos veces.
+     */
     const alreadyConsumedFromPositionKg100 = kg100(
-      existingUses
+      normalizedExistingUses
         .filter(
           (use) =>
             use.originDayId === position.originDayId &&
@@ -165,6 +260,10 @@ export function buildFreezingFifoAllocation({
       continue;
     }
 
+    /*
+     * FIFO llena primero Turno Día y después Turno Noche,
+     * respetando siempre la capacidad real pendiente del origen.
+     */
     const dayAllocationKg100 = kg100(
       Math.min(remainingDayKg100, capacityKg100),
     );
@@ -214,10 +313,18 @@ export function buildFreezingFifoAllocation({
     });
   }
 
-  const balanceUses = [
-    ...existingUses.map((use) => updatedExistingUses.get(use.key) ?? use),
+  /*
+   * La salida vuelve a normalizarse para garantizar que:
+   * - no queden dos vínculos con la misma identidad,
+   * - un segundo clic en "Vincular FIFO" no genere duplicados,
+   * - los datos históricos duplicados no se propaguen.
+   */
+  const balanceUses = normalizeBalanceUses([
+    ...normalizedExistingUses.map(
+      (use) => updatedExistingUses.get(use.key) ?? use,
+    ),
     ...newUses,
-  ];
+  ]);
 
   const allocatedKg100 = kg100(
     initialRemainingDayKg100 +

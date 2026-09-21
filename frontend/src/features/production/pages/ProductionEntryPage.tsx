@@ -1762,23 +1762,35 @@ const freezingOriginLedgerSummary =
       ? null
       : createRow(resolvedProductId, draft.rows.length)
 
-  setDraft((current) => ({
-    ...current,
+  setDraft((current) => {
+    const alreadyExists = current.balanceUses.some(
+      (balance) =>
+        balance.originDayId === balanceUse.originDayId &&
+        balance.productId === balanceUse.productId &&
+        (balance.sourceProductId ?? balance.productId) ===
+          (balanceUse.sourceProductId ?? balanceUse.productId),
+    )
 
-    rows:
-      row === null
-        ? current.rows
-        : [
-            ...current.rows,
-            {
-              ...row,
-              dayReportedKg: '0',
-              nightReportedKg: '0',
-            },
-          ],
+    return {
+      ...current,
 
-    balanceUses: [...current.balanceUses, balanceUse],
-  }))
+      rows:
+        row === null
+          ? current.rows
+          : [
+              ...current.rows,
+              {
+                ...row,
+                dayReportedKg: '0',
+                nightReportedKg: '0',
+              },
+            ],
+
+      balanceUses: alreadyExists
+        ? current.balanceUses
+        : [...current.balanceUses, balanceUse],
+    }
+  })
 
   setSelectedBalanceKey('')
   setSaveError('')
@@ -5524,7 +5536,26 @@ freezingOriginLedger.length > 0 ? (
         {usesExternalAvailability ? (
           <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-5">
             <MetricCard label={isFreezing ? 'Congelado físicamente' : 'Procesado físicamente'} value={formatCentiKg(totalReportedKg100)} tone="brand" />
-            <MetricCard label="Producción productiva atribuida" value={formatCentiKg(buildResult.calculation.ownTurnProductionKg100)} />
+            {isFreezing ? (
+              <MetricCard
+                label="Sin origen vinculado"
+                value={formatCentiKg(
+                  buildResult.calculation.ownTurnProductionKg100,
+                )}
+                tone={
+                  buildResult.calculation.ownTurnProductionKg100 === 0
+                    ? 'success'
+                    : 'warning'
+                }
+              />
+            ) : (
+              <MetricCard
+                label="Producción productiva atribuida"
+                value={formatCentiKg(
+                  buildResult.calculation.ownTurnProductionKg100,
+                )}
+              />
+            )}
             <MetricCard label={isFreezing ? 'Disponible no utilizado' : 'Saldo anterior pendiente'} value={formatCentiKg(buildResult.calculation.pendingPreviousBalanceKg100)} />
           </div>
         ) : (
