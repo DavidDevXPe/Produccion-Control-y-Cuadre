@@ -22,6 +22,7 @@ export interface StatusBadgeProps
   children: ReactNode
   tone?: StatusBadgeTone
   showIcon?: boolean
+  truncateText?: boolean
 }
 
 const toneClasses: Record<StatusBadgeTone, string> = {
@@ -48,6 +49,7 @@ export function StatusBadge({
   children,
   tone = 'neutral',
   showIcon = true,
+  truncateText = true,
   className = '',
   ...props
 }: StatusBadgeProps) {
@@ -57,15 +59,24 @@ export function StatusBadge({
     <span
       {...props}
       className={[
-        'inline-flex min-h-6 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.6875rem] font-bold leading-none tracking-[0.025em] ring-1 ring-inset',
+        'inline-flex min-h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.6875rem] font-bold leading-none tracking-[0.025em] ring-1 ring-inset',
+        truncateText ? 'max-w-full' : 'max-w-none',
         toneClasses[tone],
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      {showIcon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
-      <span className="truncate">{children}</span>
+      {showIcon ? (
+        <Icon
+          className="size-3.5 shrink-0"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      <span className={truncateText ? 'truncate' : ''}>
+  {children}
+</span>
     </span>
   )
 }

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, Gauge, LockKeyhole, Scale, Snowflake } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, Gauge, LockKeyhole } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
@@ -69,6 +69,11 @@ export function ProductionDaysPage() {
   const closedCount = registeredDays.filter(
     ({ operationalState }) => operationalState.lifecycle === 'CLOSED',
   ).length
+  const observedClosedCount = registeredDays.filter(
+  ({ day, operationalState }) =>
+    operationalState.lifecycle === "CLOSED" &&
+    (day.closureObservations?.length ?? 0) > 0,
+).length;
   const readyToCloseCount = registeredDays.filter(
     ({ operationalState }) => operationalState.state === 'READY_TO_CLOSE',
   ).length
@@ -81,26 +86,30 @@ export function ProductionDaysPage() {
   ).length
   const latestDay = activeWeek.productionDays.at(-1)
   const isFreezing = selectedProcess === 'FREEZING'
-  const freezingPendingKg100 = sumKg100(
-    calculateFreezingAvailability(
-      allProductionDays,
-      activeWeek.period.endDate,
-    ).map((position) => position.pendingKg100),
-  )
-  const frozenPhysicalKg100 = sumKg100(
-    registeredDays.flatMap(({ day }) => [
-      day.declaredShiftTotalsKg100.DAY,
-      day.declaredShiftTotalsKg100.NIGHT,
-    ]),
-  )
-  const freezingDifferenceKg100 = kg100(
-    frozenPhysicalKg100 -
-      sumKg100(
-        registeredDays.map(
-          ({ calculation }) => calculation.processedPreviousBalanceKg100,
-        ),
-      ),
-  )
+
+const frozenPhysicalKg100 = sumKg100(
+  registeredDays.flatMap(({ day }) => [
+    day.declaredShiftTotalsKg100.DAY,
+    day.declaredShiftTotalsKg100.NIGHT,
+  ]),
+)
+
+const freezingLinkedKg100 = sumKg100(
+  registeredDays.map(
+    ({ calculation }) => calculation.processedPreviousBalanceKg100,
+  ),
+)
+
+const freezingDifferenceKg100 = kg100(
+  frozenPhysicalKg100 - freezingLinkedKg100,
+)
+
+const freezingPendingKg100 = sumKg100(
+  calculateFreezingAvailability(
+    allProductionDays,
+    activeWeek.period.endDate,
+  ).map((position) => position.pendingKg100),
+)
   const missingCalendarDays = activeWeek.calendarDays.filter(
     (calendarDay) =>
       !activeWeek.productionDays.some(
@@ -161,84 +170,163 @@ export function ProductionDaysPage() {
       />
 
       <section
-        className={`grid auto-rows-fr gap-3 sm:grid-cols-2 ${isFreezing ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}
-        aria-label="Resumen de jornadas"
+  className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3"
+  aria-label="Resumen de jornadas"
+>
+  <MetricCard
+    label="Jornadas registradas"
+    value={registeredDays.length}
+    icon={<CalendarDays className="size-5" />}
+    description={`${registeredDays.length} de 7 días de la semana`}
+  />
+
+  <MetricCard
+    label="Cuadradas"
+    value={balancedCount}
+    icon={<CheckCircle2 className="size-5" />}
+    tone={
+      registeredDays.length > 0 &&
+      balancedCount === registeredDays.length
+        ? 'success'
+        : 'warning'
+    }
+    description={
+      balancedCount > 0
+        ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'} · ${
+            readyToCloseCount
+          } lista${readyToCloseCount === 1 ? '' : 's'} para cerrar`
+        : 'Requiere revisión'
+    }
+  />
+
+  {isFreezing ? (
+    <MetricCard
+      label="Con observación"
+      value={observedClosedCount}
+      icon={<AlertTriangle className="size-5" />}
+      tone={observedClosedCount > 0 ? 'warning' : 'success'}
+      description={
+        observedClosedCount > 0
+          ? `${observedClosedCount} ${
+              observedClosedCount === 1 ? 'jornada requiere' : 'jornadas requieren'
+            } revisión`
+          : 'Sin observaciones de cierre'
+      }
+    />
+  ) : (
+    <MetricCard
+      label="Bajo referencia (<80%)"
+      value={belowReferenceCount}
+      icon={<Gauge className="size-5" />}
+      tone={belowReferenceCount === 0 ? 'success' : 'warning'}
+      description="Referencia operativa: 80%"
+    />
+  )}
+</section>
+
+{isFreezing ? (
+  <section
+    aria-labelledby="freezing-summary-title"
+    className="
+      overflow-hidden rounded-xl
+      border border-slate-200
+      bg-white
+      dark:border-[#203E50]
+      dark:bg-[#0D2534]
+    "
+  >
+    <div
+      className="
+        flex flex-col gap-1
+        border-b border-slate-200
+        px-5 py-4
+        dark:border-[#203E50]
+      "
+    >
+      <h2
+        id="freezing-summary-title"
+        className="text-sm font-bold text-slate-950 dark:text-[#F3F8FB]"
       >
-        {isFreezing ? (
-          <>
-            <MetricCard
-              label="Producto congelado"
-              value={formatCentiKgValue(frozenPhysicalKg100)}
-              unit="kg"
-              icon={<Snowflake className="size-5" />}
-              tone="brand"
-              description={`${registeredDays.length} ${registeredDays.length === 1 ? 'jornada' : 'jornadas'} registradas`}
-            />
-            <MetricCard
-              label="Pendiente de congelar"
-              value={formatCentiKgValue(freezingPendingKg100)}
-              unit="kg"
-              icon={<Snowflake className="size-5" />}
-              tone="warning"
-              description="Disponibilidad trazable aún abierta"
-            />
-            <MetricCard
-              label="Diferencia"
-              value={formatCentiKgValue(freezingDifferenceKg100)}
-              unit="kg"
-              icon={<Scale className="size-5" />}
-              tone={freezingDifferenceKg100 === 0 ? 'success' : 'danger'}
-              description="Físico menos producto vinculado"
-            />
-            <MetricCard
-              label="Estado"
-              value={
-                registeredDays.length > 0 && balancedCount === registeredDays.length
-                  ? 'CUADRADO'
-                  : 'REVISAR'
-              }
-              icon={<CheckCircle2 className="size-5" />}
-              tone={
-                registeredDays.length > 0 && balancedCount === registeredDays.length
-                  ? 'success'
-                  : 'warning'
-              }
-              description={`${balancedCount} de ${registeredDays.length} jornadas conciliadas`}
-            />
-          </>
-        ) : (
-          <>
-            <MetricCard
-              label="Jornadas registradas"
-              value={registeredDays.length}
-              icon={<CalendarDays className="size-5" />}
-              description={`${registeredDays.length} de 7 días de la semana`}
-            />
-            <MetricCard
-              label="Cuadradas"
-              value={balancedCount}
-              icon={<CheckCircle2 className="size-5" />}
-              tone={
-                registeredDays.length > 0 && balancedCount === registeredDays.length
-                  ? 'success'
-                  : 'warning'
-              }
-              description={
-                balancedCount > 0
-                  ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'} · ${readyToCloseCount} lista${readyToCloseCount === 1 ? '' : 's'} para cerrar`
-                  : 'Requiere revisión'
-              }
-            />
-            <MetricCard
-              label="Bajo referencia (<80%)"
-              value={belowReferenceCount}
-              icon={<Gauge className="size-5" />}
-              tone={belowReferenceCount === 0 ? 'success' : 'warning'}
-              description="Referencia operativa: 80%"
-            />
-          </>
-        )}
-      </section>
+        Resumen de congelamiento
+      </h2>
+
+      <p className="text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+        Estado físico y trazable de lo congelado en la semana seleccionada.
+      </p>
+    </div>
+
+    <dl
+      className="
+        grid divide-y divide-slate-200
+        sm:grid-cols-2 sm:divide-x sm:divide-y-0
+        xl:grid-cols-4
+        dark:divide-[#203E50]
+      "
+    >
+      <div className="px-5 py-4 text-center">
+        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+          Congelado esta semana
+        </dt>
+
+        <dd className="number-tabular mt-2 text-xl font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+          {formatCentiKgValue(frozenPhysicalKg100)}
+          <span className="ml-1 text-xs font-semibold text-slate-500">
+            kg
+          </span>
+        </dd>
+      </div>
+
+      <div className="px-5 py-4 text-center">
+        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+          Vinculado
+        </dt>
+
+        <dd className="number-tabular mt-2 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">
+          {formatCentiKgValue(freezingLinkedKg100)}
+          <span className="ml-1 text-xs font-semibold opacity-70">
+            kg
+          </span>
+        </dd>
+      </div>
+
+      <div className="px-5 py-4 text-center">
+        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+          Dif. trazabilidad
+        </dt>
+
+        <dd
+          className={`number-tabular mt-2 text-xl font-extrabold ${
+            freezingDifferenceKg100 === 0
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : 'text-amber-700 dark:text-amber-300'
+          }`}
+        >
+          {formatCentiKgValue(freezingDifferenceKg100)}
+          <span className="ml-1 text-xs font-semibold opacity-70">
+            kg
+          </span>
+        </dd>
+      </div>
+
+      <div className="px-5 py-4 text-center">
+        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+          Pendiente trazable acumulado
+        </dt>
+
+        <dd className="number-tabular mt-2 text-xl font-extrabold text-amber-700 dark:text-amber-300">
+          {formatCentiKgValue(freezingPendingKg100)}
+          <span className="ml-1 text-xs font-semibold opacity-70">
+            kg
+          </span>
+        </dd>
+
+        <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+          Disponible pendiente al cierre del período
+        </p>
+      </div>
+    </dl>
+  </section>
+) : null}
 
       <SectionCard
         title={`Semana ${activeWeek.number}`}
@@ -275,27 +363,27 @@ export function ProductionDaysPage() {
           </div>
         ) : (
         <DataTableScroll label={`Jornadas de producción registradas en la semana ${activeWeek.number}`}>
-          <table className="erp-table w-full min-w-[64rem] table-fixed border-collapse text-left">
+          <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse text-left">
             <caption className="sr-only">Jornadas de producción registradas</caption>
             <colgroup>
-              <col className="w-[15%]" />
-              <col className="w-[12%]" />
-              <col className="w-[14%]" />
-              <col className="w-[10%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[18%]" />
-              <col className="w-[11%]" />
-            </colgroup>
+  <col className="w-[14%]" />
+  <col className="w-[11%]" />
+  <col className="w-[12%]" />
+  <col className="w-[10%]" />
+  <col className="w-[9%]" />
+  <col className="w-[17%]" />
+  <col className="w-[15%]" />
+  <col className="w-[12%]" />
+</colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
                 <th scope="col" className="px-3 py-2.5 text-center align-middle">Jornada</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Reporte Día' : 'Materia prima'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Reporte Noche' : 'Producto terminado'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Congelado' : 'Saldo final'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">Diferencia</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">Cuadre</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Disponibilidad utilizada' : 'Aprovechamiento'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Día' : 'Materia prima'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Noche' : 'Producto terminado'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Total congelado' : 'Saldo final'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Dif. trazabilidad' : 'Diferencia'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Estado' : 'Cuadre'}</th>
+                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Vinculado' : 'Aprovechamiento'}</th>
                 <th scope="col" className="px-3 py-2.5 text-center align-middle">Acción</th>
               </tr>
             </thead>
@@ -303,6 +391,9 @@ export function ProductionDaysPage() {
               {registeredDays.map(({ day, calculation, operationalState }) => {
                 const isBalanced = operationalState.isBalanced
                 const isClosed = operationalState.lifecycle === 'CLOSED'
+                const hasPersistedClosureObservations =
+  isClosed &&
+  (day.closureObservations?.length ?? 0) > 0
                 const isReadyToClose =
                   operationalState.state === 'READY_TO_CLOSE'
                 const isBalanceOnly = isBalanceOnlyProductionDay(day)
@@ -321,31 +412,31 @@ export function ProductionDaysPage() {
                   performancePercent > 100
 
                 const squareStatus = !isBalanced
-                  ? {
-                      tone: 'danger' as const,
-                      label: 'POR CUADRAR',
-                    }
-                  : hasInvalidYield
-                    ? {
-                        tone: 'danger' as const,
-                        label: 'REVISAR INTEGRIDAD',
-                      }
-                    : hasObservedYield
-                      ? {
-                          tone: 'warning' as const,
-                          label: 'CUADRADO · OBSERVADO',
-                        }
-                      : {
-                          tone: 'success' as const,
-                          label: 'CUADRADO',
-                        }
+  ? {
+      tone: 'danger' as const,
+      label: 'POR CUADRAR',
+    }
+  : hasInvalidYield
+    ? {
+        tone: 'danger' as const,
+        label: 'REVISAR INTEGRIDAD',
+      }
+    : hasPersistedClosureObservations || hasObservedYield
+      ? {
+          tone: 'warning' as const,
+          label: 'CUADRADO · OBSERVADO',
+        }
+      : {
+          tone: 'success' as const,
+          label: 'CUADRADO',
+        }
                 const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
                 const rowAccentClass =
-                  !isBalanced || hasInvalidYield
-                    ? 'before:bg-rose-500'
-                    : hasObservedYield
-                      ? 'before:bg-amber-500'
-                      : 'before:bg-emerald-500'
+  !isBalanced || hasInvalidYield
+    ? 'before:bg-rose-500'
+    : hasPersistedClosureObservations || hasObservedYield
+      ? 'before:bg-amber-500'
+      : 'before:bg-emerald-500'
 
                 return (
                   <tr
@@ -380,30 +471,42 @@ export function ProductionDaysPage() {
                       <QuantityValue value={isFreezing ? day.declaredShiftTotalsKg100.DAY + day.declaredShiftTotalsKg100.NIGHT : calculation.newClosingBalanceKg100} />
                     </td>
                     <td
-                      className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
-                        isBalanced ? 'text-emerald-700' : 'text-rose-700'
-                      }`}
-                    >
-                      <QuantityValue value={isFreezing ? calculation.ownTurnProductionKg100 : calculation.differenceKg100} />
-                    </td>
+  className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
+    isFreezing
+      ? calculation.ownTurnProductionKg100 === 0
+        ? 'text-emerald-700 dark:text-emerald-300'
+        : 'text-amber-700 dark:text-amber-300'
+      : isBalanced
+        ? 'text-emerald-700 dark:text-emerald-300'
+        : 'text-rose-700 dark:text-rose-300'
+  }`}
+>
+  <QuantityValue
+    value={
+      isFreezing
+        ? calculation.ownTurnProductionKg100
+        : calculation.differenceKg100
+    }
+  />
+</td>
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="flex w-full items-center justify-center">
-                        <StatusBadge tone={squareStatus.tone}>
-                          {squareStatus.label}
-                        </StatusBadge>
+                        <StatusBadge
+  tone={squareStatus.tone}
+  truncateText={false}
+>
+  {squareStatus.label}
+</StatusBadge>
                       </div>
                     </td>
                     <td className="px-3 py-3 text-center align-middle">
                       {isFreezing ? (
-                        <div className="flex w-full flex-col items-center justify-center gap-1 text-center">
-                          <span className="number-tabular text-xs font-bold text-slate-700">
-                            {formatCentiKgValue(calculation.processedPreviousBalanceKg100)} kg
-                          </span>
-                          <StatusBadge tone={calculation.ownTurnProductionKg100 === 0 ? 'success' : 'danger'}>
-                            {calculation.ownTurnProductionKg100 === 0 ? 'TRAZABLE' : 'REVISAR'}
-                          </StatusBadge>
-                        </div>
-                      ) : isBalanceOnly ? (
+  <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700 dark:text-[#C3D2DC]">
+    <QuantityValue
+      value={calculation.processedPreviousBalanceKg100}
+    />
+  </div>
+) : isBalanceOnly ? (
                         <div
                           className="flex w-full flex-col items-center justify-center gap-1 text-center"
                           aria-label="Aprovechamiento no aplicable. Jornada de saldos."

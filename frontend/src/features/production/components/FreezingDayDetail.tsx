@@ -38,6 +38,64 @@ export function FreezingDayDetail({
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
   const hasClosureWarnings = operationalState.validation.warnings.length > 0
   const reconciliationObserved = differenceKg100 !== 0 && hasClosureWarnings
+  const freezingOriginRows = productionDay.receivedBalanceLots.map((lot) => {
+  const line = productionDay.lines.find(
+    (candidate) => candidate.productId === lot.productId,
+  )
+
+  const originDay = allProductionDays.find(
+    (candidate) => candidate.id === lot.originDayId,
+  )
+
+  const usedKg100 = sumKg100(
+    lot.uses.map((use) => use.kg100),
+  )
+
+  const pendingKg100 = kg100(
+    Math.max(lot.originalKg100 - usedKg100, 0),
+  )
+
+  const originDate = originDay?.date
+
+  const originKind =
+    originDate && originDate < productionDay.date
+      ? 'PREVIOUS'
+      : originDate === productionDay.date
+        ? 'CURRENT'
+        : 'UNKNOWN'
+
+  return {
+    lot,
+    line,
+    originDay,
+    usedKg100,
+    pendingKg100,
+    originKind,
+  }
+})
+
+const previousOriginUsedKg100 = sumKg100(
+  freezingOriginRows
+    .filter((row) => row.originKind === 'PREVIOUS')
+    .map((row) => row.usedKg100),
+)
+
+const currentOriginUsedKg100 = sumKg100(
+  freezingOriginRows
+    .filter((row) => row.originKind === 'CURRENT')
+    .map((row) => row.usedKg100),
+)
+
+const unsupportedFrozenKg100 = kg100(
+  Math.max(differenceKg100, 0),
+)
+
+const excessLinkedKg100 = kg100(
+  Math.max(-differenceKg100, 0),
+)
+
+const hasTraceabilityDifference =
+  differenceKg100 !== 0
 
   return (
     <div className="space-y-5">
@@ -193,7 +251,7 @@ export function FreezingDayDetail({
           ['Detalle Día', calculation.day.reportedKg100],
           ['Detalle Noche', calculation.night.reportedKg100],
           ['Congelado atribuible', linkedKg100],
-          ['Saldo seleccionado pendiente', calculation.pendingPreviousBalanceKg100],
+          ['Pendiente en orígenes vinculados', calculation.pendingPreviousBalanceKg100],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
             <p className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">{String(label)}</p>
@@ -203,6 +261,108 @@ export function FreezingDayDetail({
           </div>
         ))}
       </SectionCard>
+
+<SectionCard
+  title="Trazabilidad por origen"
+  description="Detalle FIFO de cada origen de Envasado utilizado y del saldo que permanece disponible después de esta jornada."
+  action={
+    <StatusBadge
+  tone={hasTraceabilityDifference ? 'warning' : 'success'}
+>
+  {hasTraceabilityDifference
+    ? 'CON OBSERVACIÓN'
+    : 'ORIGEN COMPLETO'}
+</StatusBadge>
+  }
+>
+  <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-[#203E50]">
+    <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
+      <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+  {excessLinkedKg100 > 0
+    ? 'Vinculado en exceso'
+    : 'Sin origen suficiente'}
+</p>
+
+      <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-amber-700 dark:text-amber-300">
+        {formatCentiKg(previousOriginUsedKg100)}
+      </p>
+
+      <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+        Proveniente de jornadas anteriores
+      </p>
+    </div>
+
+    <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
+      <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+        Envasado del día utilizado
+      </p>
+
+      <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-sky-700 dark:text-sky-300">
+        {formatCentiKg(currentOriginUsedKg100)}
+      </p>
+
+      <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+        Disponible generado en esta jornada
+      </p>
+    </div>
+
+    <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
+      <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+        Total vinculado
+      </p>
+
+      <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
+        {formatCentiKg(linkedKg100)}
+      </p>
+
+      <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+        Congelado con origen identificado
+      </p>
+    </div>
+
+    <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
+      <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+        Sin origen suficiente
+      </p>
+
+      <p
+        className={`number-tabular mt-2 whitespace-nowrap text-lg font-extrabold ${
+          unsupportedFrozenKg100 === 0
+            ? 'text-emerald-700 dark:text-emerald-300'
+            : 'text-amber-700 dark:text-amber-300'
+        }`}
+      >
+        {formatCentiKg(
+  excessLinkedKg100 > 0
+    ? excessLinkedKg100
+    : unsupportedFrozenKg100,
+)}
+      </p>
+
+      <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+        Diferencia de trazabilidad
+      </p>
+    </div>
+  </div>
+
+  <div className="border-t border-slate-200 px-4 py-4 dark:border-[#203E50] sm:px-5">
+    <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 dark:border-sky-500/20 dark:bg-sky-500/[0.06]">
+      <p className="text-xs font-bold text-sky-900 dark:text-sky-200">
+        Cómo se compone el congelamiento de esta jornada
+      </p>
+
+      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#C3D2DC]">
+        Se utilizaron{' '}
+        <strong>{formatCentiKg(previousOriginUsedKg100)}</strong>{' '}
+        provenientes de saldos de jornadas anteriores y{' '}
+        <strong>{formatCentiKg(currentOriginUsedKg100)}</strong>{' '}
+        provenientes del Envasado de esta jornada.
+        {' '}El total vinculado es{' '}
+        <strong>{formatCentiKg(linkedKg100)}</strong>.
+      </p>
+    </div>
+  </div>
+</SectionCard>
 
       <SectionCard title="Productos congelados" description="Detalle físico por producto y turno.">
         <DataTableScroll label="Productos congelados de la jornada">
@@ -247,36 +407,89 @@ export function FreezingDayDetail({
 
       <SectionCard title="Origen Envasado y saldo" description="Trazabilidad de la disponibilidad utilizada por esta jornada.">
         <DataTableScroll label="Origen del producto congelado">
-          <table className="erp-table w-full min-w-[58rem] table-fixed border-collapse">
+          <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
-                <th className="w-[40%] px-4 py-2.5 text-left">Producto</th>
-                <th className="px-3 py-2.5 text-center">Origen Envasado</th>
-                <th className="px-3 py-2.5 text-center">Disponible recibido</th>
-                <th className="px-3 py-2.5 text-center">Congelado</th>
-                <th className="px-3 py-2.5 text-center">Pendiente</th>
-              </tr>
-            </thead>
+  <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:border-[#203E50] dark:bg-[#102B3B] dark:text-[#A5BED0]">
+    <th className="w-[32%] px-4 py-2.5 text-left">
+      Producto
+    </th>
+
+    <th className="px-3 py-2.5 text-center">
+      Origen Envasado
+    </th>
+
+    <th className="px-3 py-2.5 text-center">
+      Tipo de origen
+    </th>
+
+    <th className="px-3 py-2.5 text-center">
+      Disponible al iniciar
+    </th>
+
+    <th className="px-3 py-2.5 text-center">
+      Congelado en jornada
+    </th>
+
+    <th className="px-3 py-2.5 text-center">
+      Saldo posterior
+    </th>
+  </tr>
+</thead>
             <tbody>
-              {productionDay.receivedBalanceLots.map((lot) => {
-                const line = productionDay.lines.find((candidate) => candidate.productId === lot.productId)
-                const originDay = allProductionDays.find(
-                  (candidate) => candidate.id === lot.originDayId,
-                )
-                const usedKg100 = sumKg100(lot.uses.map((use) => use.kg100))
-                const pendingKg100 = kg100(Math.max(lot.originalKg100 - usedKg100, 0))
-                return (
-                  <tr key={lot.id} className="border-b border-slate-100">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-800">{line?.productName ?? lot.productId}</th>
-                    <td className="px-3 py-3 text-center text-xs text-slate-600">
-                      {originDay ? formatIsoDate(originDay.date) : lot.originDayId}
-                    </td>
-                    <td className="number-tabular px-3 py-3 text-center text-xs">{formatCentiKg(lot.originalKg100)}</td>
-                    <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-sky-700">{formatCentiKg(usedKg100)}</td>
-                    <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-amber-700">{formatCentiKg(pendingKg100)}</td>
-                  </tr>
-                )
-              })}
+              {freezingOriginRows.map((row) => (
+  <tr
+    key={row.lot.id}
+    className="border-b border-slate-100 dark:border-[#203E50]"
+  >
+    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-800 dark:text-[#F3F8FB]">
+      {row.line?.productName ?? row.lot.productId}
+    </th>
+
+    <td className="px-3 py-3 text-center text-xs text-slate-600 dark:text-[#A5BED0]">
+      {row.originDay
+        ? formatIsoDate(row.originDay.date)
+        : row.lot.originDayId}
+    </td>
+
+    <td className="px-3 py-3 text-center">
+      <StatusBadge
+        tone={
+          row.originKind === 'PREVIOUS'
+            ? 'warning'
+            : row.originKind === 'CURRENT'
+              ? 'info'
+              : 'neutral'
+        }
+        showIcon={false}
+        truncateText={false}
+      >
+        {row.originKind === 'PREVIOUS'
+          ? 'SALDO ANTERIOR'
+          : row.originKind === 'CURRENT'
+            ? 'ENVASADO DEL DÍA'
+            : 'ORIGEN HISTÓRICO'}
+      </StatusBadge>
+    </td>
+
+    <td className="number-tabular px-3 py-3 text-center text-xs font-semibold text-slate-700 dark:text-[#C3D2DC]">
+      {formatCentiKg(row.lot.originalKg100)}
+    </td>
+
+    <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-sky-700 dark:text-sky-300">
+      {formatCentiKg(row.usedKg100)}
+    </td>
+
+    <td
+      className={`number-tabular px-3 py-3 text-center text-xs font-bold ${
+        row.pendingKg100 === 0
+          ? 'text-emerald-700 dark:text-emerald-300'
+          : 'text-amber-700 dark:text-amber-300'
+      }`}
+    >
+      {formatCentiKg(row.pendingKg100)}
+    </td>
+  </tr>
+))}
             </tbody>
           </table>
         </DataTableScroll>
