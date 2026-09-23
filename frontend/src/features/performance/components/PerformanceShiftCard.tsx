@@ -7,15 +7,21 @@ import { formatCentiKg } from '../../../utils/formatters'
 import { kg100 } from '../../production/model/calculations'
 import { getProductionProcess } from '../../production/model/productionProcess'
 import type { ProductionDay, ShiftCode } from '../../production/model/types'
-import { calculatePerformanceRecord } from '../model/performanceCalculations'
+import {
+  calculatePerformanceRecord,
+  findWeeklyShiftBenchmark,
+  withPerformanceBenchmark,
+} from '../model/performanceCalculations'
 import { PERFORMANCE_BENCHMARKS } from '../model/performanceConfig'
-import type { PerformanceRecordInput } from '../model/types'
+import type { PerformanceRecord, PerformanceRecordInput } from '../model/types'
 
 interface PerformanceShiftCardProps {
   productionDay: ProductionDay
   shift: ShiftCode
   weekNumber: number
   storedRecord?: PerformanceRecordInput | undefined
+  /** Saved records of the week, used for the weekly shift benchmark. */
+  weekRecords?: readonly PerformanceRecord[]
   readOnly: boolean
   onSave: (record: PerformanceRecordInput) => void
 }
@@ -46,6 +52,7 @@ export function PerformanceShiftCard({
   shift,
   weekNumber,
   storedRecord,
+  weekRecords = [],
   readOnly,
   onSave,
 }: PerformanceShiftCardProps) {
@@ -94,11 +101,27 @@ export function PerformanceShiftCard({
     weekNumber,
     workerCount,
   ])
-  const performance = calculatePerformanceRecord(
+  const calculated = calculatePerformanceRecord(
     input,
     productionDay,
     PERFORMANCE_BENCHMARKS,
   )
+  // Without a configured benchmark, the benchmark is the best Kg/persona-h of
+  // this shift in the week. The values being edited count too, so the card
+  // shows the same result it will have once saved.
+  const weeklyBenchmark =
+    calculated.benchmark !== null
+      ? calculated.benchmark
+      : findWeeklyShiftBenchmark(
+          [
+            ...weekRecords.filter((record) => record.id !== input.id),
+            calculated,
+          ],
+          process,
+          shift,
+          weekNumber,
+        )
+  const performance = withPerformanceBenchmark(calculated, weeklyBenchmark)
   const workerLabel =
     process === 'PACKING' ? 'N° Envasadores' : 'N° Personal productivo'
 
@@ -181,7 +204,7 @@ export function PerformanceShiftCard({
           ['Persona-h', formatMetric(performance.personHours)],
           ['Kg/h', formatMetric(performance.kgPerHour)],
           ['Kg/persona-h', formatMetric(performance.kgPerWorkerHour)],
-          ['Benchmark', performance.benchmark === null ? 'NO CONFIGURADO' : formatMetric(performance.benchmark)],
+          ['Benchmark (mejor del turno)', performance.benchmark === null ? 'SIN DATOS' : formatMetric(performance.benchmark)],
           ['Estado benchmark', benchmarkStatusLabels[performance.benchmarkStatus]],
           ['Cumplimiento', formatMetric(performance.benchmarkCompliance, '%')],
           ['Potencial', performance.potentialKg100 === null ? '—' : formatCentiKg(performance.potentialKg100)],

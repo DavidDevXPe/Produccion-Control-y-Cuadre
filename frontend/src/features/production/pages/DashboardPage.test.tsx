@@ -54,7 +54,7 @@ describe('dashboard page', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Envasado vs Congelamiento',
+        name: 'Cuadre de producción (Envasado vs. Congelamiento)',
       }),
     ).toBeInTheDocument()
 
@@ -70,7 +70,7 @@ describe('dashboard page', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Actividad y excepciones',
+        name: 'Alertas y excepciones',
       }),
     ).toBeInTheDocument()
 
@@ -80,14 +80,8 @@ describe('dashboard page', () => {
       }),
     ).toBeInTheDocument()
 
-    expect(
-      screen.getByRole('heading', {
-        name: 'Detalle semanal de Envasado',
-      }),
-    ).toBeInTheDocument()
-
     const table = screen.getByRole('table', {
-      name: 'Estado operativo de las jornadas de Envasado',
+      name: 'Últimas jornadas de la semana',
     })
 
     expect(within(table).getAllByRole('row')).toHaveLength(5)
@@ -142,19 +136,26 @@ describe('dashboard page', () => {
       within(indicators).getByText('492,763.00'),
     ).toBeInTheDocument()
 
+    // Pending product only counts the Packing origins of week 42 (Monday):
+    // week 41 pending product is not part of this week.
+    const pendingCard = within(indicators)
+      .getByRole('heading', { name: 'Saldo pendiente trazable' })
+      .closest('article')!
+    expect(within(pendingCard).getByText('489,610.00')).toBeInTheDocument()
+
     const table = screen.getByRole('table', {
-      name: 'Estado operativo de las jornadas de Envasado',
+      name: 'Últimas jornadas de la semana',
     })
 
     const headers = [...table.querySelectorAll('thead th')]
 
     expect(headers.map((header) => header.textContent)).toEqual([
-      'Jornada',
       'Fecha',
-      'Estado',
-      'Producto terminado',
+      'Proceso',
+      'Kg registrados',
       'Aprovechamiento',
-      'Acción',
+      'Estado',
+      'Detalle',
     ])
 
     expect(table).toHaveClass('table-fixed', 'text-center')
@@ -164,10 +165,10 @@ describe('dashboard page', () => {
     ).toEqual([
       'w-[15%]',
       'w-[14%]',
-      'w-[22%]',
-      'w-[21%]',
-      'w-[18%]',
-      'w-[10%]',
+      'w-[17%]',
+      'w-[15%]',
+      'w-[28%]',
+      'w-[11%]',
     ])
 
     const mondayRow = within(table).getByText('LUNES').closest('tr')
@@ -254,7 +255,7 @@ describe('dashboard journey status coherence', () => {
     expect(within(review).getByText('0')).toBeInTheDocument()
 
     const table = screen.getByRole('table', {
-      name: 'Estado operativo de las jornadas de Envasado',
+      name: 'Últimas jornadas de la semana',
     })
     expect(within(table).getAllByText('CUADRADO · OBSERVADO')).toHaveLength(4)
     expect(screen.queryByText('CUADRADO')).not.toBeInTheDocument()
@@ -286,7 +287,7 @@ describe('dashboard journey status coherence', () => {
     )
 
     const exceptions = screen
-      .getByRole('heading', { name: 'Actividad y excepciones' })
+      .getByRole('heading', { name: 'Alertas y excepciones' })
       .closest('section')!
     expect(
       within(exceptions).getByText('Diferencia de trazabilidad'),
@@ -331,7 +332,7 @@ describe('dashboard journey status coherence', () => {
     )
 
     const comparison = screen
-      .getByRole('heading', { name: 'Envasado vs Congelamiento' })
+      .getByRole('heading', { name: 'Cuadre de producción (Envasado vs. Congelamiento)' })
       .closest('section')!
     expect(within(comparison).getByText('REVISAR')).toBeInTheDocument()
     expect(within(comparison).queryByText('CONCILIADO')).not.toBeInTheDocument()
@@ -342,14 +343,14 @@ describe('dashboard journey status coherence', () => {
     ).toHaveTextContent('20,000.00 kg de exceso')
 
     const exceptions = screen
-      .getByRole('heading', { name: 'Actividad y excepciones' })
+      .getByRole('heading', { name: 'Alertas y excepciones' })
       .closest('section')!
     expect(
       within(exceptions).getByText('Vinculado por encima de lo reportado'),
     ).toBeInTheDocument()
   })
 
-  it('offers compact quick navigation without a create shortcut in a closed week', async () => {
+  it('shows the weekly yield KPI and lets the user pick the chart series', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -358,12 +359,30 @@ describe('dashboard journey status coherence', () => {
       )
     })
 
-    const nav = screen.getByRole('navigation', { name: 'Accesos rápidos' })
+    const indicators = screen.getByRole('region', {
+      name: 'Indicadores principales de la semana',
+    })
+    const yieldCard = within(indicators)
+      .getByRole('heading', { name: 'Rendimiento semanal' })
+      .closest('article')!
     expect(
-      within(nav)
-        .getAllByRole('link')
-        .map((link) => link.textContent),
-    ).toEqual(['Jornadas', 'Congelamiento', 'Saldos', 'Rendimiento', 'Resumen'])
+      within(yieldCard).getByRole('progressbar', {
+        name: 'Aprovechamiento general de Envasado de la semana',
+      }),
+    ).toBeInTheDocument()
+
+    const series = screen.getByRole('tablist', {
+      name: 'Serie del gráfico semanal',
+    })
+    expect(
+      within(series)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Total', 'Día', 'Noche', 'Tratamiento', 'Saldo'])
+    expect(within(series).getByRole('tab', { name: 'Total' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('exposes the weekly coverage as accessible progress bars', async () => {

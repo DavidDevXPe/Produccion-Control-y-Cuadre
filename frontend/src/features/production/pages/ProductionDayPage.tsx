@@ -239,7 +239,7 @@ if (isFreezing) {
     <div className="space-y-5">
       <Link
         to="/jornadas"
-        className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-brand-800"
+        className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-brand-800"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Todas las jornadas
@@ -360,7 +360,7 @@ if (isFreezing) {
               aria-hidden="true"
             />
 
-            <p className="text-xs leading-5 text-slate-700 dark:text-[#C3D2DC]">
+            <p className="text-xs leading-5 text-slate-700 dark:text-ui-text-dark-pale">
               {observation.message}
             </p>
           </div>

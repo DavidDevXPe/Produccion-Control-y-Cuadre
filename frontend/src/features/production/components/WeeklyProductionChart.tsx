@@ -1,7 +1,8 @@
 import {
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -9,6 +10,7 @@ import {
   type TooltipContentProps,
 } from 'recharts'
 import { formatCentiKg } from '../../../utils/formatters'
+import { getWeeklyChartLineKg100 } from './weeklyChartLine'
 
 export interface WeeklyProductionChartDatum {
   readonly id: string
@@ -20,9 +22,30 @@ export interface WeeklyProductionChartDatum {
   readonly balanceKg100: number
 }
 
+export type WeeklyProductionSeries =
+  | 'ALL'
+  | 'DAY'
+  | 'NIGHT'
+  | 'TREATMENT'
+  | 'BALANCE'
+
 interface WeeklyProductionChartProps {
   data: readonly WeeklyProductionChartDatum[]
+  /** Series shown as bars. The finished-product total line is always shown. */
+  series?: WeeklyProductionSeries
 }
+
+const seriesBars: readonly {
+  series: Exclude<WeeklyProductionSeries, 'ALL'>
+  dataKey: keyof WeeklyProductionChartDatum
+  name: string
+  fill: string
+}[] = [
+  { series: 'DAY', dataKey: 'dayKg100', name: 'Día', fill: 'var(--color-production-day)' },
+  { series: 'NIGHT', dataKey: 'nightKg100', name: 'Noche', fill: 'var(--color-production-night)' },
+  { series: 'TREATMENT', dataKey: 'treatmentKg100', name: 'Tratamiento', fill: 'var(--color-production-treatment)' },
+  { series: 'BALANCE', dataKey: 'balanceKg100', name: 'Saldo', fill: 'var(--color-production-balance)' },
+]
 
 function calculateFinishedTotalKg100(
   datum: WeeklyProductionChartDatum,
@@ -44,21 +67,26 @@ function formatAxisKg(valueKg100: number): string {
 
 const axisStepKg100 = 15_000_000
 
-function getAxisScale(data: readonly WeeklyProductionChartDatum[]) {
-  const maximumTotalKg100 = Math.max(
-    0,
-    ...data.map(calculateFinishedTotalKg100),
-  )
+/** Nice step (1, 2, 2.5 or 5 × 10ⁿ kg) so a single small series keeps its scale. */
+function niceStepKg100(maximumKg100: number): number {
+  const rawStepKg = Math.max(maximumKg100 / 100 / 4, 1)
+  const magnitude = 10 ** Math.floor(Math.log10(rawStepKg))
+  const step =
+    [1, 2, 2.5, 5, 10].find((factor) => factor * magnitude >= rawStepKg) ?? 10
+  return Math.round(step * magnitude * 100)
+}
+
+function getAxisScale(maximumValueKg100: number, stepKg100: number) {
   const maximumKg100 = Math.max(
-    axisStepKg100 * 4,
-    Math.ceil(maximumTotalKg100 / axisStepKg100) * axisStepKg100,
+    stepKg100 * 4,
+    Math.ceil(maximumValueKg100 / stepKg100) * stepKg100,
   )
 
   return {
     maximumKg100,
     ticks: Array.from(
-      { length: maximumKg100 / axisStepKg100 + 1 },
-      (_, index) => index * axisStepKg100,
+      { length: Math.round(maximumKg100 / stepKg100) + 1 },
+      (_, index) => index * stepKg100,
     ),
   }
 }
@@ -119,8 +147,25 @@ export function ProductionTooltip({
   )
 }
 
-export function WeeklyProductionChart({ data }: WeeklyProductionChartProps) {
-  const axisScale = getAxisScale(data)
+export function WeeklyProductionChart({
+  data,
+  series = 'ALL',
+}: WeeklyProductionChartProps) {
+  const visibleBars = seriesBars.filter(
+    (bar) => series === 'ALL' || bar.series === series,
+  )
+  // The line follows the selection: finished-product total for "Total",
+  // otherwise the value of the selected series.
+  const selectedBar = series === 'ALL' ? null : visibleBars[0] ?? null
+  const chartData = data.map((datum) => ({
+    ...datum,
+    lineKg100: getWeeklyChartLineKg100(datum, series),
+  }))
+  const maximumValueKg100 = Math.max(0, ...chartData.map((datum) => datum.lineKg100))
+  const axisScale =
+    series === 'ALL'
+      ? getAxisScale(maximumValueKg100, axisStepKg100)
+      : getAxisScale(maximumValueKg100, niceStepKg100(maximumValueKg100))
   const chartLabel = data
     .map(
       (entry) =>
@@ -135,8 +180,8 @@ export function WeeklyProductionChart({ data }: WeeklyProductionChartProps) {
       aria-label={`Producción semanal apilada. ${chartLabel}.`}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
+        <ComposedChart
+          data={chartData}
           margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
           barCategoryGap="42%"
           accessibilityLayer
@@ -169,41 +214,29 @@ export function WeeklyProductionChart({ data }: WeeklyProductionChartProps) {
             isAnimationActive={false}
             shared
           />
-          <Bar
-            dataKey="dayKg100"
-            name="Día"
-            stackId="production"
-            fill="var(--color-production-day)"
-            maxBarSize={58}
+          {visibleBars.map((bar, index) => (
+            <Bar
+              key={bar.series}
+              dataKey={bar.dataKey}
+              name={bar.name}
+              stackId="production"
+              fill={bar.fill}
+              maxBarSize={58}
+              radius={index === visibleBars.length - 1 ? [4, 4, 0, 0] : 0}
+              isAnimationActive={false}
+            />
+          ))}
+          <Line
+            type="monotone"
+            dataKey="lineKg100"
+            name={selectedBar ? selectedBar.name : 'Total'}
+            stroke="var(--color-production-total)"
+            strokeWidth={2}
+            dot={{ r: 3.5, fill: 'var(--color-production-total)', strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
             isAnimationActive={false}
           />
-          <Bar
-            dataKey="nightKg100"
-            name="Noche"
-            stackId="production"
-            fill="var(--color-production-night)"
-            maxBarSize={58}
-            isAnimationActive={false}
-          />
-          <Bar
-            dataKey="treatmentKg100"
-            name="Tratamiento"
-            stackId="production"
-            fill="var(--color-production-treatment)"
-            fillOpacity={1}
-            maxBarSize={58}
-            isAnimationActive={false}
-          />
-          <Bar
-            dataKey="balanceKg100"
-            name="Saldo"
-            stackId="production"
-            fill="var(--color-production-balance)"
-            maxBarSize={58}
-            radius={[4, 4, 0, 0]}
-            isAnimationActive={false}
-          />
-        </BarChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

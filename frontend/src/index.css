@@ -23,10 +23,44 @@
   --color-production-night: #177ea8;
   --color-production-treatment: #a78bfa;
   --color-production-balance: #e8aa32;
+  --color-production-total: #0f2a3d;
   --color-production-grid: #203e50;
   --color-production-tooltip: #0a1a27;
   --color-production-tooltip-border: #2b5268;
   --color-shell: #edf2f3;
+  /* Chrome tokens (week selector, sidebar, identity). Same values as before. */
+  --color-ui-text-dark-brand: #00b7f1;
+  --color-ui-surface-dark-canvas: #051120;
+  --color-ui-text-on-brand: #07111d;
+  --color-ui-surface-dark-deep: #0a1a27;
+  --color-ui-text: #0b2233;
+  --color-ui-surface-dark: #0d2534;
+  --color-ui-surface-dark-hover-soft: #0f2230;
+  --color-ui-active-dark: #0f5f9e;
+  --color-ui-surface-dark-hover: #101f2c;
+  --color-ui-surface-dark-hover-strong: #123247;
+  --color-ui-surface-dark-accent: #153b50;
+  --color-ui-line-navy: #16304a;
+  --color-ui-brand-text: #168bb4;
+  --color-ui-brand: #169fd0;
+  --color-ui-line-dark-soft: #244052;
+  --color-ui-line-dark: #2b5268;
+  --color-ui-accent-dark: #38bdf8;
+  --color-ui-text-muted: #4c6a7d;
+  --color-ui-text-dark-dim: #526274;
+  --color-ui-text-subtle: #6f8798;
+  --color-ui-text-soft: #7f9bad;
+  --color-ui-text-faint: #94a9b8;
+  --color-ui-text-dark-muted: #a4b4c3;
+  --color-ui-text-dark-soft: #a5bed0;
+  --color-ui-text-dark-info: #b7d7ea;
+  --color-ui-text-dark-pale: #c3d2dc;
+  --color-ui-line: #d6e2ea;
+  --color-ui-surface-accent: #ddf2f8;
+  --color-ui-surface-hover: #edf5f8;
+  --color-ui-text-dark: #eef4f8;
+  --color-ui-text-dark-strong: #f3f8fb;
+  --color-ui-surface-subtle: #f8fbfc;
   --shadow-panel: 0 1px 2px rgb(15 23 42 / 0.045);
   --color-sticky-divider: #e2e8f0;
   --color-family-divider: #cffafe;
@@ -46,13 +80,13 @@
 
 html.dark {
   color: #eef4f8;
-  background: #09121b;
+  background: #061426;
   color-scheme: dark;
-  --color-shell: #09121b;
-  --color-slate-50: #122534;
-  --color-slate-100: #1b3444;
-  --color-slate-200: #244052;
-  --color-slate-300: #365568;
+  --color-shell: #061426;
+  --color-slate-50: #0f2338;
+  --color-slate-100: #16304a;
+  --color-slate-200: #1d3a58;
+  --color-slate-300: #2e5170;
   --color-slate-400: #6f8798;
   --color-slate-500: #94a9b8;
   --color-slate-600: #a4b4c3;
@@ -113,6 +147,7 @@ html.dark {
   --color-sticky-divider: #244052;
   --color-family-divider: #1c526c;
   --color-row-divider: #1b3444;
+  --color-production-total: #eef4f8;
 }
 
 html.dark [data-theme-sidebar] {
@@ -130,15 +165,15 @@ html.dark [data-theme-sidebar] {
 }
 
 html.dark body {
-  background: #09121b;
+  background: #061426;
 }
 
 html.dark .bg-white:not([data-theme-static="light"]) {
-  background-color: #0e1d29;
+  background-color: #0a1c31;
 }
 
 html.dark .theme-surface-translucent {
-  background-color: rgb(11 24 36 / 0.97);
+  background-color: rgb(8 23 40 / 0.97);
 }
 
 html.dark .hover\:bg-white:hover,
@@ -160,6 +195,17 @@ html.dark :where(main, header) .text-brand-900 {
 
 html.dark :where(main, header) .text-brand-950 {
   color: #c8eaf4;
+}
+
+/* White text on the dark-theme brand blue (#1288b4) is only 4.03:1. */
+html.dark .bg-brand-700:not(:disabled):not([data-theme-sidebar] *),
+html.dark .bg-brand-600:not(:disabled):not([data-theme-sidebar] *) {
+  background-color: #0f7aa2;
+}
+
+html.dark .bg-brand-700:not(:disabled):not([data-theme-sidebar] *):hover,
+html.dark .bg-brand-600:not(:disabled):not([data-theme-sidebar] *):hover {
+  background-color: #0c6a8d;
 }
 
 html.dark .shadow-sm {
@@ -210,25 +256,25 @@ html.dark ::selection {
   background:
     linear-gradient(
       90deg,
-      #09121b 0%,
-      rgb(9 18 27 / 0.96) 20%,
-      rgb(9 18 27 / 0.76) 42%,
-      rgb(9 18 27 / 0.28) 62%,
-      rgb(9 18 27 / 0.08) 82%,
-      rgb(9 18 27 / 0.1) 100%
+      #061426 0%,
+      rgb(6 20 38 / 0.96) 20%,
+      rgb(6 20 38 / 0.76) 42%,
+      rgb(6 20 38 / 0.28) 62%,
+      rgb(6 20 38 / 0.08) 82%,
+      rgb(6 20 38 / 0.1) 100%
     ),
     linear-gradient(
       180deg,
-      rgb(9 18 27 / 0.06) 0%,
-      rgb(9 18 27 / 0.02) 52%,
-      rgb(9 18 27 / 0.32) 78%,
-      #09121b 100%
+      rgb(6 20 38 / 0.06) 0%,
+      rgb(6 20 38 / 0.02) 52%,
+      rgb(6 20 38 / 0.32) 78%,
+      #061426 100%
     );
 }
 
 html.dark .dashboard-layout-backdrop {
   opacity: 1;
-  background: #09121b;
+  background: #061426;
 }
 
 html.dark .dashboard-layout-backdrop img {
@@ -236,7 +282,7 @@ html.dark .dashboard-layout-backdrop img {
 }
 
 html.dark .dashboard-topbar {
-  background: rgb(9 18 27 / 0.28);
+  background: rgb(6 20 38 / 0.28);
   backdrop-filter: blur(2px);
 }
 
@@ -376,6 +422,94 @@ summary:focus-visible,
   .metric-card__value {
     font-size: 1.9rem;
   }
+}
+
+/* Dashboard KPI cards: icon tile on the left, tinted frame per tone. */
+.metric-card--kpi .metric-card__layout {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  column-gap: 0.875rem;
+  align-items: center;
+}
+
+.metric-card--kpi .metric-card__content {
+  grid-column: 2;
+}
+
+.metric-card--kpi .metric-card__label,
+.metric-card--kpi.metric-card--with-icon .metric-card__value {
+  padding-right: 0;
+}
+
+.metric-card--kpi .metric-card__icon {
+  position: static;
+  grid-column: 1;
+  grid-row: 1;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+}
+
+.kpi-card--brand {
+  border-color: rgb(14 165 233 / 0.45);
+}
+
+.kpi-card--success {
+  border-color: rgb(16 185 129 / 0.45);
+}
+
+.kpi-card--warning {
+  border-color: rgb(245 158 11 / 0.5);
+}
+
+.kpi-card--danger {
+  border-color: rgb(244 63 94 / 0.45);
+}
+
+.kpi-card--violet {
+  border-color: rgb(139 92 246 / 0.45);
+}
+
+html.dark .kpi-card--brand {
+  border-color: rgb(56 189 248 / 0.55);
+  background: linear-gradient(160deg, rgb(14 116 144 / 0.22), #0a1c31 60%);
+}
+
+html.dark .kpi-card--success {
+  border-color: rgb(52 211 153 / 0.5);
+  background: linear-gradient(160deg, rgb(4 120 87 / 0.25), #0a1c31 60%);
+}
+
+html.dark .kpi-card--warning {
+  border-color: rgb(251 191 36 / 0.5);
+  background: linear-gradient(160deg, rgb(180 83 9 / 0.22), #0a1c31 60%);
+}
+
+html.dark .kpi-card--danger {
+  border-color: rgb(251 113 133 / 0.5);
+  background: linear-gradient(160deg, rgb(190 18 60 / 0.25), #0a1c31 60%);
+}
+
+html.dark .kpi-card--violet {
+  border-color: rgb(167 139 250 / 0.55);
+  background: linear-gradient(160deg, rgb(91 33 182 / 0.28), #0a1c31 60%);
+}
+
+.metric-card--kpi .metric-card__value {
+  font-size: 1.35rem;
+  flex-wrap: wrap;
+  row-gap: 0.125rem;
+}
+
+@container metric-card (min-width: 17.5rem) {
+  .metric-card--kpi .metric-card__value {
+    font-size: 1.55rem;
+  }
+}
+
+/* Dashboard section accent (left rule), as in "EN RESUMEN". */
+.dashboard-eyebrow {
+  border-left: 3px solid var(--color-brand-500);
 }
 
 .scrollbar-subtle {

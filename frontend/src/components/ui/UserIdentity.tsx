@@ -21,7 +21,7 @@ export function UserIdentity({
       data-responsive={responsive || undefined}
     >
       <span
-        className={`grid shrink-0 place-items-center overflow-hidden rounded-full border-[1.5px] border-[#169fd0] bg-[#0d2534] text-[0.6875rem] font-bold tracking-[0.04em] text-[#f3f8fb] ${
+        className={`grid shrink-0 place-items-center overflow-hidden rounded-full border-[1.5px] border-ui-brand bg-ui-surface-dark text-[0.6875rem] font-bold tracking-[0.04em] text-ui-text-dark-strong ${
           responsive ? 'size-8 lg:size-[2.375rem]' : 'size-[2.375rem]'
         }`}
       >

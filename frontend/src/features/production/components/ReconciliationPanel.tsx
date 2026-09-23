@@ -119,7 +119,7 @@ export function ReconciliationPanel({ calculation }: ReconciliationPanelProps) {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_auto_1fr] xl:items-center">
         <div>
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
             Producción procesada
           </p>
           <CalculationRow label="Reporte propio Día" value={calculation.day.ownProductionKg100} />

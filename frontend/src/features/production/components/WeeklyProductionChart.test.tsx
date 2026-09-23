@@ -5,6 +5,7 @@ import {
   ProductionTooltip,
   type WeeklyProductionChartDatum,
 } from './WeeklyProductionChart'
+import { getWeeklyChartLineKg100 } from './weeklyChartLine'
 
 describe('weekly production chart', () => {
   it('shows every Thursday series and totals finished production including balance', () => {
@@ -65,5 +66,23 @@ describe('weekly production chart', () => {
     expect(screen.getByText('6,903.00 kg')).toBeInTheDocument()
     expect(screen.getByText('44,660.00 kg')).toBeInTheDocument()
     expect(screen.getByText('456,983.00 kg')).toBeInTheDocument()
+  })
+
+  it('makes the line follow the selected series', () => {
+    const thursday: WeeklyProductionChartDatum = {
+      id: 'production-day-2026-09-03',
+      label: 'Jueves',
+      dateLabel: '03 SEP 2026',
+      dayKg100: 12_200_170,
+      nightKg100: 16_361_000,
+      treatmentKg100: 659_580,
+      balanceKg100: 2_377_000,
+    }
+
+    expect(getWeeklyChartLineKg100(thursday, 'ALL')).toBe(31_597_750)
+    expect(getWeeklyChartLineKg100(thursday, 'DAY')).toBe(12_200_170)
+    expect(getWeeklyChartLineKg100(thursday, 'NIGHT')).toBe(16_361_000)
+    expect(getWeeklyChartLineKg100(thursday, 'TREATMENT')).toBe(659_580)
+    expect(getWeeklyChartLineKg100(thursday, 'BALANCE')).toBe(2_377_000)
   })
 })

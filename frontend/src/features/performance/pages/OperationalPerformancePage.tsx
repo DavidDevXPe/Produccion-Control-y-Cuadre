@@ -18,8 +18,8 @@ import { PerformanceShiftCard } from '../components/PerformanceShiftCard'
 import { usePerformanceRecords } from '../hooks/usePerformanceRecords'
 import {
   aggregatePerformanceRecords,
+  applyWeeklyShiftBenchmarks,
   calculatePerformanceRecord,
-  findPerformanceBenchmark,
   getBestPerformanceShift,
 } from '../model/performanceCalculations'
 import { PERFORMANCE_BENCHMARKS } from '../model/performanceConfig'
@@ -54,17 +54,13 @@ function aggregateFor(
   process: ProductionProcess,
   shift?: ShiftCode,
 ): PerformanceAggregate {
-  const benchmark = shift
-    ? findPerformanceBenchmark(PERFORMANCE_BENCHMARKS, process, shift)
-    : PERFORMANCE_BENCHMARKS.find(
-        (config) => config.process === process && config.shift === undefined,
-      )?.kgPerWorkerHour ?? null
+  // Each record already carries its benchmark (configured, or the best
+  // Kg/persona-h of its shift in the week); the aggregate sums potentials.
   return aggregatePerformanceRecords(
     records.filter(
       (record) =>
         record.process === process && (shift === undefined || record.shift === shift),
     ),
-    benchmark,
   )
 }
 
@@ -96,7 +92,10 @@ function ShiftComparisonTable({
     ['Persona-h', hasDay ? formatMetric(day.personHours) : '—', hasNight ? formatMetric(night.personHours) : '—'],
     ['Kg/h', hasDay ? formatMetric(day.kgPerHour) : '—', hasNight ? formatMetric(night.kgPerHour) : '—'],
     ['Kg/persona-h', hasDay ? formatMetric(day.kgPerWorkerHour) : '—', hasNight ? formatMetric(night.kgPerWorkerHour) : '—'],
+    ['Benchmark (mejor Kg/persona-h del turno)', hasDay ? formatMetric(day.benchmark) : '—', hasNight ? formatMetric(night.benchmark) : '—'],
     ['Cumplimiento', hasDay ? formatMetric(day.benchmarkCompliance, '%') : '—', hasNight ? formatMetric(night.benchmarkCompliance, '%') : '—'],
+    ['Producción potencial', hasDay && day.potentialKg100 !== null ? formatCentiKg(day.potentialKg100) : '—', hasNight && night.potentialKg100 !== null ? formatCentiKg(night.potentialKg100) : '—'],
+    ['Brecha de productividad', hasDay ? formatGap(day) : '—', hasNight ? formatGap(night) : '—'],
   ]
 
   return (
@@ -145,14 +144,14 @@ function ProcessPerformanceSummary({
 }) {
   const aggregate = aggregateFor(records, process)
   const hasInformation = aggregate.completeRecordCount > 0
-  const benchmarkConfigured = aggregate.benchmark !== null
+  const benchmarkConfigured = aggregate.potentialKg100 !== null
   return (
     <SectionCard
       title={productionProcessLabels[process]}
       description={`${aggregate.completeRecordCount} de ${aggregate.recordCount} turnos con información completa.`}
       action={
         <StatusBadge tone={benchmarkConfigured ? 'info' : 'neutral'}>
-          {benchmarkConfigured ? 'BENCHMARK CONFIGURADO' : 'BENCHMARK NO CONFIGURADO'}
+          {benchmarkConfigured ? 'BENCHMARK: MEJOR TURNO DE LA SEMANA' : 'SIN BENCHMARK'}
         </StatusBadge>
       }
       contentClassName="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4"
@@ -194,7 +193,7 @@ export function OperationalPerformancePage() {
   )
   const calculatedRecords = useMemo(
     () =>
-      storedRecords.flatMap((record) => {
+      applyWeeklyShiftBenchmarks(storedRecords.flatMap((record) => {
         const productionDay = allProductionDays.find(
           (day) =>
             day.id === record.productionDayId &&
@@ -203,7 +202,7 @@ export function OperationalPerformancePage() {
         return productionDay
           ? [calculatePerformanceRecord(record, productionDay, PERFORMANCE_BENCHMARKS)]
           : []
-      }),
+      })),
     [allProductionDays, storedRecords],
   )
   const weekRecords = calculatedRecords.filter(
@@ -288,6 +287,7 @@ export function OperationalPerformancePage() {
                     (record) =>
                       record.productionDayId === day.id && record.shift === shift,
                   )}
+                  weekRecords={weekRecords}
                   readOnly={false}
                   onSave={saveRecord}
                 />

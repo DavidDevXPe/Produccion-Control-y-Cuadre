@@ -138,7 +138,7 @@ export function WeekSelector({
       <button
         ref={triggerRef}
         type="button"
-        className={`inline-flex h-8 items-center justify-between gap-2 rounded-lg border border-[#d6e2ea] bg-white px-2.5 text-xs font-bold text-[#0b2233] shadow-sm transition-colors duration-150 hover:bg-[#edf5f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#169fd0] focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:border-[#2b5268] dark:bg-[#0d2534] dark:text-[#f3f8fb] dark:hover:bg-[#123247] dark:focus-visible:ring-offset-[#0d2534] ${compact ? 'min-w-[4.5rem] sm:min-w-[6.5rem]' : 'min-w-[6.5rem]'}`}
+        className={`inline-flex h-8 items-center justify-between gap-2 rounded-lg border border-ui-line bg-white px-2.5 text-xs font-bold text-ui-text shadow-sm transition-colors duration-150 hover:bg-ui-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-brand focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:border-ui-line-dark dark:bg-ui-surface-dark dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark-hover-strong dark:focus-visible:ring-offset-ui-surface-dark ${compact ? 'min-w-[4.5rem] sm:min-w-[6.5rem]' : 'min-w-[6.5rem]'}`}
         aria-label={`Seleccionar semana operativa. Semana ${selectedWeekNumber}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -165,22 +165,22 @@ export function WeekSelector({
           <span>Semana {selectedWeekNumber}</span>
         )}
         <ChevronDown
-          className={`size-3.5 shrink-0 text-[#4c6a7d] transition-transform duration-150 dark:text-[#f3f8fb] ${isOpen ? 'rotate-180' : ''}`}
+          className={`size-3.5 shrink-0 text-ui-text-muted transition-transform duration-150 dark:text-ui-text-dark-strong ${isOpen ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
 
       {isOpen ? (
         <div
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[min(60vh,360px)] w-[min(16rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[0.625rem] border border-[#d6e2ea] bg-white text-left text-[#0b2233] shadow-[0_12px_28px_rgb(11_34_51/0.12)] dark:border-[#2b5268] dark:bg-[#0a1a27] dark:text-[#f3f8fb] dark:shadow-[0_12px_30px_rgb(0_0_0/0.28)]"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[min(60vh,360px)] w-[min(16rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[0.625rem] border border-ui-line bg-white text-left text-ui-text shadow-[0_12px_28px_rgb(11_34_51/0.12)] dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:text-ui-text-dark-strong dark:shadow-[0_12px_30px_rgb(0_0_0/0.28)]"
         >
           {shouldShowSearch || showCurrentWeekAction ? (
-            <div className="shrink-0 space-y-1.5 border-b border-[#d6e2ea] p-2 dark:border-[#2b5268]/70">
+            <div className="shrink-0 space-y-1.5 border-b border-ui-line p-2 dark:border-ui-line-dark/70">
               {shouldShowSearch ? (
                 <label className="relative block">
                   <span className="sr-only">Buscar semana</span>
                   <Search
-                    className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#7f9bad]"
+                    className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ui-text-soft"
                     aria-hidden="true"
                   />
                   <input
@@ -203,14 +203,14 @@ export function WeekSelector({
                       }
                     }}
                     placeholder="Buscar semana..."
-                    className="h-8 w-full rounded-md border border-[#d6e2ea] bg-[#f8fbfc] pl-8 pr-2.5 text-xs font-semibold text-[#0b2233] outline-none placeholder:text-[#7f9bad] focus:border-[#169fd0] focus:ring-1 focus:ring-[#169fd0] dark:border-[#2b5268] dark:bg-[#0d2534] dark:text-[#f3f8fb]"
+                    className="h-8 w-full rounded-md border border-ui-line bg-ui-surface-subtle pl-8 pr-2.5 text-xs font-semibold text-ui-text outline-none placeholder:text-ui-text-soft focus:border-ui-brand focus:ring-1 focus:ring-ui-brand dark:border-ui-line-dark dark:bg-ui-surface-dark dark:text-ui-text-dark-strong"
                   />
                 </label>
               ) : null}
               {showCurrentWeekAction && currentOption ? (
                 <button
                   type="button"
-                  className="inline-flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-[0.625rem] font-bold text-[#4c6a7d] transition-colors hover:bg-[#edf5f8] hover:text-[#0b2233] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#169fd0] dark:text-[#a5bed0] dark:hover:bg-[#123247] dark:hover:text-[#f3f8fb]"
+                  className="inline-flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-[0.625rem] font-bold text-ui-text-muted transition-colors hover:bg-ui-surface-hover hover:text-ui-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ui-brand dark:text-ui-text-dark-soft dark:hover:bg-ui-surface-dark-hover-strong dark:hover:text-ui-text-dark-strong"
                   onClick={() => selectWeek(currentOption)}
                 >
                   <CalendarDays className="size-3.5" aria-hidden="true" />
@@ -235,7 +235,7 @@ export function WeekSelector({
               >
                 {hasMultipleYears ? (
                   <p
-                    className="border-b border-[#d6e2ea] px-3 py-1.5 text-[0.5625rem] font-bold uppercase tracking-[0.14em] text-[#7f9bad] dark:border-[#2b5268]/50"
+                    className="border-b border-ui-line px-3 py-1.5 text-[0.5625rem] font-bold uppercase tracking-[0.14em] text-ui-text-soft dark:border-ui-line-dark/50"
                     aria-hidden="true"
                   >
                     {group.year}
@@ -259,10 +259,10 @@ export function WeekSelector({
                       aria-selected={isSelected}
                       aria-disabled={option.disabled || undefined}
                       disabled={option.disabled}
-                      className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#169fd0] ${
+                      className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ui-brand ${
                         isSelected
-                          ? 'bg-[#ddf2f8] text-[#0b2233] dark:bg-[#153b50] dark:text-[#f3f8fb]'
-                          : 'text-[#0b2233] hover:bg-[#edf5f8] dark:text-[#f3f8fb] dark:hover:bg-[#123247]'
+                          ? 'bg-ui-surface-accent text-ui-text dark:bg-ui-surface-dark-accent dark:text-ui-text-dark-strong'
+                          : 'text-ui-text hover:bg-ui-surface-hover dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark-hover-strong'
                       } disabled:cursor-not-allowed disabled:opacity-50`}
                       onClick={() => selectWeek(option)}
                       onKeyDown={(event) => {
@@ -307,8 +307,8 @@ export function WeekSelector({
                 <span
                   className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${
                     isSelected
-                      ? 'border-[#169fd0] bg-[#169fd0] text-[#07111d]'
-                      : 'border-[#d6e2ea] text-transparent dark:border-[#2b5268]'
+                      ? 'border-ui-brand bg-ui-brand text-ui-text-on-brand'
+                      : 'border-ui-line text-transparent dark:border-ui-line-dark'
                   }`}
                   aria-hidden="true"
                 >
@@ -318,42 +318,42 @@ export function WeekSelector({
                   <span className="flex items-center justify-between gap-3">
                     <span className="text-xs font-bold">Semana {option.number}</span>
                     {option.isCurrent ? (
-                      <span className="whitespace-nowrap text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#168bb4] dark:text-[#7f9bad]">
+                      <span className="whitespace-nowrap text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-brand-text dark:text-ui-text-soft">
                         Actual
                       </span>
                     ) : option.isFuture ? (
-                      <span className="whitespace-nowrap text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#7f9bad]">
+                      <span className="whitespace-nowrap text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-soft">
                         Próxima
                       </span>
                     ) : null}
                   </span>
                   <span
-                    className={`number-tabular mt-1 block text-[0.625rem] font-semibold tracking-[0.04em] text-[#6f8796] ${isSelected ? 'dark:text-[#a5bed0]' : 'dark:text-[#7f9bad]'}`}
+                    className={`number-tabular mt-1 block text-[0.625rem] font-semibold tracking-[0.04em] text-ui-text-subtle ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
                   >
                     {option.periodLabel}
                   </span>
                   {option.isClosed ? (
                     <span
-                      className={`mt-1.5 flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#6f8796] ${isSelected ? 'dark:text-[#a5bed0]' : 'dark:text-[#7f9bad]'}`}
+                      className={`mt-1.5 flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
                     >
                       <LockKeyhole className="size-2.5" aria-hidden="true" />
                       Cerrada · Solo lectura
                     </span>
                   ) : option.hasRecords === false ? (
                     <span
-                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#7f9bad] ${isSelected ? 'dark:text-[#a5bed0]' : 'dark:text-[#7f9bad]'}`}
+                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-soft ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
                     >
                       Sin registros
                     </span>
                   ) : option.businessStatus === 'OPEN' ? (
                     <span
-                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#168bb4] ${isSelected ? 'dark:text-[#a5bed0]' : 'dark:text-[#7f9bad]'}`}
+                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-brand-text ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
                     >
                       Abierta · {option.recordCount ?? 0} de 7 registros
                     </span>
                   ) : option.isReadOnly ? (
                     <span
-                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-[#6f8796] ${isSelected ? 'dark:text-[#a5bed0]' : 'dark:text-[#7f9bad]'}`}
+                      className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
                     >
                       Solo lectura
                     </span>
@@ -367,7 +367,7 @@ export function WeekSelector({
             {groupedOptions.length === 0 ? (
               <p
                 role="status"
-                className="px-3 py-6 text-center text-xs font-semibold text-[#7f9bad]"
+                className="px-3 py-6 text-center text-xs font-semibold text-ui-text-soft"
               >
                 No se encontraron semanas
               </p>

@@ -29,6 +29,22 @@ import {
 import { TRABUNDA_STORAGE_KEYS } from '../storage/trabundaStorage'
 
 const brandLogoUrl = `${import.meta.env.BASE_URL}brand/trabunda-logo-white.png`
+
+const limaWeekdayFormatter = new Intl.DateTimeFormat('es-PE', {
+  weekday: 'long',
+  timeZone: 'America/Lima',
+})
+
+function formatLimaWeekday(date: Date): string {
+  const weekday = limaWeekdayFormatter.format(date)
+  return weekday.charAt(0).toUpperCase() + weekday.slice(1)
+}
+
+/** Shift hours confirmed by the business: Día 07:00–19:00, Noche 19:00–07:00. */
+const shiftHours = {
+  'Turno Día': '07:00 – 19:00',
+  'Turno Noche': '19:00 – 07:00',
+} as const
 const industrialBackgroundUrl = `${import.meta.env.BASE_URL}brand/trabunda-industrial-bg.png`
 
 type ColorTheme = 'light' | 'dark'
@@ -101,8 +117,8 @@ const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
   [
     'group flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors dark:border-l-[3px]',
     isActive
-      ? 'bg-brand-700 text-white dark:border-[#169fd0] dark:bg-[#12344a] dark:text-[#eef4f8] dark:[&>svg]:text-[#50b9dd]'
-      : 'text-slate-300 hover:bg-white/6 hover:text-white dark:border-transparent dark:text-[#a4b4c3] dark:[&>svg]:text-[#6f8798] dark:hover:bg-[#101f2c] dark:hover:text-[#eef4f8] dark:hover:[&>svg]:text-[#94a9b8]',
+      ? 'bg-brand-700 text-white shadow-sm dark:border-ui-accent-dark dark:bg-ui-active-dark dark:text-white dark:[&>svg]:text-white'
+      : 'text-slate-300 hover:bg-white/6 hover:text-white dark:border-transparent dark:text-ui-text-dark-muted dark:[&>svg]:text-ui-text-subtle dark:hover:bg-ui-surface-dark-hover dark:hover:text-ui-text-dark dark:hover:[&>svg]:text-ui-text-faint',
   ].join(' ')
 
 interface SidebarContentProps {
@@ -111,7 +127,7 @@ interface SidebarContentProps {
 
 function SidebarContent({ onNavigate }: SidebarContentProps) {
   return (
-    <div data-theme-sidebar className="flex h-full flex-col bg-brand-950 text-white dark:bg-[#07111d] dark:text-[#eef4f8]">
+    <div data-theme-sidebar className="flex h-full flex-col bg-brand-950 text-white dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark">
       <div className="h-[5.5rem] border-b border-white/10 px-4 py-2.5">
         <div data-theme-static="light" className="flex h-12 items-center justify-center overflow-hidden rounded-lg bg-white px-2">
           <img
@@ -120,14 +136,14 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
             className="h-auto w-[12.75rem] max-w-none"
           />
         </div>
-        <p className="mt-1 text-center text-[0.5625rem] font-semibold uppercase tracking-[0.13em] text-slate-500 dark:text-[#6f8798]">
+        <p className="mt-1 text-center text-[0.5625rem] font-semibold uppercase tracking-[0.13em] text-slate-500 dark:text-ui-text-subtle">
           Producción · Control y cuadre
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-5">
         <nav aria-label="Navegación principal">
-          <p className="mb-2 px-3 text-[0.625rem] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-[#6f8798]">
+          <p className="mb-2 px-3 text-[0.625rem] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-ui-text-subtle">
             Operación
           </p>
           <ul className="space-y-1">
@@ -152,7 +168,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
         </nav>
 
         <nav className="mt-7" aria-label="Módulos próximos">
-          <p className="mb-2 px-3 text-[0.625rem] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-[#6f8798]">
+          <p className="mb-2 px-3 text-[0.625rem] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-ui-text-subtle">
             Administración
           </p>
           <ul className="space-y-1">
@@ -180,12 +196,12 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
                   <button
                     type="button"
                     disabled
-                    className="flex min-h-10 w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-500 dark:border-l-[3px] dark:border-transparent dark:text-[#526274]"
+                    className="flex min-h-10 w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-500 dark:border-l-[3px] dark:border-transparent dark:text-ui-text-dark-dim"
                     title="Disponible próximamente"
                   >
                     <Icon className="size-[1.125rem] shrink-0" aria-hidden="true" />
                     <span className="flex-1">{item.label}</span>
-                    <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-slate-500 dark:border-[#244052] dark:text-[#6f8798]">
+                    <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-slate-500 dark:border-ui-line-dark-soft dark:text-ui-text-subtle">
                       Próximamente
                     </span>
                   </button>
@@ -197,10 +213,10 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
       </div>
 
       <div className="h-[var(--sidebar-footer-height)] shrink-0 border-t border-white/10 px-5 py-3.5">
-        <p className="text-[0.6875rem] font-semibold text-slate-400 dark:text-[#94a9b8]">
+        <p className="text-[0.6875rem] font-semibold text-slate-400 dark:text-ui-text-faint">
           Control y Cuadre Operativo
         </p>
-        <p className="mt-0.5 text-[0.625rem] leading-4 text-slate-600 dark:text-[#6f8798]">
+        <p className="mt-0.5 text-[0.625rem] leading-4 text-slate-400 dark:text-ui-text-subtle">
           Sistema interno de planta
         </p>
       </div>
@@ -235,7 +251,9 @@ export function AdminLayout() {
   const isDashboard = location.pathname === '/'
   const sectionLabel = getSectionLabel(location.pathname)
   const operationalDate = formatLimaOperationalDate(currentTime)
+  const operationalWeekday = formatLimaWeekday(currentTime)
   const operationalShift = getLimaShiftLabel(currentTime)
+  const ShiftIcon = operationalShift === 'Turno Día' ? Sun : Moon
   const operationalPeriod = formatOperationalPeriod(activeWeek.period)
   const headerProcess = isDashboard ? 'PACKING' : activeProcess
   const weekSelectorOptions = useMemo(
@@ -349,7 +367,7 @@ export function AdminLayout() {
         Saltar al contenido principal
       </a>
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-transparent dark:border-[#1b3444] xl:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-transparent dark:border-ui-line-navy xl:block">
         <SidebarContent />
       </aside>
 
@@ -437,40 +455,48 @@ export function AdminLayout() {
           </div>
         ) : null}
 
-        <div className={`${isDashboard ? 'dashboard-topbar' : 'theme-surface-translucent'} relative z-20 hidden h-14 items-center justify-between border-b border-slate-200 bg-white px-7 xl:flex 2xl:px-8`}>
+        <header className={`${isDashboard ? 'dashboard-topbar' : 'theme-surface-translucent'} relative z-20 hidden h-16 items-center justify-between border-b border-slate-200 bg-white px-7 xl:flex 2xl:px-8`}>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.13em] text-brand-800">
+            <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-brand-800">
               TRABUNDA Producción
             </p>
-            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-500">
+            <p className="mt-0.5 text-xs font-medium text-slate-500">
               Control y cuadre operativo
             </p>
           </div>
           <div className="flex h-full items-center text-xs text-slate-600">
-            <div className="flex h-12 items-center gap-2 border-r border-slate-200 px-4 dark:border-[#244052]">
-              <CalendarDays className="size-4 text-brand-700" aria-hidden="true" />
-              <span className="number-tabular font-bold text-slate-800">{operationalDate}</span>
+            <div className="flex h-12 items-center gap-2.5 border-r border-slate-200 px-4">
+              <CalendarDays className="size-5 text-brand-700" aria-hidden="true" />
+              <span className="flex flex-col leading-tight">
+                <span className="number-tabular font-bold text-slate-900">{operationalDate}</span>
+                <span className="text-[0.6875rem] font-medium text-slate-500">{operationalWeekday}</span>
+              </span>
             </div>
-            <div className="flex h-12 items-center gap-2 border-r border-slate-200 px-4 dark:border-[#244052]">
-              <Sun className="size-4 text-amber-600" aria-hidden="true" />
-              <span className="font-bold text-slate-800">{operationalShift}</span>
+            <div className="flex h-12 items-center gap-2.5 border-r border-slate-200 px-4">
+              <ShiftIcon className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <span className="flex flex-col leading-tight">
+                <span className="font-bold text-slate-900">{operationalShift}</span>
+                <span className="number-tabular text-[0.6875rem] font-medium text-slate-500">
+                  {shiftHours[operationalShift]}
+                </span>
+              </span>
             </div>
-            <div className="flex h-12 flex-col justify-center border-r border-slate-200 px-4 dark:border-[#244052]">
+            <div className="flex h-12 flex-col justify-center border-r border-slate-200 px-4">
               <WeekSelector
                 options={weekSelectorOptions}
                 selectedWeekNumber={activeWeekNumber}
                 onChange={setActiveWeekNumber}
               />
-              <p className="number-tabular mt-0.5 w-full text-center text-[0.625rem] font-semibold tracking-[0.04em] text-[#7f9bad] dark:text-slate-500">
+              <p className="number-tabular mt-0.5 w-full text-center text-[0.625rem] font-semibold tracking-[0.04em] text-slate-500 dark:text-slate-500">
                 {operationalPeriod}
               </p>
             </div>
-            <div className="flex h-12 items-center border-r border-slate-200 px-3 dark:border-[#244052]">
+            <div className="flex h-12 items-center border-r border-slate-200 px-3">
               <ThemeToggle theme={colorTheme} onToggle={toggleColorTheme} />
             </div>
             <UserIdentity user={localUser} className="h-12 pl-4" />
           </div>
-        </div>
+        </header>
 
         <main
           id="contenido-principal"

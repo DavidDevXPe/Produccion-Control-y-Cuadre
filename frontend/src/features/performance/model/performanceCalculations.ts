@@ -195,6 +195,80 @@ export function calculatePerformanceRecord(
   }
 }
 
+/**
+ * Recomputes the benchmark-dependent indicators of a record. Used when the
+ * benchmark comes from the week itself (best Kg/persona-h of the shift).
+ */
+export function withPerformanceBenchmark(
+  record: PerformanceRecord,
+  benchmark: number | null,
+): PerformanceRecord {
+  const benchmarkCompliance = calculateBenchmarkCompliance(
+    record.kgPerWorkerHour,
+    benchmark,
+  )
+  const potentialKg100 = calculatePotentialKg(record.personHours, benchmark)
+
+  return {
+    ...record,
+    benchmark,
+    benchmarkCompliance,
+    potentialKg100,
+    productivityGapKg100: calculateProductivityGap(
+      potentialKg100,
+      record.processedKg100,
+    ),
+    benchmarkStatus: getBenchmarkStatus(benchmarkCompliance),
+  }
+}
+
+/**
+ * Weekly benchmark of one shift: the best Kg/persona-h reached by that shift
+ * (Día or Noche) in the week, for the same process. Only complete records
+ * count. Returns null when the shift has no calculable record.
+ */
+export function findWeeklyShiftBenchmark(
+  records: readonly PerformanceRecord[],
+  process: PerformanceRecordInput['process'],
+  shift: ShiftCode,
+  weekNumber: number,
+): number | null {
+  const values = records
+    .filter(
+      (record) =>
+        record.isComplete &&
+        record.process === process &&
+        record.shift === shift &&
+        record.weekNumber === weekNumber &&
+        record.kgPerWorkerHour !== null,
+    )
+    .map((record) => record.kgPerWorkerHour!)
+
+  return values.length > 0 ? Math.max(...values) : null
+}
+
+/**
+ * Applies the weekly shift benchmark to every record without a configured
+ * benchmark. A benchmark configured by Operations keeps precedence.
+ */
+export function applyWeeklyShiftBenchmarks(
+  records: readonly PerformanceRecord[],
+): readonly PerformanceRecord[] {
+  return records.map((record) =>
+    record.benchmark !== null
+      ? record
+      : withPerformanceBenchmark(
+          record,
+          findWeeklyShiftBenchmark(
+            records,
+            record.process,
+            record.shift,
+            record.weekNumber,
+          ),
+        ),
+  )
+}
+
 export function aggregatePerformanceRecords(
   records: readonly PerformanceRecord[],
   benchmark: number | null = null,
@@ -216,11 +290,33 @@ export function aggregatePerformanceRecords(
     processedKg100,
     personHours,
   )
-  const benchmarkCompliance = calculateBenchmarkCompliance(
-    kgPerWorkerHour,
-    benchmark,
+  // Without an explicit benchmark, each record carries its own (for example
+  // the best Kg/persona-h of its shift). The weekly potential is then the sum
+  // of the record potentials and the compliance is weighted: real kg over
+  // potential kg. With a single benchmark both forms give the same result.
+  const recordBenchmarks = new Set(
+    completeRecords.map((record) => record.benchmark),
   )
-  const potentialKg100 = calculatePotentialKg(personHours, benchmark)
+  const recordsHavePotential =
+    completeRecords.length > 0 &&
+    completeRecords.every((record) => record.potentialKg100 !== null)
+  const potentialKg100 =
+    benchmark !== null
+      ? calculatePotentialKg(personHours, benchmark)
+      : recordsHavePotential
+        ? sumKg100(completeRecords.map((record) => record.potentialKg100!))
+        : null
+  const benchmarkCompliance =
+    benchmark !== null
+      ? calculateBenchmarkCompliance(kgPerWorkerHour, benchmark)
+      : potentialKg100 !== null && potentialKg100 > 0
+        ? (processedKg100 / potentialKg100) * 100
+        : null
+  const aggregateBenchmark =
+    benchmark ??
+    (recordsHavePotential && recordBenchmarks.size === 1
+      ? [...recordBenchmarks][0]!
+      : null)
 
   return {
     processedKg100,
@@ -228,7 +324,7 @@ export function aggregatePerformanceRecords(
     personHours,
     kgPerHour,
     kgPerWorkerHour,
-    benchmark,
+    benchmark: aggregateBenchmark,
     benchmarkCompliance,
     potentialKg100,
     productivityGapKg100: calculateProductivityGap(

@@ -123,7 +123,7 @@ export function ProductionBreakdown({ products }: ProductionBreakdownProps) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar producto..."
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:bg-white"
+              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-500 focus:border-brand-400 focus:bg-white"
             />
           </label>
         </div>

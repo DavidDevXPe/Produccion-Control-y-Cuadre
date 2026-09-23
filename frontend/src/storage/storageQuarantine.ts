@@ -12,6 +12,22 @@ export interface StorageQuarantineEntry {
   readonly payload: unknown
 }
 
+export const STORAGE_QUARANTINE_REASON_LABELS: Record<StorageQuarantineReason, string> = {
+  INVALID_JSON: 'Datos ilegibles (JSON dañado)',
+  INVALID_RECORD: 'Registros con estructura inválida',
+  PERMANENT_DAY_COLLISION:
+    'Jornadas locales que coinciden con el historial permanente',
+}
+
+/** Everything set aside so far, oldest first. Read-only. */
+export function readStorageQuarantine(
+  storage: Storage | undefined = typeof window === 'undefined'
+    ? undefined
+    : window.localStorage,
+): readonly StorageQuarantineEntry[] {
+  return storage ? readEntries(storage) : []
+}
+
 function readEntries(storage: Storage): StorageQuarantineEntry[] {
   try {
     const parsed: unknown = JSON.parse(

@@ -77,7 +77,7 @@ export function SegmentedTabs<T extends string>({
 
   return (
     <div>
-      <p className="mb-1.5 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-slate-500">
+      <p className="mb-1.5 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-slate-600">
         {caption}
       </p>
       <div

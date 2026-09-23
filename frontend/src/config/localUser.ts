@@ -1,4 +1,4 @@
-import davidCastilloAvatarUrl from '../assets/profile/david-castillo.png'
+import davidCastilloAvatarUrl from '../assets/profile/david-castillo-160.png'
 
 export interface LocalUserProfile {
   name: string

@@ -2,24 +2,26 @@ import {
   AlertTriangle,
   ArrowRight,
   Boxes,
-  CalendarCheck2,
+  CalendarDays,
   CheckCircle2,
-  ClipboardList,
   FilePlus2,
-  Gauge,
+  Info,
   PackageCheck,
   Snowflake,
-  Waves,
+  TrendingUp,
   XCircle,
   type LucideIcon,
 } from 'lucide-react'
-import { lazy, Suspense } from 'react'
-import { Link } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
+import {
+  SegmentedTabs,
+  type SegmentedTabOption,
+} from '../../../components/ui/SegmentedTabs'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import {
@@ -30,6 +32,7 @@ import {
   formatRatioAsPercent,
 } from '../../../utils/formatters'
 import { DashboardProcessComparison } from '../components/DashboardProcessComparison'
+import type { WeeklyProductionSeries } from '../components/WeeklyProductionChart'
 import {
   calculateWeeklySummary,
   kg100,
@@ -68,54 +71,44 @@ const attentionToneStyles: Record<
 > = {
   danger: {
     Icon: XCircle,
-    iconClass: 'bg-rose-50 text-rose-700',
+    iconClass: 'bg-rose-600 text-white',
   },
   warning: {
     Icon: AlertTriangle,
-    iconClass: 'bg-amber-50 text-amber-700',
+    iconClass: 'bg-amber-500 text-slate-950',
   },
   info: {
-    Icon: AlertTriangle,
-    iconClass: 'bg-brand-50 text-brand-700',
+    Icon: Info,
+    iconClass: 'bg-sky-600 text-white',
   },
 }
 
-interface QuickAction {
-  to: string
-  label: string
-  Icon: LucideIcon
-}
-
-/** Compact operational navigation: it links, it does not summarize. */
-function QuickActions({ actions }: { actions: readonly QuickAction[] }) {
-  return (
-    <nav
-      aria-label="Accesos rápidos"
-      className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center"
-    >
-      {actions.map(({ to, label, Icon }) => (
-        <ActionLink
-          key={to}
-          to={to}
-          variant="secondary"
-          size="sm"
-          className="justify-start sm:justify-center"
-        >
-          <Icon className="size-4 text-brand-700" aria-hidden="true" />
-          {label}
-        </ActionLink>
-      ))}
-    </nav>
-  )
-}
-
-const quickActions: readonly QuickAction[] = [
-  { to: '/jornadas', label: 'Jornadas', Icon: CalendarCheck2 },
-  { to: '/jornadas?process=FREEZING', label: 'Congelamiento', Icon: Snowflake },
-  { to: '/saldos', label: 'Saldos', Icon: Waves },
-  { to: '/rendimiento', label: 'Rendimiento', Icon: Gauge },
-  { to: '/resumen', label: 'Resumen', Icon: ClipboardList },
+const chartSeriesOptions: readonly SegmentedTabOption<WeeklyProductionSeries>[] = [
+  { value: 'ALL', label: 'Total' },
+  { value: 'DAY', label: 'Día' },
+  { value: 'NIGHT', label: 'Noche' },
+  { value: 'TREATMENT', label: 'Tratamiento' },
+  { value: 'BALANCE', label: 'Saldo' },
 ]
+
+const chartLegend = [
+  ['Día', 'bg-[var(--color-production-day)]'],
+  ['Noche', 'bg-[var(--color-production-night)]'],
+  ['Tratamiento', 'bg-[var(--color-production-treatment)]'],
+  ['Saldo', 'bg-[var(--color-production-balance)]'],
+] as const
+
+const chartSeriesLabels: Record<WeeklyProductionSeries, string> = {
+  ALL: 'Total',
+  DAY: 'Día',
+  NIGHT: 'Noche',
+  TREATMENT: 'Tratamiento',
+  BALANCE: 'Saldo',
+}
+
+function percentOf(part: number, total: number): number {
+  return total > 0 ? (part / total) * 100 : 0
+}
 
 interface CoverageRowProps {
   label: string
@@ -140,15 +133,56 @@ function CoverageRow({ label, value }: CoverageRowProps) {
         aria-valuemax={COVERAGE_DAYS}
         aria-valuenow={value}
         aria-valuetext={`${value} de ${COVERAGE_DAYS} jornadas`}
-        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"
+        className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100"
       >
         <div
           className={`h-full rounded-full ${
-            value === COVERAGE_DAYS ? 'bg-emerald-500' : 'bg-brand-500'
+            value === COVERAGE_DAYS ? 'bg-emerald-500' : 'bg-sky-500'
           }`}
           style={{ width: `${percent}%` }}
         />
       </div>
+    </div>
+  )
+}
+
+interface StatusCounterProps {
+  label: string
+  value: number
+  tone: 'success' | 'warning' | 'danger'
+}
+
+const statusCounterClasses: Record<
+  StatusCounterProps['tone'],
+  { box: string; value: string }
+> = {
+  success: {
+    box: 'border-emerald-300 bg-emerald-50 dark:border-emerald-400/50 dark:bg-emerald-500/10',
+    value: 'text-emerald-700 dark:text-emerald-300',
+  },
+  warning: {
+    box: 'border-amber-300 bg-amber-50 dark:border-amber-400/50 dark:bg-amber-500/10',
+    value: 'text-amber-800 dark:text-amber-300',
+  },
+  danger: {
+    box: 'border-rose-300 bg-rose-50 dark:border-rose-400/50 dark:bg-rose-500/10',
+    value: 'text-rose-700 dark:text-rose-300',
+  },
+}
+
+function StatusCounter({ label, value, tone }: StatusCounterProps) {
+  return (
+    <div
+      className={`rounded-lg border px-2 py-2 text-center ${statusCounterClasses[tone].box}`}
+    >
+      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-700">
+        {label}
+      </dt>
+      <dd
+        className={`number-tabular mt-0.5 text-2xl font-extrabold ${statusCounterClasses[tone].value}`}
+      >
+        {value}
+      </dd>
     </div>
   )
 }
@@ -158,6 +192,7 @@ export function DashboardPage() {
 
   const { activeWeekNumber, allProductionDays, getWeekView } =
     useProductionData()
+  const [chartSeries, setChartSeries] = useState<WeeklyProductionSeries>('ALL')
 
   const packingWeek = getWeekView(activeWeekNumber, 'PACKING')
   const freezingWeek = getWeekView(activeWeekNumber, 'FREEZING')
@@ -218,8 +253,16 @@ export function DashboardPage() {
     packingWeek.period.endDate,
   )
 
+  // Pending product of the selected week: positions whose Packing origin
+  // belongs to the week (same scope as the "Cuadre de producción" block).
+  const weekFreezingPositions = freezingAvailability.filter(
+    (position) =>
+      position.originDate >= packingWeek.period.startDate &&
+      position.originDate <= packingWeek.period.endDate,
+  )
+
   const pendingTraceableKg100 = sumKg100(
-    freezingAvailability.map((position) => position.pendingKg100),
+    weekFreezingPositions.map((position) => position.pendingKg100),
   )
 
   // The four journey states are mutually exclusive, so they always add up to
@@ -277,7 +320,7 @@ export function DashboardPage() {
       }
     >()
 
-    for (const position of freezingAvailability) {
+    for (const position of weekFreezingPositions) {
       if (position.pendingKg100 <= 0) continue
 
       const current = families.get(position.familyId)
@@ -333,20 +376,45 @@ export function DashboardPage() {
         ? { tone: 'info' as const, label: 'SEMANA EN SEGUIMIENTO' }
         : { tone: 'warning' as const, label: 'SEMANA POR REVISAR' }
 
-  const recentJourneys = [
-    ...packingCalculatedDays.map(({ day, journey }) => ({
-      day,
-      journey,
+  // --- Presentation-only values for the KPI row (no new business rules) ---
+  const weeklyYieldPercent = weekSummary?.performance.percent ?? null
+  const previousWeek =
+    activeWeekNumber > 1 ? getWeekView(activeWeekNumber - 1, 'PACKING') : null
+  const previousWeeklyYieldPercent =
+    previousWeek && previousWeek.productionDays.length > 0
+      ? calculateWeeklySummary(previousWeek.productionDays, previousWeek.period)
+          .performance.percent
+      : null
+  const weeklyYieldDelta =
+    weeklyYieldPercent !== null && previousWeeklyYieldPercent !== null
+      ? weeklyYieldPercent - previousWeeklyYieldPercent
+      : null
+  const totalAvailableKg100 = sumKg100(
+    weekFreezingPositions.map((position) => position.generatedKg100),
+  )
+  const journeysWithObservationCount =
+    observedJourneyCount + notBalancedJourneyCount
+
+  // All journeys of the week, newest first; Packing before Freezing on a day.
+  const journeyRows = [
+    ...packingCalculatedDays.map((entry) => ({
+      ...entry,
       process: 'PACKING' as const,
+      registeredKg100: entry.calculation.declaredFinishedKg100,
     })),
-    ...freezingCalculatedDays.map(({ day, journey }) => ({
-      day,
-      journey,
+    ...freezingCalculatedDays.map((entry) => ({
+      ...entry,
       process: 'FREEZING' as const,
+      registeredKg100: sumKg100([
+        entry.day.declaredShiftTotalsKg100.DAY,
+        entry.day.declaredShiftTotalsKg100.NIGHT,
+      ]),
     })),
-  ]
-    .sort((first, second) => second.day.date.localeCompare(first.day.date))
-    .slice(0, 5)
+  ].sort(
+    (first, second) =>
+      second.day.date.localeCompare(first.day.date) ||
+      (first.process === 'PACKING' ? -1 : 1),
+  )
 
   const registeredOperationalDayCount = new Set(
     [...packingDays, ...freezingDays].map((day) => day.date),
@@ -372,10 +440,10 @@ export function DashboardPage() {
   if (!hasWeekData) {
     return (
       <div className="space-y-4">
-        <div className="border-l-[3px] border-brand-500 pl-4">
+        <div className="dashboard-eyebrow pl-4">
           <PageHeader
             eyebrow="Dashboard operativo"
-            title="Control de producción"
+            title="En resumen"
             description={
               activeWeekState.isClosed
                 ? `Semana ${packingWeek.number} · Cerrada · Solo lectura`
@@ -416,18 +484,16 @@ export function DashboardPage() {
             ) : null}
           </div>
         </SectionCard>
-
-        <QuickActions actions={quickActions} />
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <div className="border-l-[3px] border-brand-500 pl-4">
+      <div className="dashboard-eyebrow pl-4">
         <PageHeader
           eyebrow="Dashboard operativo"
-          title="Control de producción"
+          title="En resumen"
           description={weekDescription}
           actions={
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -443,43 +509,59 @@ export function DashboardPage() {
 
       <section
         aria-label="Indicadores principales de la semana"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5"
       >
         <MetricCard
+          variant="kpi"
           label="Envasado de la semana"
           value={formatCentiKgValue(packedWeekKg100)}
           unit="kg"
-          icon={<PackageCheck className="size-5" />}
+          icon={<PackageCheck className="size-6" />}
           tone="brand"
           description={`${packingDays.length}/${COVERAGE_DAYS} jornadas de Envasado`}
+          progress={{
+            percent: percentOf(packingDays.length, COVERAGE_DAYS),
+            label: 'Jornadas de Envasado registradas en la semana',
+          }}
         />
 
         <MetricCard
+          variant="kpi"
           label="Congelado de la semana"
           value={formatCentiKgValue(frozenWeekKg100)}
           unit="kg"
-          icon={<Snowflake className="size-5" />}
-          tone={frozenWeekKg100 > 0 ? 'brand' : 'neutral'}
+          icon={<Snowflake className="size-6" />}
+          tone="brand"
           description={`${freezingDays.length}/${COVERAGE_DAYS} jornadas de Congelamiento`}
+          progress={{
+            percent: percentOf(freezingDays.length, COVERAGE_DAYS),
+            label: 'Jornadas de Congelamiento registradas en la semana',
+          }}
         />
 
         <MetricCard
+          variant="kpi"
           label="Saldo pendiente trazable"
           value={formatCentiKgValue(pendingTraceableKg100)}
           unit="kg"
-          icon={<Boxes className="size-5" />}
-          tone={pendingTraceableKg100 > 0 ? 'brand' : 'success'}
+          icon={<Boxes className="size-6" />}
+          tone="success"
           description={
             pendingTraceableKg100 > 0
               ? `${pendingBalancesByFamilyAll.length} familias con pendiente`
               : 'Sin saldo trazable pendiente'
           }
+          progress={{
+            percent: percentOf(pendingTraceableKg100, totalAvailableKg100),
+            label: 'Parte del disponible de Envasado de la semana que aún falta congelar',
+          }}
         />
 
         <MetricCard
+          variant="kpi"
           label="Jornadas con observación"
           value={observedJourneyCount}
-          icon={<AlertTriangle className="size-5" />}
+          icon={<AlertTriangle className="size-6" />}
           tone={
             notBalancedJourneyCount > 0
               ? 'danger'
@@ -488,265 +570,417 @@ export function DashboardPage() {
                 : 'success'
           }
           description={`${notBalancedJourneyCount} críticas · ${observedJourneyCount} observadas`}
+          progress={{
+            percent: percentOf(journeysWithObservationCount, registeredJourneyCount),
+            label: 'Jornadas de la semana con observación o sin cuadrar',
+          }}
+        />
+
+        <MetricCard
+          variant="kpi"
+          label="Rendimiento semanal"
+          value={
+            weeklyYieldPercent === null
+              ? '—'
+              : `${weeklyYieldPercent.toFixed(1)}%`
+          }
+          icon={<TrendingUp className="size-6" />}
+          tone="violet"
+          description={
+            weeklyYieldDelta === null ? (
+              'Referencia de aprovechamiento: 80%'
+            ) : (
+              <span
+                className={
+                  weeklyYieldDelta >= 0
+                    ? 'font-semibold text-emerald-700 dark:text-emerald-300'
+                    : 'font-semibold text-rose-700 dark:text-rose-300'
+                }
+              >
+                {weeklyYieldDelta >= 0 ? '▲ +' : '▼ '}
+                {weeklyYieldDelta.toFixed(1)} pp vs. semana anterior
+              </span>
+            )
+          }
+          {...(weeklyYieldPercent === null
+            ? {}
+            : {
+                progress: {
+                  percent: weeklyYieldPercent,
+                  label: 'Aprovechamiento general de Envasado de la semana',
+                },
+              })}
         />
       </section>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <DashboardProcessComparison
-          comparison={processComparison}
-          hasFreezingData={hasFreezingData}
-        />
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <DashboardProcessComparison
+            comparison={processComparison}
+            hasFreezingData={hasFreezingData}
+          />
 
-        <SectionCard
-          title="Estado de jornadas"
-          description={`${registeredOperationalDayCount} de ${COVERAGE_DAYS} días con actividad registrada.`}
-          action={
-            <ActionLink to="/jornadas" variant="ghost" size="sm">
-              Ver jornadas
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </ActionLink>
-          }
-          contentClassName="space-y-3 p-4"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-5">
-            <CoverageRow label="Envasado" value={packingDays.length} />
-            <CoverageRow label="Congelamiento" value={freezingDays.length} />
-          </div>
-
-          <dl className="grid grid-cols-3 gap-2 border-t border-slate-200 pt-3">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-center">
-              <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-600">
-                Cuadradas
-              </dt>
-              <dd className="number-tabular mt-0.5 text-lg font-extrabold text-emerald-700">
-                {balancedJourneyCount}
-              </dd>
-            </div>
-
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-center">
-              <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-600">
-                Observadas
-              </dt>
-              <dd className="number-tabular mt-0.5 text-lg font-extrabold text-amber-700">
-                {observedJourneyCount}
-              </dd>
-            </div>
-
-            <div
-              className={`rounded-lg border px-2 py-1.5 text-center ${
-                notBalancedJourneyCount > 0
-                  ? 'border-rose-200 bg-rose-50'
-                  : 'border-amber-200 bg-amber-50'
-              }`}
-            >
-              <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-600">
-                Por revisar
-              </dt>
-              <dd
-                className={`number-tabular mt-0.5 text-lg font-extrabold ${
-                  notBalancedJourneyCount > 0
-                    ? 'text-rose-700'
-                    : 'text-amber-700'
-                }`}
-              >
-                {reviewJourneyCount}
-              </dd>
-            </div>
-          </dl>
-        </SectionCard>
-      </div>
-
-      <QuickActions actions={quickActions} />
-
-      <div className="grid items-start gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <SectionCard
-          title="Evolución semanal de Envasado"
-          description="Día, Noche, Tratamiento y Saldo por jornada registrada."
-          action={
-            <StatusBadge tone={weekBadge.tone} truncateText={false}>
-              {weekBadge.label}
-            </StatusBadge>
-          }
-          contentClassName="p-4"
-        >
-          <ul
-            aria-label="Leyenda del gráfico"
-            className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem] text-slate-600"
+          <SectionCard
+            title="Evolución semanal de Envasado"
+            description="Día, Noche, Tratamiento y Saldo por jornada registrada."
+            action={
+              <StatusBadge tone={weekBadge.tone} truncateText={false}>
+                {weekBadge.label}
+              </StatusBadge>
+            }
+            contentClassName="p-4"
           >
-            {[
-              ['Día', 'bg-[var(--color-production-day)]'],
-              ['Noche', 'bg-[var(--color-production-night)]'],
-              ['Tratamiento', 'bg-[var(--color-production-treatment)]'],
-              ['Saldo', 'bg-[var(--color-production-balance)]'],
-            ].map(([label, color]) => (
-              <li key={label} className="inline-flex items-center gap-1.5">
-                <span
-                  className={`size-2 rounded-full ${color}`}
+            <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <SegmentedTabs
+                caption="Serie"
+                label="Serie del gráfico semanal"
+                options={chartSeriesOptions}
+                value={chartSeries}
+                onChange={setChartSeries}
+              />
+              <ul
+                aria-label="Leyenda del gráfico"
+                className="flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem] font-medium text-slate-600"
+              >
+                {chartLegend.map(([label, color]) => (
+                  <li key={label} className="inline-flex items-center gap-1.5">
+                    <span
+                      className={`size-2.5 rounded-full ${color}`}
+                      aria-hidden="true"
+                    />
+                    {label}
+                  </li>
+                ))}
+                <li className="inline-flex items-center gap-1.5">
+                  <span
+                    className="size-2.5 rounded-full bg-[var(--color-production-total)]"
+                    aria-hidden="true"
+                  />
+                  Línea: {chartSeriesLabels[chartSeries]}
+                </li>
+              </ul>
+            </div>
+
+            {weeklyProductionData.length > 0 ? (
+              <Suspense
+                fallback={
+                  <div
+                    className="grid h-[14.5rem] place-items-center text-xs text-slate-500"
+                    role="status"
+                  >
+                    Preparando gráfico semanal…
+                  </div>
+                }
+              >
+                <WeeklyProductionChart
+                  data={weeklyProductionData}
+                  series={chartSeries}
+                />
+              </Suspense>
+            ) : (
+              <div className="grid h-[14.5rem] place-items-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
+                Sin jornadas de Envasado para graficar.
+              </div>
+            )}
+
+            <p className="mt-2 border-t border-slate-100 pt-2 text-[0.6875rem] leading-5 text-slate-500">
+              Se muestran únicamente jornadas reales registradas en la semana.
+              {chartSeries === 'ALL'
+                ? ' La línea Total es el producto terminado de cada jornada.'
+                : ` La línea sigue la serie ${chartSeriesLabels[chartSeries]}.`}
+            </p>
+          </SectionCard>
+
+          <SectionCard
+            title="Últimas jornadas"
+            description="Jornadas de la semana, primero las más recientes. Revisa las observadas o pendientes de cuadrar."
+            action={
+              <ActionLink to="/jornadas" variant="ghost" size="sm">
+                Ver todas
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </ActionLink>
+            }
+          >
+            <DataTableScroll
+              label={`Jornadas registradas en la semana ${packingWeek.number}`}
+            >
+              <table className="erp-table w-full min-w-[44rem] table-fixed border-collapse text-center">
+                <caption className="sr-only">Últimas jornadas de la semana</caption>
+
+                <colgroup>
+                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[11%]" />
+                </colgroup>
+
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-600">
+                    <th scope="col" className="px-3 py-2.5">Fecha</th>
+                    <th scope="col" className="px-3 py-2.5">Proceso</th>
+                    <th scope="col" className="px-3 py-2.5">Kg registrados</th>
+                    <th scope="col" className="px-3 py-2.5">Aprovechamiento</th>
+                    <th scope="col" className="px-3 py-2.5">Estado</th>
+                    <th scope="col" className="px-3 py-2.5">Detalle</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {journeyRows.map(
+                    ({ day, calculation, journey, process, registeredKg100 }) => {
+                      const isPacking = process === 'PACKING'
+                      const dayYieldStatus = getYieldStatus(
+                        calculation.performance.percent,
+                      )
+                      const dayYieldStyles =
+                        yieldVisualStyles[dayYieldStatus.colorVariant]
+                      const yieldNotApplicable =
+                        !isPacking || isBalanceOnlyProductionDay(day)
+
+                      return (
+                        <tr
+                          key={`${process}-${day.id}`}
+                          className="border-b border-slate-100 bg-white last:border-0 hover:bg-brand-50/35"
+                        >
+                          <th
+                            scope="row"
+                            className="px-3 py-3 text-center text-xs font-bold text-slate-900"
+                          >
+                            <span className="block">{formatIsoWeekday(day.date)}</span>
+                            <span className="number-tabular block text-[0.6875rem] font-medium text-slate-500">
+                              {formatIsoDateCompact(day.date)}
+                            </span>
+                          </th>
+
+                          <td className="px-3 py-3 text-center text-xs font-semibold text-slate-700">
+                            {processLabel(process)}
+                          </td>
+
+                          <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-900">
+                            {formatCentiKg(registeredKg100)}
+                          </td>
+
+                          <td
+                            className="px-3 py-3 text-center"
+                            title={
+                              yieldNotApplicable
+                                ? isPacking
+                                  ? 'Jornada de saldos sin nueva materia prima.'
+                                  : 'Congelamiento no aplica la referencia de aprovechamiento.'
+                                : `${formatRatioAsPercent(
+                                    calculation.performance.ratio,
+                                  )} · ${dayYieldStatus.label}: ${
+                                    dayYieldStatus.interpretation
+                                  }`
+                            }
+                          >
+                            {yieldNotApplicable ? (
+                              <span className="text-xs font-bold text-slate-500">
+                                NO APLICA
+                              </span>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center">
+                                <span
+                                  className={`number-tabular text-xs font-bold ${dayYieldStyles.textClass}`}
+                                >
+                                  {formatRatioAsPercent(
+                                    calculation.performance.ratio,
+                                  )}
+                                </span>
+                                <span
+                                  className={`mt-0.5 text-[0.625rem] font-bold ${dayYieldStyles.textClass}`}
+                                >
+                                  {dayYieldStatus.label}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-3 text-center">
+                            <StatusBadge tone={journey.tone} truncateText={false}>
+                              {journey.label}
+                            </StatusBadge>
+                          </td>
+
+                          <td className="px-3 py-3 text-center">
+                            <ActionLink
+                              to={`/jornadas/${day.date}?process=${process}`}
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Ver jornada de ${formatIsoWeekday(day.date)} ${formatIsoDateCompact(day.date)} · ${processLabel(process)}`}
+                            >
+                              Ver
+                              <ArrowRight className="size-3.5" aria-hidden="true" />
+                            </ActionLink>
+                          </td>
+                        </tr>
+                      )
+                    },
+                  )}
+                </tbody>
+              </table>
+            </DataTableScroll>
+          </SectionCard>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          <SectionCard
+            title="Estado de jornadas"
+            description={`${registeredOperationalDayCount} de ${COVERAGE_DAYS} días con actividad registrada.`}
+            action={
+              <ActionLink to="/jornadas" variant="ghost" size="sm">
+                Ver jornadas
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </ActionLink>
+            }
+            contentClassName="space-y-3 p-4"
+          >
+            <div className="space-y-3">
+              <CoverageRow label="Envasado" value={packingDays.length} />
+              <CoverageRow label="Congelamiento" value={freezingDays.length} />
+            </div>
+
+            <dl className="grid grid-cols-3 gap-2 border-t border-slate-200 pt-3">
+              <StatusCounter label="Cuadradas" value={balancedJourneyCount} tone="success" />
+              <StatusCounter label="Observadas" value={observedJourneyCount} tone="warning" />
+              <StatusCounter
+                label="Por revisar"
+                value={reviewJourneyCount}
+                tone={notBalancedJourneyCount > 0 ? 'danger' : 'warning'}
+              />
+            </dl>
+          </SectionCard>
+
+          <SectionCard
+            title="Saldos pendientes por familia"
+            description={`Envasado de la semana ${packingWeek.number} que todavía puede pasar a Congelamiento.`}
+            action={
+              <ActionLink to="/saldos?process=FREEZING" variant="ghost" size="sm">
+                Ver saldos
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </ActionLink>
+            }
+          >
+            {pendingBalancesByFamily.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {pendingBalancesByFamily.map((family, index) => (
+                  <li
+                    key={family.familyName}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                  >
+                    <span
+                      className="grid size-8 shrink-0 place-items-center rounded-lg bg-sky-600 text-xs font-bold text-white"
+                      aria-hidden="true"
+                    >
+                      {index + 1}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="truncate text-xs font-bold uppercase text-slate-900">
+                          {family.familyName}
+                        </p>
+                        <span className="number-tabular shrink-0 text-xs font-bold text-slate-900">
+                          {formatCentiKg(family.pendingKg100)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div
+                          className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"
+                          aria-hidden="true"
+                        >
+                          <div
+                            className="h-full rounded-full bg-sky-500"
+                            style={{
+                              width: `${
+                                pendingBalancesByFamily[0]?.pendingKg100
+                                  ? Math.max(
+                                      4,
+                                      (family.pendingKg100 /
+                                        pendingBalancesByFamily[0]
+                                          .pendingKg100) *
+                                        100,
+                                    )
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                        <span className="shrink-0 text-[0.625rem] text-slate-500">
+                          {family.productIds.size}{' '}
+                          {family.productIds.size === 1
+                            ? 'producto pendiente'
+                            : 'productos pendientes'}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+
+                <li className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-2">
+                  <span className="text-xs font-bold text-slate-700">
+                    {hiddenPendingFamilyCount > 0
+                      ? `${hiddenPendingFamilyCount} familias adicionales`
+                      : 'Pendiente trazable total'}
+                  </span>
+                  {hiddenPendingFamilyCount > 0 ? (
+                    <ActionLink to="/saldos?process=FREEZING" variant="ghost" size="sm">
+                      Ver todos los saldos
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </ActionLink>
+                  ) : (
+                    <span className="number-tabular text-xs font-bold text-slate-900">
+                      {formatCentiKg(pendingTraceableKg100)}
+                    </span>
+                  )}
+                </li>
+              </ul>
+            ) : (
+              <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-500">
+                <CheckCircle2
+                  className="size-5 shrink-0 text-emerald-600"
                   aria-hidden="true"
                 />
-                {label}
-              </li>
-            ))}
-          </ul>
+                No existe saldo trazable pendiente de congelar.
+              </div>
+            )}
+          </SectionCard>
 
-          {weeklyProductionData.length > 0 ? (
-            <Suspense
-              fallback={
-                <div
-                  className="grid h-[14.5rem] place-items-center text-xs text-slate-500"
-                  role="status"
-                >
-                  Preparando gráfico semanal…
-                </div>
-              }
-            >
-              <WeeklyProductionChart data={weeklyProductionData} />
-            </Suspense>
-          ) : (
-            <div className="grid h-[14.5rem] place-items-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
-              Sin jornadas de Envasado para graficar.
-            </div>
-          )}
-
-          <p className="mt-2 border-t border-slate-100 pt-2 text-[0.6875rem] leading-5 text-slate-500">
-            Se muestran únicamente jornadas reales registradas en la semana.
-          </p>
-        </SectionCard>
-
-        <SectionCard
-          title="Saldos pendientes por familia"
-          description="Disponibilidad trazable que todavía puede pasar a Congelamiento."
-          action={
-            <ActionLink to="/saldos" variant="ghost" size="sm">
-              Ver saldos
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </ActionLink>
-          }
-        >
-          {pendingBalancesByFamily.length > 0 ? (
-            <ul className="divide-y divide-slate-100">
-              {pendingBalancesByFamily.map((family, index) => (
-                <li
-                  key={family.familyName}
-                  className="flex items-center gap-3 px-4 py-2.5"
-                >
-                  <span
-                    className="grid size-7 shrink-0 place-items-center rounded-md bg-slate-100 text-xs font-bold text-slate-600"
-                    aria-hidden="true"
-                  >
-                    {index + 1}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="truncate text-xs font-bold text-slate-900">
-                        {family.familyName}
-                      </p>
-                      <span className="number-tabular shrink-0 text-xs font-bold text-slate-900">
-                        {formatCentiKg(family.pendingKg100)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div
-                        className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100"
-                        aria-hidden="true"
-                      >
-                        <div
-                          className="h-full rounded-full bg-brand-500"
-                          style={{
-                            width: `${
-                              pendingBalancesByFamily[0]?.pendingKg100
-                                ? Math.max(
-                                    4,
-                                    (family.pendingKg100 /
-                                      pendingBalancesByFamily[0]
-                                        .pendingKg100) *
-                                      100,
-                                  )
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-[0.625rem] text-slate-500">
-                        {family.productIds.size}{' '}
-                        {family.productIds.size === 1
-                          ? 'producto pendiente'
-                          : 'productos pendientes'}
-                      </span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-
-              <li className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-2">
-                <span className="text-xs font-bold text-slate-700">
-                  {hiddenPendingFamilyCount > 0
-                    ? `${hiddenPendingFamilyCount} familias adicionales`
-                    : 'Pendiente trazable total'}
-                </span>
-                {hiddenPendingFamilyCount > 0 ? (
-                  <ActionLink to="/saldos" variant="ghost" size="sm">
-                    Ver todos los saldos
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </ActionLink>
-                ) : (
-                  <span className="number-tabular text-xs font-bold text-slate-900">
-                    {formatCentiKg(pendingTraceableKg100)}
-                  </span>
-                )}
-              </li>
-            </ul>
-          ) : (
-            <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-500">
-              <CheckCircle2
-                className="size-5 shrink-0 text-emerald-600"
-                aria-hidden="true"
-              />
-              No existe saldo trazable pendiente de congelar.
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <div className="grid items-start gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <SectionCard
-          title="Actividad y excepciones"
-          description="Primero lo crítico, luego las observaciones de las jornadas de la semana."
-          action={
-            <StatusBadge
-              tone={
-                attention.criticalCount > 0
-                  ? 'danger'
+          <SectionCard
+            title="Alertas y excepciones"
+            description="Primero lo crítico, luego las observaciones de la semana."
+            action={
+              <StatusBadge
+                tone={
+                  attention.criticalCount > 0
+                    ? 'danger'
+                    : attentionItems.length > 0
+                      ? 'warning'
+                      : 'success'
+                }
+                truncateText={false}
+              >
+                {attention.criticalCount > 0
+                  ? `${attention.criticalCount} CRÍTICA${
+                      attention.criticalCount === 1 ? '' : 'S'
+                    }`
                   : attentionItems.length > 0
-                    ? 'warning'
-                    : 'success'
-              }
-              truncateText={false}
-            >
-              {attention.criticalCount > 0
-                ? `${attention.criticalCount} CRÍTICA${
-                    attention.criticalCount === 1 ? '' : 'S'
-                  }`
-                : attentionItems.length > 0
-                  ? attentionItems.length === 1
-                    ? '1 OBSERVACIÓN'
-                    : `${attentionItems.length} OBSERVACIONES`
-                  : 'SIN ALERTAS'}
-            </StatusBadge>
-          }
-        >
-          {attentionItems.length > 0 ? (
-            <ul className="divide-y divide-slate-100">
-              {attention.visible.map((item) => {
-                const { Icon, iconClass } = attentionToneStyles[item.tone]
+                    ? attentionItems.length === 1
+                      ? '1 OBSERVACIÓN'
+                      : `${attentionItems.length} OBSERVACIONES`
+                    : 'SIN ALERTAS'}
+              </StatusBadge>
+            }
+          >
+            {attentionItems.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {attention.visible.map((item) => {
+                  const { Icon, iconClass } = attentionToneStyles[item.tone]
 
-                return (
-                  <li
-                    key={item.key}
-                    className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
+                  return (
+                    <li key={item.key} className="flex items-start gap-3 px-4 py-3">
                       <span
                         className={`grid size-8 shrink-0 place-items-center rounded-lg ${iconClass}`}
                         aria-hidden="true"
@@ -754,232 +988,67 @@ export function DashboardPage() {
                         <Icon className="size-4" />
                       </span>
 
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-950">
-                          {item.title}
-                        </p>
-                        <p className="mt-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.05em] text-slate-500">
-                          {processLabel(item.process)} ·{' '}
-                          {formatIsoDateCompact(item.date)}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-bold text-slate-950">
+                            {item.title}
+                          </p>
+                          <span className="number-tabular shrink-0 text-[0.625rem] font-semibold text-slate-500">
+                            {formatIsoDateCompact(item.date)}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.05em] text-slate-500">
+                          {processLabel(item.process)}
                         </p>
                         <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-600">
                           {item.description}
                         </p>
+                        <ActionLink
+                          to={
+                            item.to ??
+                            `/jornadas/${item.date}?process=${item.process}`
+                          }
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Revisar: ${item.title}`}
+                          className="-ml-3 mt-0.5"
+                        >
+                          Revisar
+                          <ArrowRight className="size-4" aria-hidden="true" />
+                        </ActionLink>
                       </div>
-                    </div>
+                    </li>
+                  )
+                })}
 
-                    <ActionLink
-                      to={
-                        item.to ??
-                        `/jornadas/${item.date}?process=${item.process}`
-                      }
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Revisar: ${item.title}`}
-                      className="self-start sm:shrink-0"
-                    >
-                      Revisar
+                {attention.hiddenCount > 0 ? (
+                  <li className="flex flex-col gap-1 bg-slate-50 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs font-semibold text-slate-600">
+                      Hay {attention.hiddenCount}{' '}
+                      {attention.hiddenCount === 1
+                        ? 'evento adicional'
+                        : 'eventos adicionales'}{' '}
+                      de la semana.
+                    </p>
+                    <ActionLink to="/jornadas" variant="ghost" size="sm">
+                      Ver todas
                       <ArrowRight className="size-4" aria-hidden="true" />
                     </ActionLink>
                   </li>
-                )
-              })}
-
-              {attention.hiddenCount > 0 ? (
-                <li className="flex flex-col gap-1 bg-slate-50 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold text-slate-600">
-                    Hay {attention.hiddenCount}{' '}
-                    {attention.hiddenCount === 1
-                      ? 'evento adicional'
-                      : 'eventos adicionales'}{' '}
-                    de la semana.
-                  </p>
-                  <ActionLink to="/jornadas" variant="ghost" size="sm">
-                    Ver todas las excepciones
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </ActionLink>
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-500">
-              <CheckCircle2
-                className="size-5 shrink-0 text-emerald-600"
-                aria-hidden="true"
-              />
-              No hay observaciones ni validaciones bloqueantes detectadas.
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Últimas jornadas"
-          description="Actividad operativa reciente de ambos procesos."
-        >
-          <ul className="divide-y divide-slate-100">
-            {recentJourneys.map(({ day, journey, process }) => (
-              <li key={`${process}-${day.id}`}>
-                <Link
-                  to={`/jornadas/${day.date}?process=${process}`}
-                  className="group flex flex-col gap-1.5 px-4 py-2.5 transition hover:bg-brand-50/50 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900">
-                      {formatIsoWeekday(day.date)} ·{' '}
-                      {formatIsoDateCompact(day.date)}
-                    </p>
-                    <p className="mt-0.5 text-[0.6875rem] text-slate-500">
-                      {processLabel(process)}
-                    </p>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <StatusBadge tone={journey.tone} truncateText={false}>
-                      {journey.label}
-                    </StatusBadge>
-
-                    <ArrowRight
-                      className="size-4 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
+                ) : null}
+              </ul>
+            ) : (
+              <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-500">
+                <CheckCircle2
+                  className="size-5 shrink-0 text-emerald-600"
+                  aria-hidden="true"
+                />
+                No hay observaciones ni validaciones bloqueantes detectadas.
+              </div>
+            )}
+          </SectionCard>
+        </div>
       </div>
-
-      {packingDays.length > 0 ? (
-        <SectionCard
-          title="Detalle semanal de Envasado"
-          description="Vista rápida de las jornadas registradas y su estado operativo."
-          action={
-            <ActionLink to="/jornadas?process=PACKING" variant="ghost" size="sm">
-              Ver todas
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </ActionLink>
-          }
-        >
-          <DataTableScroll
-            label={`Estado de las jornadas de Envasado de la semana ${packingWeek.number}`}
-          >
-            <table className="erp-table w-full min-w-[54rem] table-fixed border-collapse text-center">
-              <caption className="sr-only">
-                Estado operativo de las jornadas de Envasado
-              </caption>
-
-              <colgroup>
-                <col className="w-[15%]" />
-                <col className="w-[14%]" />
-                <col className="w-[22%]" />
-                <col className="w-[21%]" />
-                <col className="w-[18%]" />
-                <col className="w-[10%]" />
-              </colgroup>
-
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500">
-                  <th scope="col" className="px-3 py-2.5">Jornada</th>
-                  <th scope="col" className="px-3 py-2.5">Fecha</th>
-                  <th scope="col" className="px-3 py-2.5">Estado</th>
-                  <th scope="col" className="px-3 py-2.5">Producto terminado</th>
-                  <th scope="col" className="px-3 py-2.5">Aprovechamiento</th>
-                  <th scope="col" className="px-3 py-2.5">Acción</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {packingCalculatedDays.map(({ day, calculation, journey }) => {
-                  const dayYieldStatus = getYieldStatus(
-                    calculation.performance.percent,
-                  )
-                  const dayYieldStyles =
-                    yieldVisualStyles[dayYieldStatus.colorVariant]
-                  const isBalanceOnly = isBalanceOnlyProductionDay(day)
-
-                  return (
-                    <tr
-                      key={day.id}
-                      className="border-b border-slate-100 bg-white last:border-0 hover:bg-brand-50/35"
-                    >
-                      <th
-                        scope="row"
-                        className="px-3 py-3 text-center text-xs font-bold text-slate-900"
-                      >
-                        {formatIsoWeekday(day.date)}
-                      </th>
-
-                      <td className="number-tabular px-3 py-3 text-center text-xs text-slate-500">
-                        {formatIsoDateCompact(day.date)}
-                      </td>
-
-                      <td className="px-3 py-3 text-center">
-                        <StatusBadge tone={journey.tone} truncateText={false}>
-                          {journey.label}
-                        </StatusBadge>
-                      </td>
-
-                      <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-900">
-                        {formatCentiKg(calculation.declaredFinishedKg100)}
-                      </td>
-
-                      <td
-                        className="px-3 py-3 text-center"
-                        title={
-                          isBalanceOnly
-                            ? 'Jornada de saldos sin nueva materia prima.'
-                            : `${formatRatioAsPercent(
-                                calculation.performance.ratio,
-                              )} · ${dayYieldStatus.label}: ${
-                                dayYieldStatus.interpretation
-                              }`
-                        }
-                      >
-                        {isBalanceOnly ? (
-                          <span className="text-xs font-bold text-slate-500">
-                            NO APLICA
-                          </span>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center">
-                            <span
-                              className={`number-tabular text-xs font-bold ${dayYieldStyles.textClass}`}
-                            >
-                              {formatRatioAsPercent(
-                                calculation.performance.ratio,
-                              )}
-                            </span>
-                            <span
-                              className={`mt-0.5 text-[0.625rem] font-bold ${dayYieldStyles.textClass}`}
-                            >
-                              {dayYieldStatus.label}
-                            </span>
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-3 py-3 text-center">
-                        <ActionLink
-                          to={`/jornadas/${day.date}?process=PACKING`}
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Ver jornada de ${formatIsoWeekday(day.date)} ${formatIsoDateCompact(day.date)}`}
-                        >
-                          Ver
-                          <ArrowRight
-                            className="size-3.5"
-                            aria-hidden="true"
-                          />
-                        </ActionLink>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </DataTableScroll>
-        </SectionCard>
-      ) : null}
 
       {weekSummary ? (
         <section
@@ -990,14 +1059,14 @@ export function DashboardPage() {
             <span
               className={`grid size-9 shrink-0 place-items-center rounded-lg ${
                 isWeekValid
-                  ? 'bg-emerald-50 text-emerald-700'
+                  ? 'bg-emerald-600 text-white'
                   : weekSummary.status === 'VALID'
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'bg-amber-50 text-amber-700'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-amber-500 text-slate-950'
               }`}
               aria-hidden="true"
             >
-              <CheckCircle2 className="size-4" />
+              <CalendarDays className="size-4" />
             </span>
 
             <div className="min-w-0">
@@ -1023,4 +1092,4 @@ export function DashboardPage() {
   )
 }
 
-export default DashboardPage 
+export default DashboardPage

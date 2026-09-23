@@ -31,7 +31,7 @@ function QuantityValue({ value }: { value: number }) {
   return (
     <span className="inline-flex w-full items-baseline justify-center whitespace-nowrap text-center">
       <span>{formatCentiKgValue(value)}</span>
-      <span className="ml-1 text-[0.6875rem] font-medium opacity-70">kg</span>
+      <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
     </span>
   )
 }
@@ -67,8 +67,10 @@ export function ProductionDaysPage() {
       journey: getJourneyStatus(day, operationalState),
     }
   })
+  // Same criterion as the Dashboard: "Cuadradas" are closed, balanced and
+  // without observations. Observed journeys are counted on their own.
   const balancedCount = registeredDays.filter(
-    ({ operationalState }) => operationalState.isBalanced,
+    ({ journey }) => journey.status === 'BALANCED',
   ).length
   const closedCount = registeredDays.filter(
     ({ operationalState }) => operationalState.lifecycle === 'CLOSED',
@@ -195,7 +197,7 @@ const freezingPendingKg100 = sumKg100(
         : 'warning'
     }
     description={
-      balancedCount > 0
+      closedCount > 0 || readyToCloseCount > 0
         ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'} · ${
             readyToCloseCount
           } lista${readyToCloseCount === 1 ? '' : 's'} para cerrar${
@@ -422,7 +424,7 @@ const freezingPendingKg100 = sumKg100(
                           {formatIsoDateCompact(day.date)}
                         </span>
                         {day.date === latestDay?.date ? (
-                          <span className="mt-0.5 block text-[0.625rem] font-medium text-slate-400">
+                          <span className="mt-0.5 block text-[0.625rem] font-medium text-slate-500">
                             Último registro disponible
                           </span>
                         ) : null}

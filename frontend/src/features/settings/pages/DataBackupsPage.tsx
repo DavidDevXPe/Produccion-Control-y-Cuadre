@@ -1,5 +1,9 @@
 import { ChangeEvent, useState } from 'react'
-import { AlertTriangle, Download, Upload } from 'lucide-react'
+import { AlertTriangle, Download, ShieldCheck, Upload } from 'lucide-react'
+import {
+  readStorageQuarantine,
+  STORAGE_QUARANTINE_REASON_LABELS,
+} from '../../../storage/storageQuarantine'
 import {
   createTrabundaBackup,
   downloadJsonFile,
@@ -12,12 +16,21 @@ function backupFilename(prefix = 'trabunda-backup') {
   return `${prefix}-${new Date().toISOString().slice(0, 10)}.json`
 }
 
+function quarantinedItemCount(payload: unknown): number {
+  return Array.isArray(payload) ? payload.length : 1
+}
+
 export function DataBackupsPage() {
+  const [quarantine] = useState(() => readStorageQuarantine())
   const [preview, setPreview] = useState<TrabundaBackupPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const exportBackup = () => {
     downloadJsonFile(backupFilename(), createTrabundaBackup())
+  }
+
+  const exportQuarantine = () => {
+    downloadJsonFile(backupFilename('trabunda-datos-apartados'), quarantine)
   }
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -50,13 +63,13 @@ export function DataBackupsPage() {
     <div className="mx-auto max-w-[88rem] space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-[#00b7f1]">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-ui-text-dark-brand">
             Administración
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">
             Datos y respaldos
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-[#b7d7ea]">
+          <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-ui-text-dark-info">
             Exporta una copia versionada del navegador o restaura un respaldo
             validado. Antes de importar se genera automáticamente una copia de
             seguridad del estado actual.
@@ -73,24 +86,74 @@ export function DataBackupsPage() {
         </button>
       </div>
 
-      <section className="theme-surface overflow-hidden rounded-xl border border-slate-200 dark:border-[#244052]">
-        <div className="border-b border-slate-200 px-5 py-4 dark:border-[#244052]">
+      {quarantine.length > 0 ? (
+        <section
+          aria-labelledby="quarantine-title"
+          className="theme-surface overflow-hidden rounded-xl border border-amber-300 dark:border-amber-500/40"
+        >
+          <div className="flex flex-col gap-3 border-b border-amber-200 px-5 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-amber-500/30">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-amber-600" aria-hidden="true" />
+              <div>
+                <h2 id="quarantine-title" className="font-bold text-slate-950 dark:text-white">
+                  Datos apartados por seguridad
+                </h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-ui-text-dark-info">
+                  Al abrir la aplicación se encontraron datos guardados que no se pudieron
+                  cargar. Se conservó una copia intacta para que no se pierdan cuando se
+                  guarde una jornada nueva. No se borran automáticamente.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={exportQuarantine}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Exportar datos apartados
+            </button>
+          </div>
+
+          <ul className="divide-y divide-slate-100 dark:divide-ui-line-dark-soft">
+            {quarantine.map((entry, index) => (
+              <li
+                key={`${entry.sourceKey}-${entry.reason}-${entry.quarantinedAt}-${index}`}
+                className="px-5 py-3 text-sm"
+              >
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {STORAGE_QUARANTINE_REASON_LABELS[entry.reason]}
+                </p>
+                <p className="mt-0.5 text-slate-600 dark:text-ui-text-faint">
+                  {quarantinedItemCount(entry.payload)}{' '}
+                  {quarantinedItemCount(entry.payload) === 1 ? 'elemento' : 'elementos'} ·
+                  origen {entry.sourceKey} · apartado el{' '}
+                  {new Date(entry.quarantinedAt).toLocaleString('es-PE')}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="theme-surface overflow-hidden rounded-xl border border-slate-200 dark:border-ui-line-dark-soft">
+        <div className="border-b border-slate-200 px-5 py-4 dark:border-ui-line-dark-soft">
           <h2 className="font-bold text-slate-950 dark:text-white">
             Importar respaldo JSON
           </h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-[#b7d7ea]">
+          <p className="mt-1 text-sm text-slate-600 dark:text-ui-text-dark-info">
             Compatible con el formato nuevo TRABUNDA_BACKUP y con respaldos
             antiguos exportados directamente desde localStorage.
           </p>
         </div>
 
         <div className="space-y-5 p-5">
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center transition hover:border-brand-400 hover:bg-brand-50 dark:border-[#2b5268] dark:hover:bg-[#0f2230]">
-            <Upload className="size-7 text-brand-600 dark:text-[#00b7f1]" aria-hidden="true" />
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center transition hover:border-brand-400 hover:bg-brand-50 dark:border-ui-line-dark dark:hover:bg-ui-surface-dark-hover-soft">
+            <Upload className="size-7 text-brand-600 dark:text-ui-text-dark-brand" aria-hidden="true" />
             <span className="font-bold text-slate-900 dark:text-white">
               Seleccionar archivo de respaldo
             </span>
-            <span className="text-sm text-slate-500 dark:text-[#94a9b8]">
+            <span className="text-sm text-slate-600 dark:text-ui-text-faint">
               El archivo no se sube a ningún servidor; se valida en este navegador.
             </span>
             <input

@@ -295,7 +295,7 @@ export function BalancePanel({
                   <td colSpan={2} />
                   <td className="number-tabular whitespace-nowrap px-3 py-2.5 text-center align-middle text-xs font-bold text-brand-900">
                     <span className="inline-flex w-full items-baseline justify-center gap-2">
-                      <span className="text-[0.5625rem] font-semibold uppercase tracking-[0.08em] text-brand-600">
+                      <span className="text-[0.5625rem] font-semibold uppercase tracking-[0.08em] text-brand-700">
                         Total
                       </span>
                       {formatCentiKg(pendingTotal)}
