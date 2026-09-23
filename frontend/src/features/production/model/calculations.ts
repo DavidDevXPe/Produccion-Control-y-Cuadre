@@ -946,6 +946,9 @@ export function calculateOutstandingBalances(
         pendingKg100: kg100(
           Math.max(product.newClosingBalanceKg100 - processedTotalKg100, 0),
         ),
+        excessKg100: kg100(
+          Math.max(processedTotalKg100 - product.newClosingBalanceKg100, 0),
+        ),
       });
     }
   });

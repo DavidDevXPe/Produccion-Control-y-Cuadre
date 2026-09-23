@@ -450,3 +450,101 @@ describe('ProductionDataProvider operational week recovery', () => {
     expect(screen.getByTestId('freezing-week')).toHaveTextContent('OPEN')
   })
 })
+
+describe('ProductionDataProvider stored data safety', () => {
+  const daysKey = 'trabunda-production-days-v2'
+  const quarantineKey = 'trabunda-storage-quarantine-v1'
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    window.localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function readQuarantine() {
+    return JSON.parse(window.localStorage.getItem(quarantineKey) ?? '[]') as {
+      sourceKey: string
+      reason: string
+      payload: unknown
+    }[]
+  }
+
+  it('keeps a copy of unreadable stored days before the next save overwrites them', () => {
+    const corrupted = '[{"id":"production-day-2026-09-08",'
+    window.localStorage.setItem(daysKey, corrupted)
+
+    render(
+      <ProductionDataProvider>
+        <PersistenceProbe />
+      </ProductionDataProvider>,
+    )
+
+    expect(window.localStorage.getItem(daysKey)).toBe(corrupted)
+    fireEvent.click(screen.getByRole('button', { name: 'Crear' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('guardado')
+    expect(readQuarantine()).toEqual([
+      expect.objectContaining({
+        sourceKey: daysKey,
+        reason: 'INVALID_JSON',
+        payload: corrupted,
+      }),
+    ])
+  })
+
+  it('keeps rejected records and days shadowed by permanent history without duplicating them on reload', () => {
+    const invalidRecord = { id: 'sin-estructura' }
+    const shadowedMonday = {
+      ...MONDAY_WEEK_42_PRODUCTION_DAY,
+      displayName: 'Lunes editado localmente',
+    }
+    window.localStorage.setItem(
+      daysKey,
+      JSON.stringify([editableDay, invalidRecord, shadowedMonday]),
+    )
+
+    const first = render(
+      <ProductionDataProvider>
+        <ActiveWeekProbe />
+      </ProductionDataProvider>,
+    )
+    first.unmount()
+    render(
+      <ProductionDataProvider>
+        <ActiveWeekProbe />
+      </ProductionDataProvider>,
+    )
+
+    const entries = readQuarantine()
+    expect(entries.map((entry) => entry.reason).sort()).toEqual([
+      'INVALID_RECORD',
+      'PERMANENT_DAY_COLLISION',
+    ])
+    expect(entries.find((e) => e.reason === 'INVALID_RECORD')?.payload).toEqual([
+      invalidRecord,
+    ])
+    expect(
+      (
+        entries.find((e) => e.reason === 'PERMANENT_DAY_COLLISION')
+          ?.payload as { displayName: string }[]
+      )[0]?.displayName,
+    ).toBe('Lunes editado localmente')
+    expect(JSON.parse(window.localStorage.getItem(daysKey) ?? '[]')).toHaveLength(3)
+  })
+
+  it('does not create a quarantine when every stored record is valid', () => {
+    window.localStorage.setItem(daysKey, JSON.stringify([editableDay]))
+
+    render(
+      <ProductionDataProvider>
+        <ActiveWeekProbe />
+      </ProductionDataProvider>,
+    )
+
+    expect(window.localStorage.getItem(quarantineKey)).toBeNull()
+  })
+})

@@ -74,13 +74,13 @@ import {
   calculateReportFamilySubtotals,
   calculateProductionBusinessSummary,
   validateProductionClosure,
-  type ClosureMessage,
 } from '../model/businessRules'
 import {
   calculateOutstandingBalances,
   kg100,
   sumKg100,
 } from '../model/calculations'
+import { buildClosureObservations } from '../model/closureObservations'
 import { calculateFreezingAvailability } from '../model/freezing'
 import { isSundayIsoDate } from '../model/productionDayMode'
 import {
@@ -89,7 +89,7 @@ import {
   isProductionProcess,
   productionDayKey,
 } from '../model/productionProcess'
-import type { ClosureObservationRecord, ProductionProcess } from '../model/types'
+import type { ProductionProcess } from '../model/types'
 import { useProductionData } from '../state/ProductionDataContext'
 
 type CaptureMode = 'MANUAL' | 'EXCEL'
@@ -117,20 +117,6 @@ interface FreezingExcelPreview
   status:
     | 'EXCEL RECONCILIADO'
     | 'EXCEL REQUIERE REVISIÓN'
-}
-
-function buildClosureObservations(
-  warnings: readonly ClosureMessage[],
-  closedAt: string,
-): readonly ClosureObservationRecord[] {
-  return warnings.map((warning) => ({
-      closedAt,
-      code: warning.code,
-      message: warning.message,
-      userId: 'local-user',
-      ...(warning.familyKey !== undefined ? { familyKey: warning.familyKey } : {}),
-      ...(warning.productId !== undefined ? { productId: warning.productId } : {}),
-    }) satisfies ClosureObservationRecord)
 }
 
 interface QuantityInputProps {
@@ -5855,12 +5841,12 @@ freezingOriginLedger.length > 0 ? (
       ) : null}
 
       {pendingProcessChange ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
           <section
             role="dialog"
             aria-modal="true"
             aria-labelledby="process-change-title"
-            className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-[#0d1f2c] shadow-2xl"
+            className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
           >
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700">
@@ -5900,7 +5886,7 @@ freezingOriginLedger.length > 0 ? (
       ) : null}
 
       {isBulkFreezingLinkConfirmationOpen ? (
-  <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-4">
+  <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">
     <section
       role="dialog"
       aria-modal="true"

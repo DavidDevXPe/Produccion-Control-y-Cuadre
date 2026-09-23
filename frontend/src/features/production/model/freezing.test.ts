@@ -133,7 +133,7 @@ describe("Packing to Freezing lifecycle", () => {
     expect(position?.originDayId).toBe(packing.id);
   });
 
-  it("builds Freezing availability from physical Day + Night + closing balance and excludes Treatment", () => {
+  it("builds Freezing availability from own Day + own Night + closing balance and excludes Treatment", () => {
     const base = packingDay("2026-09-14", 100);
 
     const packing: ProductionDay = {
@@ -213,21 +213,145 @@ describe("Packing to Freezing lifecycle", () => {
     const [position] = calculateFreezingAvailability([packing]);
 
     /*
-     * Congelamiento NO usa los 105 kg de producto
-     * terminado productivo.
+     * Regla confirmada (23/09/2026): el saldo recibido pertenece a su
+     * jornada origen y no se repite en la jornada que lo termina de envasar.
      *
-     * Debe congelarse:
+     * Disponible de esta jornada:
      *
-     * 60 Día
-     * + 40 Noche
+     *   30 Día propio (60 físicos − 30 de saldo de la jornada anterior)
+     * + 40 Noche propia
      * + 20 Saldo al cierre
-     * = 120 kg
+     * = 90 kg
      *
-     * Tratamiento 15 kg queda fuera.
+     * Tratamiento 15 kg queda fuera. Los 60 físicos siguen visibles.
      */
-    expect(position?.generatedKg100).toBe(kg(120));
+    expect(position?.physicalDayKg100).toBe(kg(60));
+    expect(position?.receivedBalanceDayKg100).toBe(kg(30));
+    expect(position?.ownDayKg100).toBe(kg(30));
+    expect(position?.ownNightKg100).toBe(kg(40));
+    expect(position?.closingBalanceKg100).toBe(kg(20));
+    expect(position?.generatedKg100).toBe(kg(90));
 
-    expect(position?.pendingKg100).toBe(kg(120));
+    expect(position?.pendingKg100).toBe(kg(90));
+  });
+
+  it("counts a Night balance only once, in the journey that left it", () => {
+    // Jornada A: Día 40 000 + Noche 25 000; la Noche deja 5 700 kg en saldo.
+    const a = packingDay("2026-09-14", 40_000);
+    const journeyA: ProductionDay = {
+      ...a,
+      declaredShiftTotalsKg100: { DAY: kg(40_000), NIGHT: kg(25_000) },
+      declaredFinishedTotalKg100: kg(70_700),
+      lines: [
+        {
+          ...a.lines[0]!,
+          shifts: {
+            DAY: { reportedKg100: kg(40_000), adjustments: [] },
+            NIGHT: { reportedKg100: kg(25_000), adjustments: [] },
+          },
+          newClosingBalanceKg100: kg(5_700),
+          declaredFinishedKg100: kg(70_700),
+        },
+      ],
+    };
+    // Jornada B: el Día reporta 50 000 físicos, 5 700 son el saldo de A.
+    const b = packingDay("2026-09-15", 50_000);
+    const journeyB: ProductionDay = {
+      ...b,
+      declaredShiftTotalsKg100: { DAY: kg(50_000), NIGHT: kg(30_000) },
+      declaredFinishedTotalKg100: kg(74_300),
+      lines: [
+        {
+          ...b.lines[0]!,
+          shifts: {
+            DAY: { reportedKg100: kg(50_000), adjustments: [] },
+            NIGHT: { reportedKg100: kg(30_000), adjustments: [] },
+          },
+          declaredFinishedKg100: kg(74_300),
+        },
+      ],
+      receivedBalanceLots: [
+        {
+          id: "balance-a-to-b",
+          process: "PACKING",
+          originDayId: journeyA.id,
+          familyId: product.familyId,
+          productId: product.productId,
+          originalKg100: kg(5_700),
+          uses: [
+            {
+              id: "balance-a-to-b-day",
+              targetDayId: b.id,
+              shift: "DAY",
+              kg100: kg(5_700),
+            },
+          ],
+        },
+      ],
+    };
+
+    const positions = calculateFreezingAvailability([journeyA, journeyB]);
+    const positionA = positions.find((p) => p.originDayId === journeyA.id);
+    const positionB = positions.find((p) => p.originDayId === journeyB.id);
+
+    expect(positionA?.generatedKg100).toBe(kg(70_700));
+    expect(positionA?.closingBalanceKg100).toBe(kg(5_700));
+    expect(positionB?.physicalDayKg100).toBe(kg(50_000));
+    expect(positionB?.receivedBalanceDayKg100).toBe(kg(5_700));
+    expect(positionB?.generatedKg100).toBe(kg(74_300));
+    // Total congelable = envasado físico real (145 000), sin repetir 5 700.
+    expect(
+      positions.reduce((total, p) => total + p.generatedKg100, 0),
+    ).toBe(kg(145_000));
+  });
+
+  it("does not generate new availability for a balance-only Sunday", () => {
+    const saturday = packingDay("2026-09-12", 20_000);
+    const saturdayWithBalance: ProductionDay = {
+      ...saturday,
+      declaredFinishedTotalKg100: kg(24_000),
+      lines: [
+        {
+          ...saturday.lines[0]!,
+          newClosingBalanceKg100: kg(4_000),
+          declaredFinishedKg100: kg(24_000),
+        },
+      ],
+    };
+    const sunday = packingDay("2026-09-13", 4_000);
+    const sundayBalanceOnly: ProductionDay = {
+      ...sunday,
+      operationMode: "BALANCE_ONLY",
+      declaredFinishedTotalKg100: kg(0),
+      lines: [{ ...sunday.lines[0]!, declaredFinishedKg100: kg(0) }],
+      receivedBalanceLots: [
+        {
+          id: "balance-saturday-to-sunday",
+          process: "PACKING",
+          originDayId: saturdayWithBalance.id,
+          familyId: product.familyId,
+          productId: product.productId,
+          originalKg100: kg(4_000),
+          uses: [
+            {
+              id: "balance-saturday-to-sunday-day",
+              targetDayId: sunday.id,
+              shift: "DAY",
+              kg100: kg(4_000),
+            },
+          ],
+        },
+      ],
+    };
+
+    const positions = calculateFreezingAvailability([
+      saturdayWithBalance,
+      sundayBalanceOnly,
+    ]);
+
+    expect(positions).toHaveLength(1);
+    expect(positions[0]?.originDayId).toBe(saturdayWithBalance.id);
+    expect(positions[0]?.generatedKg100).toBe(kg(24_000));
   });
 
   it("reduces the pending balance without losing its Packing origin", () => {

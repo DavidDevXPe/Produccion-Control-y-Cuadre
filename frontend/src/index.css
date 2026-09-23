@@ -307,7 +307,9 @@ summary:focus-visible,
 }
 
 .metric-card__layout {
-  display: block;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .metric-card__label {
@@ -344,6 +346,7 @@ summary:focus-visible,
 
   html.dark .metric-card__content {
     grid-column: 2;
+    align-self: stretch;
   }
 
   html.dark .metric-card__label {

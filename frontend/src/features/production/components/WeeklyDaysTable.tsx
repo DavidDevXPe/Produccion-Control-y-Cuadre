@@ -3,12 +3,15 @@ import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg } from '../../../utils/formatters'
 import type { ProductionDayCalculation, ProductionDayStatus } from '../model/types'
+import type { JourneyStatusView } from '../presentation/journeyStatus'
 
 export interface WeeklyDayRow {
   label: string
   date: string
   calculation: ProductionDayCalculation | null
   status?: ProductionDayStatus
+  /** Shared journey status; when given it decides the badge shown. */
+  journey?: Pick<JourneyStatusView, 'label' | 'tone'>
 }
 
 interface WeeklyDaysTableProps {
@@ -68,9 +71,14 @@ export function WeeklyDaysTable({
                   <div className="flex w-full items-center justify-center">
                     {day.calculation ? (
                       <StatusBadge
-                        tone={day.calculation.status === 'BALANCED' ? 'success' : 'danger'}
+                        tone={
+                          day.journey?.tone ??
+                          (day.calculation.status === 'BALANCED' ? 'success' : 'danger')
+                        }
+                        truncateText={false}
                       >
-                        {day.calculation.status === 'BALANCED' ? 'CUADRADO' : 'NO CUADRADO'}
+                        {day.journey?.label ??
+                          (day.calculation.status === 'BALANCED' ? 'CUADRADO' : 'NO CUADRADO')}
                       </StatusBadge>
                     ) : (
                       <StatusBadge tone="neutral">SIN REGISTRO</StatusBadge>

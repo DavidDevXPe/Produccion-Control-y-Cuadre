@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, Boxes, ChevronDown, ChevronRight, Clock3 } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  Boxes,
+  ChevronDown,
+  ChevronRight,
+  Clock3,
+} from 'lucide-react'
+import { ActionLink } from '../../../components/ui/ActionLink'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
@@ -11,6 +19,8 @@ export interface BalanceProductPosition {
   readonly processedDayKg100: Kg100
   readonly processedNightKg100: Kg100
   readonly pendingKg100: Kg100
+  /** Consumed above what the origin generated; shown, never netted away. */
+  readonly excessKg100?: Kg100
 }
 
 interface BalancePanelProps {
@@ -62,7 +72,12 @@ export function BalancePanel({
         if (product.newClosingBalanceKg100 <= 0) return false
         if (view === 'closing') return true
 
-        return (positionsByProduct.get(product.productId)?.pendingKg100 ?? zeroKg100) > 0
+        const position = positionsByProduct.get(product.productId)
+
+        return (
+          (position?.pendingKg100 ?? zeroKg100) > 0 ||
+          (position?.excessKg100 ?? zeroKg100) > 0
+        )
       }),
     [positionsByProduct, products, view],
   )
@@ -95,6 +110,10 @@ export function BalancePanel({
         ? (positionsByProduct.get(product.productId)?.pendingKg100 ?? zeroKg100)
         : product.newClosingBalanceKg100,
   )
+  const totalExcess = sumBalances(
+    balances,
+    (product) => positionsByProduct.get(product.productId)?.excessKg100 ?? zeroKg100,
+  )
   const hasSubsequentConsumption = positions?.some(
     (position) =>
       position.processedDayKg100 > 0 || position.processedNightKg100 > 0,
@@ -126,7 +145,21 @@ export function BalancePanel({
           ? 'Posiciones aún abiertas que conservan esta jornada como origen.'
           : 'Producto pendiente que esta jornada dejó como saldo al momento de su cierre.'
       }
-      action={<StatusBadge tone="info">{balances.length} productos</StatusBadge>}
+      action={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <StatusBadge tone="info">{balances.length} productos</StatusBadge>
+          {isOutstandingView ? (
+            <ActionLink
+              to={`/jornadas/${originDate}?process=PACKING`}
+              variant="ghost"
+              size="sm"
+            >
+              Ver jornada de origen
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </ActionLink>
+          ) : null}
+        </div>
+      }
     >
       <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -143,6 +176,15 @@ export function BalancePanel({
               </p>
             </div>
           </div>
+          {totalExcess > 0 ? (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800"
+            >
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              {formatCentiKg(totalExcess)} consumidos por encima de lo generado
+            </div>
+          ) : null}
           <div
             className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
             title={isOutstandingView ? undefined : balanceTimelineHelp}
@@ -291,6 +333,12 @@ export function BalancePanel({
                               <ArrowRight className="size-3.5 text-brand-600" aria-hidden="true" />
                               {formatCentiKg(position.pendingKg100)}
                             </span>
+                            {(position.excessKg100 ?? zeroKg100) > 0 ? (
+                              <span className="mt-0.5 flex w-full items-center justify-center gap-1 text-[0.6875rem] font-bold text-rose-700">
+                                <AlertTriangle className="size-3" aria-hidden="true" />
+                                Exceso {formatCentiKg(position.excessKg100 ?? zeroKg100)}
+                              </span>
+                            ) : null}
                           </td>
                         </tr>
                       )

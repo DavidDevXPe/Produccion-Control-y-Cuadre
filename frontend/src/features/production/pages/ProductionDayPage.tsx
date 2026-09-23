@@ -16,6 +16,7 @@ import {
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
@@ -23,6 +24,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
 import { BalancePanel } from '../components/BalancePanel'
+import { CloseDayDialog } from '../components/CloseDayDialog'
 import { FreezingDayDetail } from '../components/FreezingDayDetail'
 import { PerformancePanel } from '../components/PerformancePanel'
 import { ProductionBreakdown } from '../components/ProductionBreakdown'
@@ -32,31 +34,16 @@ import {
   calculateOutstandingBalances,
   sumKg100,
 } from '../model/calculations'
-import type { ClosureMessage } from '../model/businessRules'
+import { buildClosureObservations } from '../model/closureObservations'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
-import { createPortal } from 'react-dom'
 import {
   getProductionProcess,
   isFreezingProductionDay,
   isProductionProcess,
 } from '../model/productionProcess'
-import type { ClosureObservationRecord } from '../model/types'
+import { getJourneyStatus } from '../presentation/journeyStatus'
 import { useProductionData } from '../state/ProductionDataContext'
-
-function buildClosureObservations(
-  warnings: readonly ClosureMessage[],
-  closedAt: string,
-): readonly ClosureObservationRecord[] {
-  return warnings.map((warning) => ({
-    closedAt,
-    code: warning.code,
-    message: warning.message,
-    userId: 'local-user',
-    ...(warning.familyKey !== undefined ? { familyKey: warning.familyKey } : {}),
-    ...(warning.productId !== undefined ? { productId: warning.productId } : {}),
-  }) satisfies ClosureObservationRecord)
-}
 
 export function ProductionDayPage() {
   const { date } = useParams()
@@ -109,6 +96,7 @@ export function ProductionDayPage() {
   const balancePositions = weeklyBalancePositions.filter(
     (position) => position.originDayId === productionDay.id,
   )
+  const journey = getJourneyStatus(productionDay, operationalState)
   const isBalanced = operationalState.isBalanced
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
@@ -133,6 +121,11 @@ export function ProductionDayPage() {
   setCloseError('')
   setIsCloseConfirmationOpen(true)
 }
+
+  const cancelClose = () => {
+    setIsCloseConfirmationOpen(false)
+    setCloseError('')
+  }
 
   const confirmCloseDay = () => {
     if (!isReadyToClose || isClosed) return
@@ -184,236 +177,44 @@ if (isFreezing) {
         onClose={handleCloseDay}
       />
 
-      {isCloseConfirmationOpen
-        ? createPortal(
-            <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-[1px] dark:bg-[#020914]/90">
-              <section
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="freezing-close-title"
-                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#203E50] dark:bg-[#0D2534]"
-              >
-                {/* Encabezado */}
-                <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
-                  <div className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-[#FFD166]">
-                      <AlertTriangle
-                        className="size-4"
-                        aria-hidden="true"
-                      />
-                    </span>
-
-                    <div className="min-w-0">
-                      <h2
-                        id="freezing-close-title"
-                        className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
-                      >
-                        Cerrar jornada de Congelamiento
-                      </h2>
-
-                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
-                        Después del cierre, esta jornada
-                        quedará en solo lectura.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Resumen */}
-                <div className="px-5 py-4 sm:px-6">
-                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3 dark:border-[#203E50] dark:bg-[#07141F]/70">
-                    {[
-                      [
-                        'Fecha',
-                        formatIsoDate(
-                          productionDay.date,
-                        ),
-                      ],
-                      [
-                        'Congelado Día',
-                        formatCentiKg(
-                          calculation.day
-                            .declaredReportedKg100,
-                        ),
-                      ],
-                      [
-                        'Congelado Noche',
-                        formatCentiKg(
-                          calculation.night
-                            .declaredReportedKg100,
-                        ),
-                      ],
-                      [
-                        'Total congelado',
-                        formatCentiKg(
-                          totalFrozenKg100,
-                        ),
-                      ],
-                      [
-                        'Con origen identificado',
-                        formatCentiKg(
-                          calculation
-                            .processedPreviousBalanceKg100,
-                        ),
-                      ],
-                      [
-                        'Sin origen suficiente',
-                        formatCentiKg(
-                          calculation
-                            .reportOwnProductionKg100,
-                        ),
-                      ],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="min-w-0"
-                      >
-                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
-                          {label}
-                        </dt>
-
-                        <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  {/* Advertencias */}
-                  {operationalState.validation.warnings
-                    .length > 0 ? (
-                    <div className="mt-5">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
-                          Advertencias antes del cierre
-                        </p>
-
-                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.625rem] font-extrabold text-amber-800 dark:border-[#8A6A1F] dark:bg-[#2A2414] dark:text-[#FFD166]">
-                          {
-                            operationalState.validation
-                              .warnings.length
-                          }{' '}
-                          {operationalState.validation
-                            .warnings.length === 1
-                            ? 'advertencia'
-                            : 'advertencias'}
-                        </span>
-                      </div>
-
-                      <div className="overflow-hidden rounded-xl border border-amber-300 bg-amber-50 dark:border-[#72581D] dark:bg-[#211D12]">
-                        {operationalState.validation.warnings.map(
-                          (warning, index) => (
-                            <div
-                              key={`${warning.code}-${
-                                warning.familyKey ??
-                                warning.productId ??
-                                'GENERAL'
-                              }`}
-                              className={`flex items-start gap-3 px-4 py-3 ${
-                                index > 0
-                                  ? 'border-t border-amber-200 dark:border-amber-500/10'
-                                  : ''
-                              }`}
-                            >
-                              <AlertTriangle
-                                className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
-                                aria-hidden="true"
-                              />
-
-                              <div className="min-w-0">
-                                <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
-                                  {warning.code ===
-                                  'FREEZING_TRACEABILITY_DIFFERENCE'
-                                    ? 'Diferencia de trazabilidad'
-                                    : warning.code ===
-                                        'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
-                                      ? 'Producto con origen insuficiente'
-                                      : 'Advertencia'}
-                                </p>
-
-                                <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
-                                  {warning.message}
-                                </p>
-                              </div>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {closeError ? (
-                    <div
-                      role="alert"
-                      className="mt-4 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
-                    >
-                      {closeError}
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Botones */}
-                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-[#203E50] dark:bg-[#0A1A27]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCloseConfirmationOpen(
-                        false,
-                      )
-                      setCloseError('')
-                    }}
-                    className="
-                      inline-flex min-h-10 items-center justify-center
-                      rounded-lg border border-slate-300
-                      bg-white px-4
-                      text-sm font-bold text-slate-700
-                      transition
-                      hover:bg-slate-100 hover:text-slate-950
-
-                      dark:border-[#2B5268]
-                      dark:bg-transparent
-                      dark:text-[#C3D2DC]
-                      dark:hover:bg-[#123247]
-                      dark:hover:text-white
-                    "
-                  >
-                    Volver a revisar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={confirmCloseDay}
-                    className="
-                      inline-flex min-h-10 items-center justify-center
-                      rounded-lg border border-emerald-700
-                      bg-emerald-700 px-5
-                      text-sm font-extrabold text-white
-                      shadow-sm transition
-
-                      hover:border-emerald-800
-                      hover:bg-emerald-800
-
-                      focus-visible:outline-none
-                      focus-visible:ring-2
-                      focus-visible:ring-emerald-500
-                      focus-visible:ring-offset-2
-
-                      dark:border-emerald-500
-                      dark:bg-emerald-600
-                      dark:hover:bg-emerald-500
-                    "
-                  >
-                    {operationalState.validation
-                      .warnings.length > 0
-                      ? 'Cerrar con observación'
-                      : 'Cerrar jornada'}
-                  </button>
-                </div>
-              </section>
-            </div>,
-            document.body,
-          )
-        : null}
+      {isCloseConfirmationOpen ? (
+        <CloseDayDialog
+          titleId="freezing-close-title"
+          title="Cerrar jornada de Congelamiento"
+          description="Después del cierre, esta jornada quedará en solo lectura."
+          summary={[
+            { label: 'Fecha', value: formatIsoDate(productionDay.date) },
+            {
+              label: 'Congelado Día',
+              value: formatCentiKg(calculation.day.declaredReportedKg100),
+            },
+            {
+              label: 'Congelado Noche',
+              value: formatCentiKg(calculation.night.declaredReportedKg100),
+            },
+            { label: 'Total congelado', value: formatCentiKg(totalFrozenKg100) },
+            {
+              label: 'Con origen identificado',
+              value: formatCentiKg(calculation.processedPreviousBalanceKg100),
+            },
+            {
+              label: 'Sin origen suficiente',
+              value: formatCentiKg(calculation.reportOwnProductionKg100),
+            },
+          ]}
+          warnings={operationalState.validation.warnings}
+          warningTitle={(warning) =>
+            warning.code === 'FREEZING_TRACEABILITY_DIFFERENCE'
+              ? 'Diferencia de trazabilidad'
+              : warning.code === 'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
+                ? 'Producto con origen insuficiente'
+                : 'Advertencia'
+          }
+          error={closeError}
+          onCancel={cancelClose}
+          onConfirm={confirmCloseDay}
+        />
+      ) : null}
     </>
   )
 }
@@ -462,11 +263,13 @@ if (isFreezing) {
                   : isBalanced
                     ? 'success'
                     : 'danger'
-                : isReadyToClose
-                  ? hasClosureWarnings
-                    ? 'warning'
-                    : 'success'
-                  : 'warning'
+                : journey.status === 'NOT_BALANCED'
+                  ? 'danger'
+                  : isReadyToClose
+                    ? hasClosureWarnings
+                      ? 'warning'
+                      : 'success'
+                    : 'warning'
             }
             >
               {isClosed
@@ -486,50 +289,19 @@ if (isFreezing) {
             ) : null}
             {isUserManagedDay(productionDay.date, process) && !isClosed ? (
               <>
-                <Link
+                <ActionLink
                   to={`/jornadas/${productionDay.date}/editar?process=${process}`}
-                  className="
-                    inline-flex min-h-10 shrink-0 items-center justify-center gap-2
-                    rounded-[0.625rem] border border-slate-300 bg-white px-4 py-2
-                    text-sm font-bold text-slate-700 shadow-sm transition-colors
-                    hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800
-
-                    dark:border-[#2B5268] dark:bg-[#0D2534]
-                    dark:text-[#58C8EA] dark:shadow-none
-                    dark:hover:border-[#3D6A80]
-                    dark:hover:bg-[#123247]
-                    dark:hover:text-[#F3F8FB]
-                  "
+                  variant="secondary"
                 >
                   <Pencil className="size-4" aria-hidden="true" />
                   Seguir editando
-                </Link>
+                </ActionLink>
 
                 <button
                   type="button"
                   disabled={!isReadyToClose}
                   onClick={handleCloseDay}
-                  className="
-                    inline-flex min-h-10 shrink-0 items-center justify-center gap-2
-                    rounded-[0.625rem] border border-brand-700
-                    bg-brand-700 px-4 py-2
-                    text-sm font-bold text-white transition-colors
-                    hover:bg-brand-800
-
-                    disabled:cursor-not-allowed
-                    disabled:border-slate-200
-                    disabled:bg-slate-100
-                    disabled:text-slate-400
-
-                    dark:border-[#169FD0]
-                    dark:bg-[#169FD0]
-                    dark:text-white
-                    dark:hover:bg-[#138BB6]
-
-                    dark:disabled:border-[#203E50]
-                    dark:disabled:bg-[#102331]
-                    dark:disabled:text-[#60798A]
-                  "
+                  className={buttonStyles('primary')}
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   Cerrar jornada
@@ -538,32 +310,7 @@ if (isFreezing) {
             ) : null}
             <button
               type="button"
-              className="
-                inline-flex min-h-10 shrink-0 items-center justify-center gap-2
-                rounded-[0.625rem] border border-slate-300
-                bg-white px-4 py-2
-                text-sm font-bold text-slate-700
-                transition-colors
-                hover:border-brand-300
-                hover:bg-brand-50
-                hover:text-brand-800              
-
-                disabled:cursor-not-allowed
-                disabled:border-slate-200
-                disabled:bg-slate-100
-                disabled:text-slate-400             
-
-                dark:border-[#2B5268]
-                dark:bg-[#0D2534]
-                dark:text-[#A5BED0]
-                dark:hover:border-[#3D6A80]
-                dark:hover:bg-[#123247]
-                dark:hover:text-[#F3F8FB]             
-
-                dark:disabled:border-[#203E50]
-                dark:disabled:bg-[#102331]
-                dark:disabled:text-[#60798A]
-              "
+              className={buttonStyles('secondary')}
               disabled={!canExport || exportState === 'EXPORTING'}
               onClick={handleExport}
               title={
@@ -725,299 +472,44 @@ if (isFreezing) {
           />
         ) : null}
       </div>
-      {isCloseConfirmationOpen
-  ? createPortal(
-      <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-[1px] dark:bg-[#020914]/90">
-        <section
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="day-close-title"
-          className="
-            my-auto w-full max-w-2xl overflow-hidden
-            rounded-2xl border border-slate-200
-            bg-white shadow-2xl
-            dark:border-[#203E50]
-            dark:bg-[#0D2534]
-          "
-        >
-          {/* Encabezado */}
-          <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
-            <div className="flex items-start gap-3">
-              <span
-                className="
-                  grid size-9 shrink-0 place-items-center
-                  rounded-lg bg-amber-100 text-amber-700
-                  dark:bg-amber-500/10 dark:text-[#FFD166]
-                "
-              >
-                <AlertTriangle
-                  className="size-4"
-                  aria-hidden="true"
-                />
-              </span>
-
-              <div className="min-w-0">
-                <h2
-                  id="day-close-title"
-                  className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
-                >
-                  Cerrar jornada
-                </h2>
-
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
-                  Después del cierre, esta jornada quedará en solo lectura.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Contenido */}
-          <div className="px-5 py-4 sm:px-6">
-            <dl
-              className="
-                grid gap-x-6 gap-y-4
-                rounded-xl border border-slate-200
-                bg-slate-50 p-4
-                sm:grid-cols-3
-                dark:border-[#203E50]
-                dark:bg-[#07141F]/70
-              "
-            >
-              {[
-                ['Fecha', formatIsoDate(productionDay.date)],
-                [
-                  'Materia prima',
-                  formatCentiKg(
-                    productionDay.declaredRawMaterialKg100,
-                  ),
-                ],
-                [
-                  'Producto terminado',
-                  formatCentiKg(
-                    calculation.declaredFinishedKg100,
-                  ),
-                ],
-                [
-                  'Saldo final',
-                  formatCentiKg(
-                    calculation.newClosingBalanceKg100,
-                  ),
-                ],
-                [
-                  'Diferencia',
-                  formatCentiKg(
-                    calculation.differenceKg100,
-                  ),
-                ],
-                [
-                  'Estado',
-                  isReadyToClose
-                    ? operationalState.validation.warnings.length > 0
-                      ? 'Lista para cerrar con observación'
-                      : 'Lista para cerrar'
-                    : 'Requiere revisión',
-                ],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="min-w-0"
-                >
-                  <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
-                    {label}
-                  </dt>
-
-                  <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
-                    {value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
-            {/* Advertencias */}
-            {operationalState.validation.warnings.length > 0 ? (
-              <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
-                    Advertencias antes del cierre
-                  </p>
-
-                  <span
-                    className="
-                      shrink-0 rounded-full
-                      border border-amber-300
-                      bg-amber-50
-                      px-2.5 py-1
-                      text-[0.625rem] font-extrabold
-                      text-amber-800
-                      dark:border-[#8A6A1F]
-                      dark:bg-[#2A2414]
-                      dark:text-[#FFD166]
-                    "
-                  >
-                    {operationalState.validation.warnings.length}{' '}
-                    {operationalState.validation.warnings.length === 1
-                      ? 'advertencia'
-                      : 'advertencias'}
-                  </span>
-                </div>
-
-                <div
-                  className="
-                    overflow-hidden rounded-xl
-                    border border-amber-300
-                    bg-amber-50
-                    dark:border-[#72581D]
-                    dark:bg-[#211D12]
-                  "
-                >
-                  {operationalState.validation.warnings.map(
-                    (warning, index) => (
-                      <div
-                        key={`${warning.code}-${
-                          warning.familyKey ??
-                          warning.productId ??
-                          'GENERAL'
-                        }`}
-                        className={`flex items-start gap-3 px-4 py-3 ${
-                          index > 0
-                            ? 'border-t border-amber-200 dark:border-amber-500/10'
-                            : ''
-                        }`}
-                      >
-                        <AlertTriangle
-                          className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
-                          aria-hidden="true"
-                        />
-
-                        <p className="text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
-                          {warning.message}
-                        </p>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            ) : null}
-
-            {closeError ? (
-              <div
-                role="alert"
-                className="
-                  mt-4 rounded-lg
-                  border border-rose-300
-                  bg-rose-50
-                  px-3 py-2
-                  text-xs font-semibold text-rose-800
-                  dark:border-rose-500/30
-                  dark:bg-rose-500/10
-                  dark:text-rose-200
-                "
-              >
-                {closeError}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Acciones */}
-          <div
-            className="
-              flex flex-col-reverse gap-2
-              border-t border-slate-200
-              bg-slate-50 px-5 py-4
-              sm:flex-row sm:justify-end sm:px-6
-              dark:border-[#203E50]
-              dark:bg-[#0A1A27]
-            "
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setIsCloseConfirmationOpen(false)
-                setCloseError('')
-              }}
-              className="
-                inline-flex min-h-10 items-center justify-center
-                rounded-lg border border-slate-300
-                bg-white px-4
-                text-sm font-bold text-slate-700
-                shadow-sm transition
-
-                hover:border-slate-400
-                hover:bg-slate-100
-                hover:text-slate-950
-
-                focus-visible:outline-none
-                focus-visible:ring-2
-                focus-visible:ring-brand-400
-                focus-visible:ring-offset-2
-
-                dark:border-[#2B5268]
-                dark:bg-transparent
-                dark:text-[#C3D2DC]
-                dark:shadow-none
-                dark:hover:bg-[#123247]
-                dark:hover:text-white
-              "
-            >
-              Volver a revisar
-            </button>
-
-            <button
-              type="button"
-              onClick={confirmCloseDay}
-              className={
-                operationalState.validation.warnings.length > 0
-                  ? `
-                    inline-flex min-h-10 items-center justify-center
-                    rounded-lg border border-amber-600
-                    bg-amber-500 px-5
-                    text-sm font-extrabold text-amber-950
-                    shadow-sm transition
-
-                    hover:border-amber-700
-                    hover:bg-amber-600
-
-                    focus-visible:outline-none
-                    focus-visible:ring-2
-                    focus-visible:ring-amber-500
-                    focus-visible:ring-offset-2
-
-                    dark:border-amber-500
-                    dark:bg-amber-500
-                    dark:text-[#07141F]
-                    dark:hover:bg-amber-400
-                  `
-                  : `
-                    inline-flex min-h-10 items-center justify-center
-                    rounded-lg border border-emerald-700
-                    bg-emerald-700 px-5
-                    text-sm font-extrabold text-white
-                    shadow-sm transition
-
-                    hover:border-emerald-800
-                    hover:bg-emerald-800
-
-                    focus-visible:outline-none
-                    focus-visible:ring-2
-                    focus-visible:ring-emerald-500
-                    focus-visible:ring-offset-2
-
-                    dark:border-emerald-500
-                    dark:bg-emerald-600
-                    dark:hover:bg-emerald-500
-                  `
-              }
-            >
-              {operationalState.validation.warnings.length > 0
-                ? 'Cerrar con observación'
-                : 'Cerrar jornada'}
-            </button>
-          </div>
-        </section>
-      </div>,
-      document.body,
-    )
-  : null}
+      {isCloseConfirmationOpen ? (
+        <CloseDayDialog
+          titleId="day-close-title"
+          title="Cerrar jornada"
+          description="Después del cierre, esta jornada quedará en solo lectura."
+          summary={[
+            { label: 'Fecha', value: formatIsoDate(productionDay.date) },
+            {
+              label: 'Materia prima',
+              value: formatCentiKg(productionDay.declaredRawMaterialKg100),
+            },
+            {
+              label: 'Producto terminado',
+              value: formatCentiKg(calculation.declaredFinishedKg100),
+            },
+            {
+              label: 'Saldo final',
+              value: formatCentiKg(calculation.newClosingBalanceKg100),
+            },
+            {
+              label: 'Diferencia',
+              value: formatCentiKg(calculation.differenceKg100),
+            },
+            {
+              label: 'Estado',
+              value: isReadyToClose
+                ? hasClosureWarnings
+                  ? 'Lista para cerrar con observación'
+                  : 'Lista para cerrar'
+                : 'Requiere revisión',
+            },
+          ]}
+          warnings={operationalState.validation.warnings}
+          error={closeError}
+          onCancel={cancelClose}
+          onConfirm={confirmCloseDay}
+        />
+      ) : null}
     </div>
   )
 }

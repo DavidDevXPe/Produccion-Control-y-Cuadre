@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { closedFreezingDay, closedPackingDay } from '../../../test/productionFixtures'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { ProductionDaysPage } from './ProductionDaysPage'
@@ -56,7 +57,7 @@ describe('production days page', () => {
       'Aprovechamiento',
       'Acción',
     ])
-    expect(table).toHaveClass('table-fixed', 'min-w-[72rem]')
+    expect(table).toHaveClass('table-fixed', 'min-w-[68rem]')
     expect(
       [...table.querySelectorAll('col')].map((column) => column.className),
     ).toEqual([
@@ -216,6 +217,88 @@ describe('production days page', () => {
     expect(
       within(dialog).getByRole('button', { name: 'Cerrar semana' }),
     ).toBeDisabled()
+  })
+
+  it('shows the same journey status as the Dashboard: every closed week 41 journey carries its observations', () => {
+    render(
+      <MemoryRouter>
+        <ProductionDaysPage />
+      </MemoryRouter>,
+    )
+
+    const table = screen.getByRole('table', {
+      name: 'Jornadas de producción registradas',
+    })
+    expect(within(table).getAllByText('CUADRADO · OBSERVADO')).toHaveLength(4)
+    expect(within(table).queryByText('CUADRADO')).not.toBeInTheDocument()
+  })
+
+  it('shows an open journey as POR REVISAR in amber, never as a critical failure', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    window.localStorage.clear()
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([
+        {
+          ...WEDNESDAY_PRODUCTION_DAY,
+          id: 'production-day-2026-09-08',
+          date: '2026-09-08',
+          displayName: 'Martes 08/09/2026',
+          status: 'DRAFT',
+        },
+      ]),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter>
+          <ProductionDaysPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const row = screen.getByText('MARTES').closest('tr')!
+    const badge = within(row).getByText('POR REVISAR')
+    expect(within(row).queryByText('POR CUADRAR')).not.toBeInTheDocument()
+    expect(badge.closest('span[class*="ring-1"]')?.className).toMatch(/amber/)
+    expect(badge.closest('span[class*="ring-1"]')?.className).not.toMatch(/rose/)
+  })
+
+  it('flags Freezing linked above the physical report in red inside the Freezing summary', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    const origin = closedPackingDay('2026-09-08', 100_000)
+    const freezing = closedFreezingDay({
+      date: '2026-09-09',
+      reportedKg: 80_000,
+      linkedKg: 100_000,
+      origin,
+    })
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '42')
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([origin, freezing]),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/jornadas?process=FREEZING']}>
+          <ProductionDaysPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const summary = screen
+      .getByRole('heading', { name: 'Resumen de congelamiento' })
+      .closest('section')!
+    expect(
+      within(summary).getByText('Vinculado por encima de lo reportado'),
+    ).toBeInTheDocument()
+    const difference = within(summary).getByText('Dif. trazabilidad').nextElementSibling
+    expect(difference).toHaveTextContent('-20,000.00')
+    expect(difference?.className).toMatch(/rose/)
   })
 })
 

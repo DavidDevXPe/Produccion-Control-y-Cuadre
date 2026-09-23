@@ -1,7 +1,8 @@
 import { act, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { formatIsoDate } from '../../../utils/formatters'
+
+import { closedFreezingDay, closedPackingDay } from '../../../test/productionFixtures'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { DashboardPage } from './DashboardPage'
 
@@ -10,7 +11,7 @@ vi.mock('../components/WeeklyProductionChart', () => ({
 }))
 
 describe('dashboard page', () => {
-  it('uses Saturday as the latest close and lists all four registered days', async () => {
+  it('shows the closed week as a weekly operational dashboard with the four registered Packing journeys', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -19,42 +20,92 @@ describe('dashboard page', () => {
       )
     })
 
+    expect(
+      screen.getByText('Semana 41 · Cerrada · Solo lectura'),
+    ).toBeInTheDocument()
+
     const indicators = screen.getByRole('region', {
-      name: 'Indicadores principales',
+      name: 'Indicadores principales de la semana',
     })
 
-    expect(within(indicators).getByText('456,983.00')).toBeInTheDocument()
-    expect(within(indicators).getByText('44,660.00')).toBeInTheDocument()
-    expect(within(indicators).getByText('93.55%')).toBeInTheDocument()
     expect(
-      within(indicators).getByText('Pendiente para la siguiente jornada'),
+      within(indicators).getByRole('heading', {
+        name: 'Envasado de la semana',
+      }),
     ).toBeInTheDocument()
-    expect(within(indicators).getByText('REVISAR')).toBeInTheDocument()
-    expect(screen.getByText('185,620.00 kg')).toBeInTheDocument()
-    expect(screen.getByText('219,800.00 kg')).toBeInTheDocument()
-    expect(screen.getByText('6,903.00 kg')).toBeInTheDocument()
-    expect(screen.getByText('Producto terminado = Día + Noche + Tratamiento + Saldo')).toBeInTheDocument()
+
     expect(
-      screen.getAllByText(formatIsoDate('2026-09-05')).length,
-    ).toBeGreaterThan(0)
-    expect(
-      screen.getByText('Se muestran solamente los 4 cierres reales registrados.'),
+      within(indicators).getByRole('heading', {
+        name: 'Congelado de la semana',
+      }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /^Ver$/i })).toHaveLength(4)
-    expect(await screen.findByTestId('weekly-production-chart')).toBeInTheDocument()
-    expect(screen.getByText('Semana 41 · Cerrada · Solo lectura')).toBeInTheDocument()
+
     expect(
-      screen.getByRole('heading', { name: 'Requiere atención' }),
+      within(indicators).getByRole('heading', {
+        name: 'Saldo pendiente trazable',
+      }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/ALERTA/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Nueva jornada' })).not.toBeInTheDocument()
+
     expect(
-      screen.getByRole('heading', { name: 'Envasado vs Congelamiento' }),
+      within(indicators).getByRole('heading', {
+        name: 'Jornadas con observación',
+      }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Aún no hay jornadas de Congelamiento')).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Envasado vs Congelamiento',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByText('Aún no hay jornadas de Congelamiento'),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Estado de jornadas',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Actividad y excepciones',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Últimas jornadas',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Detalle semanal de Envasado',
+      }),
+    ).toBeInTheDocument()
+
+    const table = screen.getByRole('table', {
+      name: 'Estado operativo de las jornadas de Envasado',
+    })
+
+    expect(within(table).getAllByRole('row')).toHaveLength(5)
+    expect(within(table).getByText('SÁBADO')).toBeInTheDocument()
+    expect(
+      within(table).getAllByRole('link', { name: /^Ver jornada de /i }),
+    ).toHaveLength(4)
+
+    expect(
+      await screen.findByTestId('weekly-production-chart'),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.queryByRole('link', { name: 'Nueva jornada' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('shows the permanently saved Monday in the editable current week', () => {
+  it('shows the saved Monday inside the current editable week using the new weekly dashboard structure', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
     window.localStorage.clear()
@@ -69,54 +120,76 @@ describe('dashboard page', () => {
 
     expect(
       screen.getByText(
-        'Último registro disponible y consistencia de la semana 42.',
+        'Semana 42 · Estado general de Envasado y Congelamiento',
       ),
     ).toBeInTheDocument()
-    expect(screen.getAllByText('492,763.00').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('60,450.00').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('80.09%').length).toBeGreaterThan(0)
-    expect(screen.queryByRole('link', { name: 'Nueva jornada' })).not.toBeInTheDocument()
+
+    expect(
+      screen.getByRole('link', { name: 'Nueva jornada' }),
+    ).toBeInTheDocument()
+
+    const indicators = screen.getByRole('region', {
+      name: 'Indicadores principales de la semana',
+    })
+
+    expect(
+      within(indicators).getByRole('heading', {
+        name: 'Envasado de la semana',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      within(indicators).getByText('492,763.00'),
+    ).toBeInTheDocument()
 
     const table = screen.getByRole('table', {
-      name: 'Estado operativo de las jornadas registradas',
+      name: 'Estado operativo de las jornadas de Envasado',
     })
-    const headers = within(table).getAllByRole('columnheader')
+
+    const headers = [...table.querySelectorAll('thead th')]
+
+    expect(headers.map((header) => header.textContent)).toEqual([
+      'Jornada',
+      'Fecha',
+      'Estado',
+      'Producto terminado',
+      'Aprovechamiento',
+      'Acción',
+    ])
+
     expect(table).toHaveClass('table-fixed', 'text-center')
+
     expect(
       [...table.querySelectorAll('col')].map((column) => column.className),
     ).toEqual([
-      'w-[9%]',
-      'w-[12%]',
-      'w-[19%]',
-      'w-[20%]',
+      'w-[15%]',
       'w-[14%]',
-      'w-[17%]',
-      'w-[9%]',
+      'w-[22%]',
+      'w-[21%]',
+      'w-[18%]',
+      'w-[10%]',
     ])
-    headers.forEach((header) => {
-      expect(header).toHaveClass('px-2', 'text-center', 'align-middle')
-    })
 
     const mondayRow = within(table).getByText('LUNES').closest('tr')
+
     expect(mondayRow).not.toBeNull()
-    expect(within(mondayRow!).getByRole('rowheader')).toHaveClass(
-      'px-2',
-      'text-center',
-      'align-middle',
-    )
-    within(mondayRow!).getAllByRole('cell').forEach((cell) => {
-      expect(cell).toHaveClass('px-2', 'text-center', 'align-middle')
-    })
+    expect(within(mondayRow!).getByText('492,763.00 kg')).toBeInTheDocument()
+    expect(within(mondayRow!).getByText('80.09%')).toBeInTheDocument()
     expect(
-      within(mondayRow!).getByText('CUADRADO').closest('td')
-        ?.firstElementChild,
-    ).toHaveClass('w-full', 'justify-center')
+      within(mondayRow!).getByRole('link', { name: /^Ver jornada de /i }),
+    ).toBeInTheDocument()
+
     expect(
-      within(mondayRow!).getByLabelText(/^Aprovechamiento /).firstElementChild,
-    ).toHaveClass('w-full', 'items-center', 'justify-center', 'text-center')
+      screen.getByRole('heading', {
+        name: 'Saldos pendientes por familia',
+      }),
+    ).toBeInTheDocument()
+
     expect(
-      within(mondayRow!).getByRole('link', { name: /^Ver$/i }).parentElement,
-    ).toHaveClass('w-full', 'justify-center')
+      screen.getByRole('heading', {
+        name: 'Evolución semanal de Envasado',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('identifies week 42 as past but open after the calendar rollover', () => {
@@ -134,13 +207,179 @@ describe('dashboard page', () => {
     )
 
     expect(
-      screen.getByText('Semana 42 · Abierta · Reportes pendientes'),
+      screen.getByText('Semana 42 · Abierta · Seguimiento operativo'),
     ).toBeInTheDocument()
-    expect(screen.queryByText(/Semana 42 · Cerrada/)).not.toBeInTheDocument()
+
+    expect(
+      screen.queryByText(/Semana 42 · Cerrada/),
+    ).not.toBeInTheDocument()
+
+    expect(
+      screen.getByRole('link', { name: 'Nueva jornada' }),
+    ).toBeInTheDocument()
   })
 })
 
 afterEach(() => {
   vi.useRealTimers()
   window.localStorage.clear()
+})
+
+describe('dashboard journey status coherence', () => {
+  it('counts the closed week 41 journeys, which only carry validation warnings, as observed', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+      )
+    })
+
+    const indicators = screen.getByRole('region', {
+      name: 'Indicadores principales de la semana',
+    })
+    const observedCard = within(indicators)
+      .getByRole('heading', { name: 'Jornadas con observación' })
+      .closest('article')!
+    expect(within(observedCard).getByText('4')).toBeInTheDocument()
+    expect(
+      within(observedCard).getByText('0 críticas · 4 observadas'),
+    ).toBeInTheDocument()
+
+    const balanced = screen.getByText('Cuadradas').closest('div')!
+    const observed = screen.getByText('Observadas').closest('div')!
+    const review = screen.getByText('Por revisar').closest('div')!
+    expect(within(balanced).getByText('0')).toBeInTheDocument()
+    expect(within(observed).getByText('4')).toBeInTheDocument()
+    expect(within(review).getByText('0')).toBeInTheDocument()
+
+    const table = screen.getByRole('table', {
+      name: 'Estado operativo de las jornadas de Envasado',
+    })
+    expect(within(table).getAllByText('CUADRADO · OBSERVADO')).toHaveLength(4)
+    expect(screen.queryByText('CUADRADO')).not.toBeInTheDocument()
+  })
+
+  it('surfaces a traceability difference between Packing and Freezing as a critical exception', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    const origin = closedPackingDay('2026-09-08', 100_000)
+    const freezing = closedFreezingDay({
+      date: '2026-09-09',
+      reportedKg: 120_000,
+      linkedKg: 100_000,
+      origin,
+    })
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '42')
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([origin, freezing]),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const exceptions = screen
+      .getByRole('heading', { name: 'Actividad y excepciones' })
+      .closest('section')!
+    expect(
+      within(exceptions).getByText('Diferencia de trazabilidad'),
+    ).toBeInTheDocument()
+    expect(
+      within(exceptions).getByText(/sin explicar entre Envasado y Congelamiento/),
+    ).toBeInTheDocument()
+    expect(
+      within(exceptions)
+        .getAllByRole('link', { name: /Revisar/ })
+        .some(
+          (link) =>
+            link.getAttribute('href') === '/resumen?view=COMPARISON',
+        ),
+    ).toBe(true)
+    expect(within(exceptions).getByText('1 CRÍTICA')).toBeInTheDocument()
+  })
+
+  it('marks the weekly comparison as REVISAR when Freezing links more than it physically reported', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    const origin = closedPackingDay('2026-09-08', 100_000)
+    const freezing = closedFreezingDay({
+      date: '2026-09-09',
+      reportedKg: 80_000,
+      linkedKg: 100_000,
+      origin,
+    })
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '42')
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([origin, freezing]),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const comparison = screen
+      .getByRole('heading', { name: 'Envasado vs Congelamiento' })
+      .closest('section')!
+    expect(within(comparison).getByText('REVISAR')).toBeInTheDocument()
+    expect(within(comparison).queryByText('CONCILIADO')).not.toBeInTheDocument()
+    expect(
+      within(comparison).getByRole('list', {
+        name: 'Motivos de revisión del comparativo',
+      }),
+    ).toHaveTextContent('20,000.00 kg de exceso')
+
+    const exceptions = screen
+      .getByRole('heading', { name: 'Actividad y excepciones' })
+      .closest('section')!
+    expect(
+      within(exceptions).getByText('Vinculado por encima de lo reportado'),
+    ).toBeInTheDocument()
+  })
+
+  it('offers compact quick navigation without a create shortcut in a closed week', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+      )
+    })
+
+    const nav = screen.getByRole('navigation', { name: 'Accesos rápidos' })
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Jornadas', 'Congelamiento', 'Saldos', 'Rendimiento', 'Resumen'])
+  })
+
+  it('exposes the weekly coverage as accessible progress bars', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+      )
+    })
+
+    expect(
+      screen.getByRole('progressbar', { name: 'Cobertura de Envasado' }),
+    ).toHaveAttribute('aria-valuetext', '4 de 7 jornadas')
+    expect(
+      screen.getByRole('progressbar', { name: 'Cobertura de Congelamiento' }),
+    ).toHaveAttribute('aria-valuenow', '0')
+  })
 })

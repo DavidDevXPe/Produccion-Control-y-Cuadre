@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -61,7 +61,7 @@ describe('weekly summary page', () => {
       expect(cell).toHaveClass('px-3', 'text-center', 'align-middle')
     })
     expect(
-      within(registeredRow!).getByText('CUADRADO').closest('td')
+      within(registeredRow!).getByText('CUADRADO · OBSERVADO').closest('td')
         ?.firstElementChild,
     ).toHaveClass('w-full', 'justify-center')
     expect(screen.getByText('SEMANA CERRADA · 4 JORNADAS')).toBeInTheDocument()
@@ -76,7 +76,7 @@ describe('weekly summary page', () => {
     expect(productTable).toHaveClass('table-fixed', 'min-w-[64rem]')
     expect(
       [...productTable.querySelectorAll('col')].map((column) => column.className),
-    ).toEqual(['w-[48%]', 'w-[15%]', 'w-[13%]', 'w-[12%]', 'w-[12%]'])
+    ).toEqual(['w-[44%]', 'w-[15%]', 'w-[13%]', 'w-[12%]', 'w-[16%]'])
     productHeaders.slice(1).forEach((header) => {
       expect(header).toHaveClass('px-3', 'text-center', 'align-middle')
     })
@@ -173,6 +173,37 @@ describe('weekly summary page', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Comparativo por familia' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Comparativo por producto' })).toBeInTheDocument()
+  })
+
+  it('shows the same journey status as Dashboard and Jornadas for every registered day', () => {
+    render(
+      <MemoryRouter initialEntries={['/resumen?view=PACKING']}>
+        <WeeklySummaryPage />
+      </MemoryRouter>,
+    )
+
+    const daysTable = screen.getByRole('table', {
+      name: 'Producto terminado diario de la semana 41',
+    })
+    expect(within(daysTable).getAllByText('CUADRADO · OBSERVADO')).toHaveLength(4)
+    expect(within(daysTable).getAllByText('SIN REGISTRO')).toHaveLength(3)
+    expect(within(daysTable).queryByText('CUADRADO')).not.toBeInTheDocument()
+  })
+
+  it('follows the view in the URL instead of a stale copy of it', () => {
+    render(
+      <MemoryRouter initialEntries={['/resumen?view=COMPARISON']}>
+        <WeeklySummaryPage />
+      </MemoryRouter>,
+    )
+
+    expect(
+      screen.getByRole('tab', { name: 'Comparativo' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Envasado' }))
+    expect(
+      screen.getByRole('tab', { name: 'Envasado' }),
+    ).toHaveAttribute('aria-selected', 'true')
   })
 })
 

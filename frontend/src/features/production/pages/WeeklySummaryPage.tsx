@@ -7,7 +7,6 @@ import {
   Scale,
   Waves,
 } from 'lucide-react'
-import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { MetricCard } from '../../../components/ui/MetricCard'
@@ -29,9 +28,11 @@ import {
   WeeklyProductSummary,
   type WeeklyProductGroupRow,
 } from '../components/WeeklyProductSummary'
-import { calculateProductionDay, calculateWeeklySummary, kg100, sumKg100 } from '../model/calculations'
+import { calculateWeeklySummary, kg100, sumKg100 } from '../model/calculations'
+import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { getTubeMpBalance } from '../model/tubeMpBalance'
 import type { Kg100, ProductionDay, SummaryGroupId, WeeklyProductTotal, WeeklySummary } from '../model/types'
+import { getJourneyStatus } from '../presentation/journeyStatus'
 import { getYieldStatus, yieldVisualStyles } from '../presentation/yieldStatus'
 import { useProductionData } from '../state/ProductionDataContext'
 
@@ -133,11 +134,11 @@ export function WeeklySummaryPage() {
   } = useProductionData()
   const [searchParams, setSearchParams] = useSearchParams()
   const viewParam = searchParams.get('view')
-  const initialView: ProductionView =
+  // The URL is the source of truth, so links, back/forward and reloads agree.
+  const view: ProductionView =
     viewParam === 'COMPARISON' || isProductionProcess(viewParam)
       ? viewParam
       : activeProcess
-  const [view, setView] = useState<ProductionView>(initialView)
   const activeWeek = getWeekView(
     activeWeekNumber,
     view === 'COMPARISON' ? 'PACKING' : view,
@@ -149,7 +150,6 @@ export function WeeklySummaryPage() {
       value={view}
       includeComparison
       onChange={(nextView) => {
-        setView(nextView)
         setSearchParams({ view: nextView }, { replace: true })
         if (nextView !== 'COMPARISON') setActiveProcess(nextView)
       }}
@@ -220,17 +220,28 @@ export function WeeklySummaryPage() {
   }
 
   const summary = calculateWeeklySummary(productionDays, activeWeek.period)
+  const operationalStatesByDate = new Map(
+    productionDays.map(
+      (day) => [day.date, getProductionDayOperationalState(day)] as const,
+    ),
+  )
   const calculationsByDate = new Map(
-    productionDays.map((day) => [day.date, calculateProductionDay(day)] as const),
+    [...operationalStatesByDate].map(
+      ([date, state]) => [date, state.calculation] as const,
+    ),
   )
   const weekDays = activeWeek.calendarDays.map((day) => {
     const productionDay = productionDays.find(
       (candidate) => candidate.date === day.isoDate,
     )
+    const operationalState = operationalStatesByDate.get(day.isoDate)
     return {
       ...day,
       calculation: calculationsByDate.get(day.isoDate) ?? null,
       ...(productionDay ? { status: productionDay.status } : {}),
+      ...(productionDay && operationalState
+        ? { journey: getJourneyStatus(productionDay, operationalState) }
+        : {}),
     }
   })
   const reproductorAllocation = getWeeklyReproductorAllocation(productionDays)
@@ -315,7 +326,13 @@ export function WeeklySummaryPage() {
           label="Diferencia semanal"
           value={formatCentiKg(summary.differenceKg100)}
           icon={<Scale className="size-5" />}
-          tone={isValid ? 'success' : 'danger'}
+          tone={
+            summary.differenceKg100 !== 0
+              ? 'danger'
+              : isValid
+                ? 'success'
+                : 'neutral'
+          }
         />
         <MetricCard
           label="Aprovechamiento acumulado"
@@ -428,7 +445,7 @@ export function WeeklySummaryPage() {
               ) : null}
             </article>
 
-            <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950 ring-1 ring-amber-200">
+            <p className="rounded-lg bg-brand-50 p-3 text-xs leading-5 text-brand-900 ring-1 ring-brand-200">
               Los porcentajes son referencias productivas. Estar por encima o por debajo no cambia el estado CUADRADO / NO CUADRADO.
             </p>
           </div>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProductionDataProvider } from '../../production/state/ProductionDataContext'
@@ -47,5 +47,39 @@ describe('OperationalPerformancePage', () => {
     expect(
       screen.getByRole('heading', { name: 'Sin jornadas de Congelamiento' }),
     ).toBeInTheDocument()
+  })
+
+  it('labels the view panel with the active tab and switches views with the keyboard', () => {
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/rendimiento']}>
+          <OperationalPerformancePage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    expect(screen.getByRole('tabpanel', { name: 'Resumen' })).toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('tablist', { name: 'Vista de rendimiento' }), {
+      key: 'ArrowRight',
+    })
+
+    expect(screen.getByRole('tab', { name: 'Envasado' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Envasado' })).toBeInTheDocument()
+  })
+
+  it('shows missing shift data as information, not as an observation', () => {
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/rendimiento?view=PACKING']}>
+          <OperationalPerformancePage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const pending = screen.getAllByText('RENDIMIENTO PENDIENTE')[0]!
+    const badge = pending.closest('span[class*="ring-1"]')!
+    expect(badge.className).not.toMatch(/amber|yellow/)
+    expect(within(badge as HTMLElement).getByText('RENDIMIENTO PENDIENTE')).toBeInTheDocument()
   })
 })

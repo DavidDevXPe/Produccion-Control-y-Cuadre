@@ -2,8 +2,10 @@ import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, Gauge
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
+import { Modal } from '../../../components/ui/Modal'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
@@ -21,6 +23,7 @@ import { calculateFreezingAvailability } from '../model/freezing'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { isProductionProcess, productionProcessLabels } from '../model/productionProcess'
+import { getJourneyStatus } from '../presentation/journeyStatus'
 import { getYieldStatus, yieldVisualStyles } from '../presentation/yieldStatus'
 import { useProductionData } from '../state/ProductionDataContext'
 
@@ -61,6 +64,7 @@ export function ProductionDaysPage() {
       day,
       calculation: operationalState.calculation,
       operationalState,
+      journey: getJourneyStatus(day, operationalState),
     }
   })
   const balancedCount = registeredDays.filter(
@@ -69,11 +73,11 @@ export function ProductionDaysPage() {
   const closedCount = registeredDays.filter(
     ({ operationalState }) => operationalState.lifecycle === 'CLOSED',
   ).length
+  // Closed and balanced with observations, whether they were saved at closing
+  // or only exist as validation warnings of a historical journey.
   const observedClosedCount = registeredDays.filter(
-  ({ day, operationalState }) =>
-    operationalState.lifecycle === "CLOSED" &&
-    (day.closureObservations?.length ?? 0) > 0,
-).length;
+    ({ journey }) => journey.status === 'BALANCED_OBSERVED',
+  ).length
   const readyToCloseCount = registeredDays.filter(
     ({ operationalState }) => operationalState.state === 'READY_TO_CLOSE',
   ).length
@@ -149,7 +153,7 @@ const freezingPendingKg100 = sumKg100(
             <button
               type="button"
               onClick={() => setIsWeekCloseOpen(true)}
-              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              className={buttonStyles('secondary', 'sm')}
             >
               <LockKeyhole className="size-4" aria-hidden="true" />
               Cerrar semana
@@ -194,7 +198,11 @@ const freezingPendingKg100 = sumKg100(
       balancedCount > 0
         ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'} · ${
             readyToCloseCount
-          } lista${readyToCloseCount === 1 ? '' : 's'} para cerrar`
+          } lista${readyToCloseCount === 1 ? '' : 's'} para cerrar${
+            observedClosedCount > 0
+              ? ` · ${observedClosedCount} con observación`
+              : ''
+          }`
         : 'Requiere revisión'
     }
   />
@@ -225,108 +233,83 @@ const freezingPendingKg100 = sumKg100(
 </section>
 
 {isFreezing ? (
-  <section
-    aria-labelledby="freezing-summary-title"
-    className="
-      overflow-hidden rounded-xl
-      border border-slate-200
-      bg-white
-      dark:border-[#203E50]
-      dark:bg-[#0D2534]
-    "
-  >
-    <div
-      className="
-        flex flex-col gap-1
-        border-b border-slate-200
-        px-5 py-4
-        dark:border-[#203E50]
-      "
-    >
-      <h2
-        id="freezing-summary-title"
-        className="text-sm font-bold text-slate-950 dark:text-[#F3F8FB]"
-      >
-        Resumen de congelamiento
-      </h2>
-
-      <p className="text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
-        Estado físico y trazable de lo congelado en la semana seleccionada.
-      </p>
-    </div>
-
-    <dl
-      className="
-        grid divide-y divide-slate-200
-        sm:grid-cols-2 sm:divide-x sm:divide-y-0
-        xl:grid-cols-4
-        dark:divide-[#203E50]
-      "
-    >
-      <div className="px-5 py-4 text-center">
-        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
-          Congelado esta semana
-        </dt>
-
-        <dd className="number-tabular mt-2 text-xl font-extrabold text-slate-950 dark:text-[#F3F8FB]">
-          {formatCentiKgValue(frozenPhysicalKg100)}
-          <span className="ml-1 text-xs font-semibold text-slate-500">
-            kg
-          </span>
-        </dd>
-      </div>
-
-      <div className="px-5 py-4 text-center">
-        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
-          Vinculado
-        </dt>
-
-        <dd className="number-tabular mt-2 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">
-          {formatCentiKgValue(freezingLinkedKg100)}
-          <span className="ml-1 text-xs font-semibold opacity-70">
-            kg
-          </span>
-        </dd>
-      </div>
-
-      <div className="px-5 py-4 text-center">
-        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
-          Dif. trazabilidad
-        </dt>
-
-        <dd
-          className={`number-tabular mt-2 text-xl font-extrabold ${
-            freezingDifferenceKg100 === 0
-              ? 'text-emerald-700 dark:text-emerald-300'
-              : 'text-amber-700 dark:text-amber-300'
-          }`}
+        <section
+          aria-labelledby="freezing-summary-title"
+          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel"
         >
-          {formatCentiKgValue(freezingDifferenceKg100)}
-          <span className="ml-1 text-xs font-semibold opacity-70">
-            kg
-          </span>
-        </dd>
-      </div>
+          <div className="flex flex-col gap-1 border-b border-slate-200 px-5 py-3.5">
+            <h2
+              id="freezing-summary-title"
+              className="text-sm font-bold text-slate-950"
+            >
+              Resumen de congelamiento
+            </h2>
+            <p className="text-xs leading-5 text-slate-500">
+              Estado físico y trazable de lo congelado en la semana seleccionada.
+            </p>
+          </div>
 
-      <div className="px-5 py-4 text-center">
-        <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
-          Pendiente trazable acumulado
-        </dt>
+          <dl className="grid divide-y divide-slate-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+            <div className="px-5 py-3.5 text-center">
+              <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+                Congelado esta semana
+              </dt>
+              <dd className="number-tabular mt-1.5 text-xl font-extrabold text-slate-950">
+                {formatCentiKgValue(frozenPhysicalKg100)}
+                <span className="ml-1 text-xs font-semibold text-slate-500">kg</span>
+              </dd>
+            </div>
 
-        <dd className="number-tabular mt-2 text-xl font-extrabold text-amber-700 dark:text-amber-300">
-          {formatCentiKgValue(freezingPendingKg100)}
-          <span className="ml-1 text-xs font-semibold opacity-70">
-            kg
-          </span>
-        </dd>
+            <div className="px-5 py-3.5 text-center">
+              <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+                Vinculado
+              </dt>
+              <dd className="number-tabular mt-1.5 text-xl font-extrabold text-slate-950">
+                {formatCentiKgValue(freezingLinkedKg100)}
+                <span className="ml-1 text-xs font-semibold text-slate-500">kg</span>
+              </dd>
+            </div>
 
-        <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
-          Disponible pendiente al cierre del período
-        </p>
-      </div>
-    </dl>
-  </section>
-) : null}
+            <div className="px-5 py-3.5 text-center">
+              <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+                Dif. trazabilidad
+              </dt>
+              {/* Physical above linked: observation (amber). Linked above
+                  physical: inconsistency (red). Never netted or hidden. */}
+              <dd
+                className={`number-tabular mt-1.5 text-xl font-extrabold ${
+                  freezingDifferenceKg100 === 0
+                    ? 'text-emerald-700'
+                    : freezingDifferenceKg100 > 0
+                      ? 'text-amber-700'
+                      : 'text-rose-700'
+                }`}
+              >
+                {formatCentiKgValue(freezingDifferenceKg100)}
+                <span className="ml-1 text-xs font-semibold text-slate-500">kg</span>
+              </dd>
+              {freezingDifferenceKg100 < 0 ? (
+                <p className="mt-1 text-[0.625rem] font-semibold text-rose-700">
+                  Vinculado por encima de lo reportado
+                </p>
+              ) : null}
+            </div>
+
+            <div className="px-5 py-3.5 text-center">
+              <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+                Pendiente trazable acumulado
+              </dt>
+              <dd className="number-tabular mt-1.5 text-xl font-extrabold text-brand-800">
+                {formatCentiKgValue(freezingPendingKg100)}
+                <span className="ml-1 text-xs font-semibold text-slate-500">kg</span>
+              </dd>
+              <p className="mt-1 text-[0.625rem] text-slate-500">
+                Disponible pendiente al cierre del período
+              </p>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <SectionCard
         title={`Semana ${activeWeek.number}`}
@@ -363,7 +346,7 @@ const freezingPendingKg100 = sumKg100(
           </div>
         ) : (
         <DataTableScroll label={`Jornadas de producción registradas en la semana ${activeWeek.number}`}>
-          <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse text-left">
+          <table className="erp-table w-full min-w-[68rem] table-fixed border-collapse text-left">
             <caption className="sr-only">Jornadas de producción registradas</caption>
             <colgroup>
   <col className="w-[14%]" />
@@ -388,55 +371,39 @@ const freezingPendingKg100 = sumKg100(
               </tr>
             </thead>
             <tbody>
-              {registeredDays.map(({ day, calculation, operationalState }) => {
-                const isBalanced = operationalState.isBalanced
+              {registeredDays.map(({ day, calculation, operationalState, journey }) => {
                 const isClosed = operationalState.lifecycle === 'CLOSED'
-                const hasPersistedClosureObservations =
-  isClosed &&
-  (day.closureObservations?.length ?? 0) > 0
                 const isReadyToClose =
                   operationalState.state === 'READY_TO_CLOSE'
                 const isBalanceOnly = isBalanceOnlyProductionDay(day)
                 const yieldStatus = getYieldStatus(calculation.performance.percent)
                 const performancePercent = calculation.performance.percent
-                const hasObservedYield =
-                  !isFreezing &&
-                  !isBalanceOnly &&
-                  performancePercent !== null &&
-                  performancePercent < 80
-
+                // A yield above 100% is impossible: it is an integrity problem
+                // even before the journey is closed.
                 const hasInvalidYield =
                   !isFreezing &&
                   !isBalanceOnly &&
                   performancePercent !== null &&
                   performancePercent > 100
 
-                const squareStatus = !isBalanced
-  ? {
-      tone: 'danger' as const,
-      label: 'POR CUADRAR',
-    }
-  : hasInvalidYield
-    ? {
-        tone: 'danger' as const,
-        label: 'REVISAR INTEGRIDAD',
-      }
-    : hasPersistedClosureObservations || hasObservedYield
-      ? {
-          tone: 'warning' as const,
-          label: 'CUADRADO · OBSERVADO',
-        }
-      : {
-          tone: 'success' as const,
-          label: 'CUADRADO',
-        }
+                const squareStatus = hasInvalidYield
+                  ? { tone: 'danger' as const, label: 'REVISAR INTEGRIDAD' }
+                  : { tone: journey.tone, label: journey.label }
                 const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
                 const rowAccentClass =
-  !isBalanced || hasInvalidYield
-    ? 'before:bg-rose-500'
-    : hasPersistedClosureObservations || hasObservedYield
-      ? 'before:bg-amber-500'
-      : 'before:bg-emerald-500'
+                  squareStatus.tone === 'danger'
+                    ? 'before:bg-rose-500'
+                    : squareStatus.tone === 'warning'
+                      ? 'before:bg-amber-500'
+                      : 'before:bg-emerald-500'
+                // A difference is red only when the journey really is not
+                // balanced; on an open journey it is follow-up work.
+                const differenceClass =
+                  calculation.differenceKg100 === 0
+                    ? 'text-emerald-700'
+                    : journey.status === 'NOT_BALANCED'
+                      ? 'text-rose-700'
+                      : 'text-amber-700'
 
                 return (
                   <tr
@@ -471,37 +438,35 @@ const freezingPendingKg100 = sumKg100(
                       <QuantityValue value={isFreezing ? day.declaredShiftTotalsKg100.DAY + day.declaredShiftTotalsKg100.NIGHT : calculation.newClosingBalanceKg100} />
                     </td>
                     <td
-  className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
-    isFreezing
-      ? calculation.ownTurnProductionKg100 === 0
-        ? 'text-emerald-700 dark:text-emerald-300'
-        : 'text-amber-700 dark:text-amber-300'
-      : isBalanced
-        ? 'text-emerald-700 dark:text-emerald-300'
-        : 'text-rose-700 dark:text-rose-300'
-  }`}
->
-  <QuantityValue
-    value={
-      isFreezing
-        ? calculation.ownTurnProductionKg100
-        : calculation.differenceKg100
-    }
-  />
-</td>
+                      className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
+                        isFreezing
+                          ? calculation.ownTurnProductionKg100 === 0
+                            ? 'text-emerald-700'
+                            : 'text-amber-700'
+                          : differenceClass
+                      }`}
+                    >
+                      <QuantityValue
+                        value={
+                          isFreezing
+                            ? calculation.ownTurnProductionKg100
+                            : calculation.differenceKg100
+                        }
+                      />
+                    </td>
                     <td className="px-3 py-3 text-center align-middle">
                       <div className="flex w-full items-center justify-center">
                         <StatusBadge
-  tone={squareStatus.tone}
-  truncateText={false}
->
-  {squareStatus.label}
-</StatusBadge>
+                          tone={squareStatus.tone}
+                          truncateText={false}
+                        >
+                          {squareStatus.label}
+                        </StatusBadge>
                       </div>
                     </td>
                     <td className="px-3 py-3 text-center align-middle">
                       {isFreezing ? (
-  <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700 dark:text-[#C3D2DC]">
+  <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700 ">
     <QuantityValue
       value={calculation.processedPreviousBalanceKg100}
     />
@@ -563,13 +528,12 @@ const freezingPendingKg100 = sumKg100(
       </SectionCard>
 
       {isWeekCloseOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="week-close-title"
-            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
-          >
+        <Modal
+          titleId="week-close-title"
+          size="md"
+          onClose={() => setIsWeekCloseOpen(false)}
+        >
+          <div className="p-5 sm:p-6">
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700">
                 <AlertTriangle className="size-5" aria-hidden="true" />
@@ -634,8 +598,8 @@ const freezingPendingKg100 = sumKg100(
                 Cerrar semana
               </button>
             </div>
-          </section>
-        </div>
+          </div>
+        </Modal>
       ) : null}
     </div>
   )

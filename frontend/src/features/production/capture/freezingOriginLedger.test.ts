@@ -25,6 +25,13 @@ function position(
 
     summaryGroupId: "MANTO",
 
+    physicalDayKg100: kg(generatedKg),
+    physicalNightKg100: kg(0),
+    receivedBalanceDayKg100: kg(0),
+    receivedBalanceNightKg100: kg(0),
+    ownDayKg100: kg(generatedKg),
+    ownNightKg100: kg(0),
+    closingBalanceKg100: kg(0),
     generatedKg100: kg(generatedKg),
 
     processedDayKg100: kg(frozenKg),

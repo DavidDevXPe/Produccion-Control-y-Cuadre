@@ -5,6 +5,10 @@ import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
+import {
+  SegmentedTabs,
+  type SegmentedTabOption,
+} from '../../../components/ui/SegmentedTabs'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
@@ -25,6 +29,12 @@ import type { ProductionDay, ProductionProcess, ShiftCode } from '../../producti
 import { useProductionData } from '../../production/state/ProductionDataContext'
 
 type PerformanceView = 'SUMMARY' | ProductionProcess
+
+const viewOptions: readonly SegmentedTabOption<PerformanceView>[] = [
+  { value: 'SUMMARY', label: 'Resumen' },
+  { value: 'PACKING', label: 'Envasado' },
+  { value: 'FREEZING', label: 'Congelamiento' },
+]
 
 function isPerformanceView(value: string | null): value is PerformanceView {
   return value === 'SUMMARY' || value === 'PACKING' || value === 'FREEZING'
@@ -101,17 +111,20 @@ function ShiftComparisonTable({
     >
       <DataTableScroll label={`Rendimiento Día y Noche de ${productionProcessLabels[process]}`}>
         <table className="erp-table w-full min-w-[34rem] table-fixed border-collapse text-center">
+          <caption className="sr-only">
+            Indicadores de rendimiento de {productionProcessLabels[process]} por turno
+          </caption>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
-              <th className="w-[48%] px-4 py-2.5 text-left">Indicador</th>
-              <th className="px-3 py-2.5">Día</th>
-              <th className="px-3 py-2.5">Noche</th>
+              <th scope="col" className="w-[48%] px-4 py-2.5 text-left">Indicador</th>
+              <th scope="col" className="px-3 py-2.5">Día</th>
+              <th scope="col" className="px-3 py-2.5">Noche</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(([label, dayValue, nightValue]) => (
               <tr key={label} className="border-b border-slate-100 last:border-0">
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-700">{label}</th>
+                <th scope="row" className="px-4 py-2.5 text-left text-xs font-semibold text-slate-700">{label}</th>
                 <td className="number-tabular px-3 py-2.5 text-xs font-bold text-slate-950">{dayValue}</td>
                 <td className="number-tabular px-3 py-2.5 text-xs font-bold text-slate-950">{nightValue}</td>
               </tr>
@@ -213,28 +226,21 @@ export function OperationalPerformancePage() {
         actions={<StatusBadge tone="info">KG DESDE REPORTES</StatusBadge>}
       />
 
-      <div>
-        <p className="mb-1.5 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-slate-500">Vista</p>
-        <div className="inline-flex max-w-full rounded-xl border border-slate-200 bg-white p-1 shadow-sm" role="tablist" aria-label="Vista de rendimiento">
-          {([
-            ['SUMMARY', 'Resumen'],
-            ['PACKING', 'Envasado'],
-            ['FREEZING', 'Congelamiento'],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={view === value}
-              onClick={() => setSearchParams({ view: value }, { replace: true })}
-              className={`inline-flex min-h-9 items-center justify-center rounded-lg px-3.5 text-xs font-bold transition ${view === value ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SegmentedTabs
+        id="performance-view"
+        caption="Vista"
+        label="Vista de rendimiento"
+        options={viewOptions}
+        value={view}
+        onChange={(value) => setSearchParams({ view: value }, { replace: true })}
+      />
 
+      <div
+        role="tabpanel"
+        id="performance-view-panel"
+        aria-labelledby={`performance-view-${view}`}
+        className="space-y-5"
+      >
       {view === 'SUMMARY' ? (
         <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de rendimiento">
@@ -244,10 +250,10 @@ export function OperationalPerformancePage() {
             <MetricCard label="Persona-h" value={weekAggregate.completeRecordCount > 0 ? formatMetric(weekAggregate.personHours) : '—'} icon={<UsersRound className="size-5" />} />
           </section>
           {weekRecords.length === 0 ? (
-            <SectionCard contentClassName="border border-[#2b5268] bg-[#123247] p-6 text-center">
-              <Gauge className="mx-auto size-8 text-[#58c8ea]" aria-hidden="true" />
-              <h2 className="mt-3 text-sm font-bold text-[#f3f8fb]">SIN INFORMACIÓN DE RENDIMIENTO</h2>
-              <p className="mt-1 text-xs text-[#a5bed0]">Las jornadas productivas se conservan; completa supervisor, personal y horarios para calcular eficiencia.</p>
+            <SectionCard contentClassName="p-6 text-center">
+              <Gauge className="mx-auto size-8 text-brand-700" aria-hidden="true" />
+              <h2 className="mt-3 text-sm font-bold text-slate-950">SIN INFORMACIÓN DE RENDIMIENTO</h2>
+              <p className="mt-1 text-xs text-slate-600">Las jornadas productivas se conservan; completa supervisor, personal y horarios para calcular eficiencia.</p>
             </SectionCard>
           ) : null}
           <ProcessPerformanceSummary process="PACKING" records={weekRecords} />
@@ -292,6 +298,7 @@ export function OperationalPerformancePage() {
           <PerformanceCharts records={weekRecords.filter((record) => record.process === view)} />
         </>
       )}
+      </div>
     </div>
   )
 }

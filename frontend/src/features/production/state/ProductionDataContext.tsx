@@ -17,6 +17,7 @@ import {
   type OperationalWeekState,
   type OperationalWeekTemporalStatus,
 } from '../../../utils/operationalContext'
+import { quarantineStoredData } from '../../../storage/storageQuarantine'
 import {
   TRABUNDA_LEGACY_STORAGE_KEYS,
   TRABUNDA_STORAGE_KEYS,
@@ -235,7 +236,38 @@ function loadStoredDays(): readonly ProductionDay[] {
     const currentStored = window.localStorage.getItem(DAYS_STORAGE_KEY)
     const legacyStored = window.localStorage.getItem(LEGACY_DAYS_STORAGE_KEY)
     const stored = currentStored ?? legacyStored ?? '[]'
-    const parsed = JSON.parse(stored)
+    const sourceKey =
+      currentStored !== null ? DAYS_STORAGE_KEY : LEGACY_DAYS_STORAGE_KEY
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(stored)
+    } catch {
+      // The next save rewrites this key from memory; keep a copy first.
+      quarantineStoredData(sourceKey, 'INVALID_JSON', stored)
+      return []
+    }
+    if (Array.isArray(parsed)) {
+      const rejected = parsed.filter((record) => !isProductionDay(record))
+      if (rejected.length > 0) {
+        quarantineStoredData(sourceKey, 'INVALID_RECORD', rejected)
+      }
+      const shadowedByPermanent = parsed.filter(
+        (record) =>
+          isProductionDay(record) &&
+          PERMANENT_DAY_KEYS.has(
+            productionDayKey(record.date, getProductionProcess(record)),
+          ),
+      )
+      if (shadowedByPermanent.length > 0) {
+        quarantineStoredData(
+          sourceKey,
+          'PERMANENT_DAY_COLLISION',
+          shadowedByPermanent,
+        )
+      }
+    } else if (parsed !== null) {
+      quarantineStoredData(sourceKey, 'INVALID_RECORD', parsed)
+    }
     const normalized = Array.isArray(parsed)
       ? parsed
           .filter(isProductionDay)
@@ -285,7 +317,25 @@ function loadStoredWeekClosures(): readonly StoredWeekClosure[] {
     const currentStored = window.localStorage.getItem(WEEK_CLOSURES_STORAGE_KEY)
     const legacyStored = window.localStorage.getItem(LEGACY_WEEK_CLOSURES_STORAGE_KEY)
     const stored = currentStored ?? legacyStored ?? '[]'
-    const parsed = JSON.parse(stored)
+    const sourceKey =
+      currentStored !== null
+        ? WEEK_CLOSURES_STORAGE_KEY
+        : LEGACY_WEEK_CLOSURES_STORAGE_KEY
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(stored)
+    } catch {
+      quarantineStoredData(sourceKey, 'INVALID_JSON', stored)
+      return []
+    }
+    if (Array.isArray(parsed)) {
+      const rejected = parsed.filter((record) => !isStoredWeekClosure(record))
+      if (rejected.length > 0) {
+        quarantineStoredData(sourceKey, 'INVALID_RECORD', rejected)
+      }
+    } else if (parsed !== null) {
+      quarantineStoredData(sourceKey, 'INVALID_RECORD', parsed)
+    }
     const normalized = Array.isArray(parsed)
       ? parsed
           .filter(isStoredWeekClosure)

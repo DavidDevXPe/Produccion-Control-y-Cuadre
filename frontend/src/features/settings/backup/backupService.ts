@@ -2,6 +2,7 @@ import {
   TRABUNDA_BACKUP_FORMAT,
   TRABUNDA_BACKUP_STORAGE_KEYS,
   TRABUNDA_BACKUP_VERSION,
+  TRABUNDA_STORAGE_KEYS,
   type TrabundaStorageKey,
 } from '../../../storage/trabundaStorage'
 import { LEGACY_PRODUCT_ID_TO_CANONICAL } from '../../production/model/productIdentity'
@@ -208,7 +209,9 @@ export function restoreTrabundaBackup(
     const value = preview.backup.data[key]
     if (typeof value === 'string') {
       storage.setItem(key, value)
-    } else {
+    } else if (key !== TRABUNDA_STORAGE_KEYS.storageQuarantine) {
+      // The quarantine holds data the app skipped while loading; an older
+      // backup that predates it must not erase that safety copy.
       storage.removeItem(key)
     }
   }

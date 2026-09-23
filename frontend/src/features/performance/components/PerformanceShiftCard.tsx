@@ -1,5 +1,6 @@
 import { Clock3, Save, UsersRound } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg } from '../../../utils/formatters'
@@ -123,7 +124,7 @@ export function PerformanceShiftCard({
       title={`Turno ${isDay ? 'Día' : 'Noche'}`}
       description={`Fuente de kilos: Reporte ${isDay ? 'Día' : 'Noche'} · solo lectura.`}
       action={
-        <StatusBadge tone={performance.isComplete ? 'success' : 'warning'}>
+        <StatusBadge tone={performance.isComplete ? 'success' : 'info'}>
           {performance.isComplete ? 'CALCULADO' : 'RENDIMIENTO PENDIENTE'}
         </StatusBadge>
       }
@@ -201,7 +202,10 @@ export function PerformanceShiftCard({
       </dl>
 
       <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <p className={`text-xs font-semibold ${saveState === 'ERROR' ? 'text-rose-700' : 'text-slate-500'}`} role="status">
+        <p
+          className={`text-xs font-semibold ${saveState === 'ERROR' ? 'text-rose-700' : 'text-slate-500'}`}
+          role={saveState === 'ERROR' ? 'alert' : 'status'}
+        >
           {saveState === 'SAVED'
             ? 'Información de rendimiento guardada.'
             : saveState === 'ERROR'
@@ -211,7 +215,7 @@ export function PerformanceShiftCard({
                 : performance.validationMessage ?? 'Completa los datos operativos del turno.'}
         </p>
         {!readOnly ? (
-          <button type="button" onClick={save} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-bold text-white hover:bg-brand-800">
+          <button type="button" onClick={save} className={`${buttonStyles('primary', 'sm')} shrink-0`}>
             <Save className="size-4" aria-hidden="true" />
             Guardar rendimiento
           </button>

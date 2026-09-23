@@ -310,6 +310,8 @@ export interface OutstandingBalancePosition {
   readonly processedNightKg100: Kg100
   readonly processedTotalKg100: Kg100
   readonly pendingKg100: Kg100
+  /** Consumed above what the origin generated; kept apart from `pendingKg100`. */
+  readonly excessKg100: Kg100
 }
 
 export interface WeeklyProductTotal {

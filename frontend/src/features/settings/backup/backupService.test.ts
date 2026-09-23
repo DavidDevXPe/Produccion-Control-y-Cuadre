@@ -110,6 +110,26 @@ describe('Trabunda backup service', () => {
     expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.productCatalog)).toBeNull()
   })
 
+  it('keeps the storage quarantine when restoring a backup that does not contain it', () => {
+    const quarantine = '[{"reason":"INVALID_JSON"}]'
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.storageQuarantine, quarantine)
+
+    const preview = parseTrabundaBackup(
+      JSON.stringify({
+        format: 'TRABUNDA_BACKUP',
+        version: 1,
+        exportedAt: '2026-09-19T00:00:00.000Z',
+        data: { [TRABUNDA_STORAGE_KEYS.productionDays]: '[]' },
+      }),
+    )
+
+    restoreTrabundaBackup(preview)
+
+    expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.storageQuarantine)).toBe(
+      quarantine,
+    )
+  })
+
   it('exports and restores dynamic products with aliases', () => {
     const catalog = JSON.stringify([
       {

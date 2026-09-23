@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
@@ -289,5 +289,74 @@ describe('Freezing production day page', () => {
     expect(screen.queryByRole('heading', { name: 'Aprovechamiento general' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Exportar Excel' })).toBeNull()
     window.localStorage.clear()
+  })
+})
+
+describe('Packing day closing dialog', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    window.localStorage.clear()
+  })
+
+  function renderDraft() {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    window.localStorage.clear()
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([
+        {
+          ...WEDNESDAY_PRODUCTION_DAY,
+          id: 'production-day-2026-09-08',
+          date: '2026-09-08',
+          displayName: 'Martes 08/09/2026',
+          status: 'DRAFT',
+        },
+      ]),
+    )
+
+    return render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/jornadas/2026-09-08']}>
+          <Routes>
+            <Route path="/jornadas/:date" element={<ProductionDayPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+  }
+
+  it('opens an accessible dialog, closes it with Escape and returns focus to the trigger', () => {
+    renderDraft()
+    const trigger = screen.getByRole('button', { name: 'Cerrar jornada' })
+    trigger.focus()
+
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog', { name: 'Cerrar jornada' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(within(dialog).getByText('Advertencias antes del cierre')).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(
+      JSON.parse(window.localStorage.getItem('trabunda-production-days-v2') ?? '[]')[0].status,
+    ).toBe('DRAFT')
+  })
+
+  it('closes with observation, keeping the accepted warnings as the journey record', () => {
+    renderDraft()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar jornada' }))
+    const dialog = screen.getByRole('dialog', { name: 'Cerrar jornada' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar con observación' }))
+
+    const [saved] = JSON.parse(
+      window.localStorage.getItem('trabunda-production-days-v2') ?? '[]',
+    )
+    expect(saved.status).toBe('CLOSED')
+    expect(saved.closureObservations.length).toBeGreaterThan(0)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

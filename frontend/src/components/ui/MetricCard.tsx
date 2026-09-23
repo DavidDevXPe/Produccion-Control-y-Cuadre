@@ -54,7 +54,7 @@ export function MetricCard({
     <article
       {...props}
       className={[
-        'metric-card min-h-[7.125rem] min-w-0 rounded-xl border border-l-[3px] border-slate-200 bg-white p-[1.125rem] shadow-panel',
+        'metric-card flex min-w-0 flex-col rounded-xl border border-l-[3px] border-slate-200 bg-white p-[1.125rem] shadow-panel',
         cardToneClasses[tone],
         icon ? 'metric-card--with-icon' : '',
         className,
@@ -63,7 +63,7 @@ export function MetricCard({
         .join(' ')}
     >
       <div className="metric-card__layout">
-        <div className="metric-card__content min-w-0">
+        <div className="metric-card__content flex min-w-0 flex-1 flex-col">
           <h2 className="metric-card__label text-xs font-semibold leading-5 text-slate-600">
             {label}
           </h2>
@@ -77,7 +77,7 @@ export function MetricCard({
           </p>
 
           {description ? (
-            <div className="mt-2 text-xs leading-5 text-slate-500">
+            <div className="mt-auto pt-2 text-xs leading-5 text-slate-500">
               {description}
             </div>
           ) : null}

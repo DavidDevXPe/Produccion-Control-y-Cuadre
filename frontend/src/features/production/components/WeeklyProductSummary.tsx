@@ -47,11 +47,11 @@ export function WeeklyProductSummary({
         <table className="erp-table w-full min-w-[64rem] table-fixed border-collapse text-left">
           <caption className="sr-only">Consolidado semanal por grupo y producto</caption>
           <colgroup>
-            <col className="w-[48%]" />
+            <col className="w-[44%]" />
             <col className="w-[15%]" />
             <col className="w-[13%]" />
             <col className="w-[12%]" />
-            <col className="w-[12%]" />
+            <col className="w-[16%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
@@ -114,6 +114,7 @@ export function WeeklyProductSummary({
                   <StatusBadge
                     tone={yieldStyles.badgeTone}
                     title={`${yieldStatus.label}: ${yieldStatus.interpretation}`}
+                    truncateText={false}
                   >
                     {yieldStatus.label}
                   </StatusBadge>
