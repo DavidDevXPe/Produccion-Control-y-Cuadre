@@ -1,11 +1,15 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   Link2,
+  LoaderCircle,
   PackageCheck,
   Scale,
   Snowflake,
 } from 'lucide-react'
+import { useState } from 'react'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
@@ -77,6 +81,27 @@ export function ProductionComparisonView({
   const reviewReasons = describeFreezingReviewReasons(comparison)
   const cycleClosed =
     packingClosed && freezingClosed && comparison.status === 'BALANCED'
+  const [exportState, setExportState] = useState<'IDLE' | 'EXPORTING' | 'ERROR'>('IDLE')
+
+  const handleExport = async () => {
+    if (exportState === 'EXPORTING') return
+    setExportState('EXPORTING')
+    try {
+      const { exportWeeklyComparisonWorkbook } = await import(
+        '../export/weeklyComparisonWorkbook'
+      )
+      await exportWeeklyComparisonWorkbook({
+        weekNumber,
+        period,
+        productionDays,
+        packingClosed,
+        freezingClosed,
+      })
+      setExportState('IDLE')
+    } catch {
+      setExportState('ERROR')
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -99,9 +124,28 @@ export function ProductionComparisonView({
                   ? 'CONCILIADO'
                   : 'REVISAR'}
             </StatusBadge>
+            <button
+              type="button"
+              className={buttonStyles('secondary', 'sm')}
+              onClick={handleExport}
+              disabled={exportState === 'EXPORTING'}
+              title="Descargar el comparativo de la semana en Excel"
+            >
+              {exportState === 'EXPORTING' ? (
+                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="size-4" aria-hidden="true" />
+              )}
+              {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
+            </button>
           </div>
         }
       />
+      {exportState === 'ERROR' ? (
+        <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+          No se pudo generar el Excel del comparativo. Intenta nuevamente.
+        </p>
+      ) : null}
       {selector}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Comparativo entre procesos">
         <MetricCard label="Envasado semanal" value={formatCentiKg(comparison.packedKg100)} icon={<PackageCheck className="size-5" />} tone="brand" />

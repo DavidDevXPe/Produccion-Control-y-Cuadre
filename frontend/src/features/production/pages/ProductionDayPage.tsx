@@ -228,7 +228,9 @@ if (isFreezing) {
       const { exportProductionDayWorkbook } = await import(
         '../export/productionDayWorkbook'
       )
-      await exportProductionDayWorkbook(productionDay, calculation)
+      await exportProductionDayWorkbook(productionDay, calculation, {
+        productionDays: allProductionDays,
+      })
       setExportState('SUCCESS')
     } catch {
       setExportState('ERROR')
