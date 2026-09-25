@@ -83,11 +83,27 @@ function OriginCard({ origin }: { origin: FreezingOriginExplanation }) {
       </header>
 
       <dl className="mt-3 text-xs">
-        <Row label="Envasado Turno Día" hint="propio" value={formatCentiKg(origin.ownDayKg100)} />
-        <Row label="Envasado Turno Noche" hint="propio" value={formatCentiKg(origin.ownNightKg100)} />
-        <Row label="Saldo al cierre" hint="queda en esta jornada" value={formatCentiKg(origin.closingBalanceKg100)} />
+        <Row
+          label="Envasado Turno Día"
+          hint="propio"
+          value={formatCentiKg(origin.ownDayKg100)}
+        />
+        <Row
+          label="Envasado Turno Noche"
+          hint="propio"
+          value={formatCentiKg(origin.ownNightKg100)}
+        />
+        <Row
+          label="Saldo al cierre"
+          hint="queda en esta jornada"
+          value={formatCentiKg(origin.closingBalanceKg100)}
+        />
         <div className="my-1 border-t border-slate-200" />
-        <Row label="Disponible para congelar" value={formatCentiKg(origin.availableKg100)} emphasis />
+        <Row
+          label="Disponible para congelar"
+          value={formatCentiKg(origin.availableKg100)}
+          emphasis
+        />
         <Row
           label="Congelado"
           hint={`Día ${formatCentiKg(origin.frozenDayKg100)} · Noche ${formatCentiKg(origin.frozenNightKg100)}`}
@@ -96,10 +112,16 @@ function OriginCard({ origin }: { origin: FreezingOriginExplanation }) {
         {origin.excessKg100 > 0 ? (
           <div className="flex items-baseline justify-between gap-3 py-1 font-bold text-rose-700 dark:text-rose-300">
             <dt>Exceso congelado</dt>
-            <dd className="number-tabular">{formatCentiKg(origin.excessKg100)}</dd>
+            <dd className="number-tabular">
+              {formatCentiKg(origin.excessKg100)}
+            </dd>
           </div>
         ) : null}
-        <Row label="Pendiente de congelar" value={formatCentiKg(origin.pendingKg100)} emphasis />
+        <Row
+          label="Pendiente de congelar"
+          value={formatCentiKg(origin.pendingKg100)}
+          emphasis
+        />
       </dl>
 
       <div className="mt-3 space-y-1.5 text-[0.6875rem] leading-4 text-slate-500">
@@ -141,7 +163,7 @@ export function FreezingAvailabilityExplanation({
   return (
     <SectionCard
       title="Cuadre Envasado → Congelamiento por jornada"
-      description="Disponible = Envasado Día propio + Envasado Noche propio + Saldo al cierre. El saldo recibido de otra jornada se cuenta solo en su jornada de origen."
+      description="Solo jornadas de Envasado de la semana seleccionada. Disponible = Día propio + Noche propio + Saldo al cierre."
       contentClassName="grid gap-3 p-4 sm:p-5 lg:grid-cols-2 2xl:grid-cols-3"
     >
       {origins.map((origin) => (

@@ -64,23 +64,41 @@ export function ProductionDayPage() {
   const requestedProcess = isProductionProcess(processParam)
     ? processParam
     : undefined
-  const productionDay = date ? findProductionDay(date, requestedProcess) : undefined
+  const productionDay = date
+    ? findProductionDay(date, requestedProcess)
+    : undefined
   usePageTitle(
-    productionDay ? `Detalle del ${productionDay.displayName}` : 'Jornada no encontrada',
+    productionDay
+      ? `Detalle del ${productionDay.displayName}`
+      : 'Jornada no encontrada',
   )
 
   if (!productionDay) {
     return (
-      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <CalendarDays className="mx-auto size-10 text-slate-300" aria-hidden="true" />
-        <h1 className="mt-4 text-xl font-bold text-slate-900">Jornada no encontrada</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Todavía no existe información registrada para la fecha solicitada.
-        </p>
-        <ActionLink to="/jornadas" className="mt-6">
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Volver a jornadas
-        </ActionLink>
+      <div className="mx-auto max-w-lg">
+        <SectionCard contentClassName="p-0">
+          <div className="flex flex-col items-center gap-4 px-6 py-10 text-center sm:px-8">
+            <span
+              className="grid size-12 place-items-center rounded-xl bg-slate-100 text-slate-500"
+              aria-hidden="true"
+            >
+              <CalendarDays className="size-6" />
+            </span>
+            <div>
+              <h1 className="text-lg font-bold text-slate-950">
+                Jornada no encontrada
+              </h1>
+              <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                No hay información registrada para la fecha solicitada. Vuelve al
+                listado o crea una jornada nueva.
+              </p>
+            </div>
+            <ActionLink to="/jornadas">
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Volver a jornadas
+            </ActionLink>
+          </div>
+        </SectionCard>
       </div>
     )
   }
@@ -113,14 +131,26 @@ export function ProductionDayPage() {
     productionDay.status === 'CLOSED' &&
     isBalanced &&
     calculation.integrityIssues.length === 0
-  const sourceSheet = productionDay.lines.at(0)?.source.sheet ?? 'la hoja operativa'
+  const sourceSheet =
+    productionDay.lines.at(0)?.source.sheet ?? 'la hoja operativa'
+
+  const statusBadge = isClosed
+    ? hasVisibleClosureObservations
+      ? { tone: 'warning' as const, label: 'CERRADA · CON OBSERVACIONES' }
+      : isBalanced
+        ? { tone: 'success' as const, label: 'CERRADA · SOLO LECTURA' }
+        : { tone: 'danger' as const, label: 'CERRADA · REVISAR' }
+    : isReadyToClose
+      ? hasClosureWarnings
+        ? { tone: 'warning' as const, label: 'LISTA · CON OBSERVACIONES' }
+        : { tone: 'success' as const, label: 'LISTA PARA CERRAR' }
+      : { tone: journey.tone, label: journey.label }
 
   const handleCloseDay = () => {
-  if (!isReadyToClose || isClosed) return
-
-  setCloseError('')
-  setIsCloseConfirmationOpen(true)
-}
+    if (!isReadyToClose || isClosed) return
+    setCloseError('')
+    setIsCloseConfirmationOpen(true)
+  }
 
   const cancelClose = () => {
     setIsCloseConfirmationOpen(false)
@@ -156,68 +186,68 @@ export function ProductionDayPage() {
     }
   }
 
-if (isFreezing) {
-  const totalFrozenKg100 = sumKg100([
-    calculation.day.declaredReportedKg100,
-    calculation.night.declaredReportedKg100,
-  ])
+  if (isFreezing) {
+    const totalFrozenKg100 = sumKg100([
+      calculation.day.declaredReportedKg100,
+      calculation.night.declaredReportedKg100,
+    ])
 
-  return (
-    <>
-      <FreezingDayDetail
-        productionDay={productionDay}
-        allProductionDays={allProductionDays}
-        canEdit={
-          isUserManagedDay(
-            productionDay.date,
-            process,
-          ) && !isClosed
-        }
-        canClose={isReadyToClose && !isClosed}
-        onClose={handleCloseDay}
-      />
-
-      {isCloseConfirmationOpen ? (
-        <CloseDayDialog
-          titleId="freezing-close-title"
-          title="Cerrar jornada de Congelamiento"
-          description="Después del cierre, esta jornada quedará en solo lectura."
-          summary={[
-            { label: 'Fecha', value: formatIsoDate(productionDay.date) },
-            {
-              label: 'Congelado Día',
-              value: formatCentiKg(calculation.day.declaredReportedKg100),
-            },
-            {
-              label: 'Congelado Noche',
-              value: formatCentiKg(calculation.night.declaredReportedKg100),
-            },
-            { label: 'Total congelado', value: formatCentiKg(totalFrozenKg100) },
-            {
-              label: 'Con origen identificado',
-              value: formatCentiKg(calculation.processedPreviousBalanceKg100),
-            },
-            {
-              label: 'Sin origen suficiente',
-              value: formatCentiKg(calculation.reportOwnProductionKg100),
-            },
-          ]}
-          warnings={operationalState.validation.warnings}
-          warningTitle={(warning) =>
-            warning.code === 'FREEZING_TRACEABILITY_DIFFERENCE'
-              ? 'Diferencia de trazabilidad'
-              : warning.code === 'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
-                ? 'Producto con origen insuficiente'
-                : 'Advertencia'
+    return (
+      <>
+        <FreezingDayDetail
+          productionDay={productionDay}
+          allProductionDays={allProductionDays}
+          canEdit={
+            isUserManagedDay(productionDay.date, process) && !isClosed
           }
-          error={closeError}
-          onCancel={cancelClose}
-          onConfirm={confirmCloseDay}
+          canClose={isReadyToClose && !isClosed}
+          onClose={handleCloseDay}
         />
-      ) : null}
-    </>
-  )
-}
+
+        {isCloseConfirmationOpen ? (
+          <CloseDayDialog
+            titleId="freezing-close-title"
+            title="Cerrar jornada de Congelamiento"
+            description="Después del cierre, esta jornada quedará en solo lectura."
+            summary={[
+              { label: 'Fecha', value: formatIsoDate(productionDay.date) },
+              {
+                label: 'Congelado Día',
+                value: formatCentiKg(calculation.day.declaredReportedKg100),
+              },
+              {
+                label: 'Congelado Noche',
+                value: formatCentiKg(calculation.night.declaredReportedKg100),
+              },
+              {
+                label: 'Total congelado',
+                value: formatCentiKg(totalFrozenKg100),
+              },
+              {
+                label: 'Con origen identificado',
+                value: formatCentiKg(calculation.processedPreviousBalanceKg100),
+              },
+              {
+                label: 'Sin origen suficiente',
+                value: formatCentiKg(calculation.reportOwnProductionKg100),
+              },
+            ]}
+            warnings={operationalState.validation.warnings}
+            warningTitle={(warning) =>
+              warning.code === 'FREEZING_TRACEABILITY_DIFFERENCE'
+                ? 'Diferencia de trazabilidad'
+                : warning.code === 'FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE'
+                  ? 'Producto con origen insuficiente'
+                  : 'Advertencia'
+            }
+            error={closeError}
+            onCancel={cancelClose}
+            onConfirm={confirmCloseDay}
+          />
+        ) : null}
+      </>
+    )
+  }
 
   const handleExport = async () => {
     if (!canExport || exportState === 'EXPORTING') return
@@ -240,7 +270,7 @@ if (isFreezing) {
   return (
     <div className="space-y-5">
       <Link
-        to="/jornadas"
+        to="/jornadas?process=PACKING"
         className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-brand-800"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -248,62 +278,38 @@ if (isFreezing) {
       </Link>
 
       <PageHeader
-        eyebrow="Detalle de jornada"
+        eyebrow="Detalle de jornada · Envasado"
         title={formatIsoDate(productionDay.date)}
         description={
           isBalanceOnly
             ? 'Domingo de procesamiento físico vinculado íntegramente a saldos de jornadas anteriores.'
-            : `Datos reconstruidos exclusivamente desde la hoja ${sourceSheet} y validados producto por producto.`
+            : `Datos reconstruidos desde ${sourceSheet} y validados producto por producto.`
         }
         actions={
-          <>
-            <StatusBadge
-              tone={
-              isClosed
-                ? hasVisibleClosureObservations
-                  ? 'warning'
-                  : isBalanced
-                    ? 'success'
-                    : 'danger'
-                : journey.status === 'NOT_BALANCED'
-                  ? 'danger'
-                  : isReadyToClose
-                    ? hasClosureWarnings
-                      ? 'warning'
-                      : 'success'
-                    : 'warning'
-            }
-            >
-              {isClosed
-                ? hasVisibleClosureObservations
-                  ? 'CERRADA · CON OBSERVACIONES'
-                  : isBalanced
-                    ? 'CERRADA · SOLO LECTURA'
-                    : 'CERRADA · REVISAR'
-                : isReadyToClose
-                  ? hasClosureWarnings
-                    ? 'LISTA · CON OBSERVACIONES'
-                    : 'LISTA PARA CERRAR'
-                  : 'BORRADOR · REVISAR'}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <StatusBadge tone={statusBadge.tone} truncateText={false}>
+              {statusBadge.label}
             </StatusBadge>
             {isBalanceOnly ? (
-              <StatusBadge tone="info">JORNADA DE SALDOS</StatusBadge>
+              <StatusBadge tone="info" truncateText={false}>
+                JORNADA DE SALDOS
+              </StatusBadge>
             ) : null}
             {isUserManagedDay(productionDay.date, process) && !isClosed ? (
               <>
                 <ActionLink
                   to={`/jornadas/${productionDay.date}/editar?process=${process}`}
                   variant="secondary"
+                  size="sm"
                 >
                   <Pencil className="size-4" aria-hidden="true" />
                   Seguir editando
                 </ActionLink>
-
                 <button
                   type="button"
                   disabled={!isReadyToClose}
                   onClick={handleCloseDay}
-                  className={buttonStyles('primary')}
+                  className={buttonStyles('primary', 'sm')}
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   Cerrar jornada
@@ -312,7 +318,7 @@ if (isFreezing) {
             ) : null}
             <button
               type="button"
-              className={buttonStyles('secondary')}
+              className={buttonStyles('secondary', 'sm')}
               disabled={!canExport || exportState === 'EXPORTING'}
               onClick={handleExport}
               title={
@@ -322,55 +328,57 @@ if (isFreezing) {
               }
             >
               {exportState === 'EXPORTING' ? (
-                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                <LoaderCircle
+                  className="size-4 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
                 <Download className="size-4" aria-hidden="true" />
               )}
               {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
             </button>
-          </>
+          </div>
         }
       />
 
-{hasVisibleClosureObservations ? (
-  <SectionCard
-    title={
-      isClosed
-        ? 'Observaciones de cierre'
-        : 'Observaciones detectadas'
-    }
-    description="Estas advertencias quedan asociadas a la jornada para revisión y auditoría."
-    action={
-      <StatusBadge tone="warning">
-        CON OBSERVACIÓN
-      </StatusBadge>
-    }
-  >
-    <div className="divide-y divide-amber-100 dark:divide-amber-500/10">
-      {visibleClosureObservations.map(
-        (observation) => (
-          <div
-            key={`${observation.code}-${
-              observation.familyKey ??
-              observation.productId ??
-              'GENERAL'
-            }`}
-            className="flex items-start gap-3 px-4 py-3 sm:px-5"
-          >
-            <AlertTriangle
-              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
-              aria-hidden="true"
-            />
-
-            <p className="text-xs leading-5 text-slate-700 dark:text-ui-text-dark-pale">
-              {observation.message}
-            </p>
-          </div>
-        ),
-      )}
-    </div>
-  </SectionCard>
-) : null}
+      {hasVisibleClosureObservations ? (
+        <SectionCard
+          title={
+            isClosed ? 'Observaciones de cierre' : 'Observaciones detectadas'
+          }
+          description="Quedan asociadas a la jornada para revisión y auditoría."
+          className="border-amber-300/80 ring-1 ring-amber-200/50 dark:border-amber-500/40 dark:ring-amber-500/15"
+          action={
+            <StatusBadge tone="warning" truncateText={false}>
+              {visibleClosureObservations.length}{' '}
+              {visibleClosureObservations.length === 1
+                ? 'OBSERVACIÓN'
+                : 'OBSERVACIONES'}
+            </StatusBadge>
+          }
+        >
+          <ul className="divide-y divide-amber-100 dark:divide-amber-500/10">
+            {visibleClosureObservations.map((observation) => (
+              <li
+                key={`${observation.code}-${
+                  observation.familyKey ?? observation.productId ?? 'GENERAL'
+                }`}
+                className="flex items-start gap-3 bg-amber-50/50 px-4 py-3 dark:bg-amber-500/5 sm:px-5"
+              >
+                <span
+                  className="grid size-7 shrink-0 place-items-center rounded-md bg-amber-500 text-slate-950"
+                  aria-hidden="true"
+                >
+                  <AlertTriangle className="size-3.5" />
+                </span>
+                <p className="text-xs leading-5 text-slate-700 dark:text-ui-text-dark-pale">
+                  {observation.message}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
 
       <p className="sr-only" role="status" aria-live="polite">
         {exportState === 'SUCCESS'
@@ -390,14 +398,29 @@ if (isFreezing) {
 
       <nav
         aria-label="Secciones de la jornada"
-        className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-2"
+        className="flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 p-1 dark:bg-slate-50/5"
       >
-        <a href="#cuadre" className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white hover:text-brand-800">Cuadre</a>
-        <a href="#produccion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white hover:text-brand-800">Producción</a>
-        <a href="#saldos" className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white hover:text-brand-800">Saldos</a>
+        {(
+          [
+            ['#cuadre', 'Cuadre'],
+            ['#produccion', 'Producción'],
+            ['#saldos', 'Saldos'],
+          ] as const
+        ).map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            className="shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white hover:text-brand-800 dark:hover:bg-slate-800"
+          >
+            {label}
+          </a>
+        ))}
       </nav>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Indicadores de la jornada">
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
+        aria-label="Indicadores de la jornada"
+      >
         <MetricCard
           label="Materia prima"
           value={formatCentiKg(productionDay.declaredRawMaterialKg100)}
@@ -431,7 +454,10 @@ if (isFreezing) {
         />
       </section>
 
-      <section id="cuadre" className="grid scroll-mt-28 gap-5 xl:grid-cols-[1.35fr_0.85fr]">
+      <section
+        id="cuadre"
+        className="grid scroll-mt-28 gap-5 xl:grid-cols-[1.35fr_0.85fr]"
+      >
         <ReconciliationPanel calculation={calculation} />
         {isBalanceOnly ? (
           <SectionCard
@@ -440,7 +466,9 @@ if (isFreezing) {
             contentClassName="flex min-h-36 flex-col items-center justify-center p-5 text-center"
           >
             <p className="text-xl font-extrabold text-slate-950">NO APLICA</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Jornada de saldos</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Jornada de saldos
+            </p>
           </SectionCard>
         ) : (
           <PerformancePanel
@@ -450,11 +478,30 @@ if (isFreezing) {
         )}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Producción por turno">
-        <MetricCard label="Producción Día" value={formatCentiKg(calculation.productiveDayKg100)} icon={<Sun className="size-5" />} />
-        <MetricCard label="Producción Noche" value={formatCentiKg(calculation.productiveNightKg100)} icon={<Moon className="size-5" />} />
-        <MetricCard label="Saldo anterior procesado" value={formatCentiKg(calculation.processedPreviousBalanceKg100)} icon={<Boxes className="size-5" />} />
-        <MetricCard label="Tratamiento" value={formatCentiKg(calculation.treatmentKg100)} icon={<Waves className="size-5" />} />
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Producción por turno"
+      >
+        <MetricCard
+          label="Producción Día"
+          value={formatCentiKg(calculation.productiveDayKg100)}
+          icon={<Sun className="size-5" />}
+        />
+        <MetricCard
+          label="Producción Noche"
+          value={formatCentiKg(calculation.productiveNightKg100)}
+          icon={<Moon className="size-5" />}
+        />
+        <MetricCard
+          label="Saldo anterior procesado"
+          value={formatCentiKg(calculation.processedPreviousBalanceKg100)}
+          icon={<Boxes className="size-5" />}
+        />
+        <MetricCard
+          label="Tratamiento"
+          value={formatCentiKg(calculation.treatmentKg100)}
+          icon={<Waves className="size-5" />}
+        />
       </section>
 
       <div id="produccion" className="scroll-mt-28">
@@ -474,6 +521,7 @@ if (isFreezing) {
           />
         ) : null}
       </div>
+
       {isCloseConfirmationOpen ? (
         <CloseDayDialog
           titleId="day-close-title"

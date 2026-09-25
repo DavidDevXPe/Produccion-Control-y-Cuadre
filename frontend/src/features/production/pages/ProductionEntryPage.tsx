@@ -2955,35 +2955,32 @@ const applyFreezingExcelPreview =
             />
           }
         >
-          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[14rem_minmax(28rem,1fr)_14rem] lg:items-end">
+                    <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[12rem_minmax(0,1fr)_auto] lg:items-start">
             <label className="block">
-              <span className="mb-1.5 block text-center text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
                 Turno a importar
               </span>
-
               <select
                 value={excelShift}
                 onChange={(event) =>
                   changeExcelShift(event.target.value as 'DAY' | 'NIGHT')
                 }
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-center text-sm font-semibold text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
               >
                 <option value="DAY">Turno Día</option>
                 <option value="NIGHT">Turno Noche</option>
               </select>
             </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-center text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
+            <label className="block min-w-0">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
                 Archivo de producción
               </span>
-
               <span className="relative block">
                 <Upload
                   className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-brand-700"
                   aria-hidden="true"
                 />
-
                 <input
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -2992,23 +2989,30 @@ const applyFreezingExcelPreview =
                   onChange={handleWorkbook}
                 />
               </span>
-
               <span
                 id="excel-file-status"
-                className="mt-1 block truncate text-center text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]"
+                className="mt-1 block truncate text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]"
               >
                 {fileName || 'Archivo .xlsx con hoja Reporte.'}
               </span>
             </label>
 
-            <button
-              type="button"
-              disabled={!canConfirmExcelImport}
-              onClick={applyExcelPreview}
-              className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-[#203E50]"
-            >
-              Confirmar importación
-            </button>
+            <div className="block">
+              <span
+                className="mb-1.5 block text-xs font-bold text-transparent select-none"
+                aria-hidden="true"
+              >
+                Acción
+              </span>
+              <button
+                type="button"
+                disabled={!canConfirmExcelImport}
+                onClick={applyExcelPreview}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-[#203E50] lg:w-auto"
+              >
+                Confirmar importación
+              </button>
+            </div>
           </div>
 
           {excelImportMessage ? (

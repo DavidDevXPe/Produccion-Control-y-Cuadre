@@ -48,33 +48,41 @@ export function BalancesPage() {
     if (selectedProcess !== activeProcess) setActiveProcess(selectedProcess)
   }, [activeProcess, selectedProcess, setActiveProcess])
   const isFreezing = selectedProcess === 'FREEZING'
+  const weekStart = activeWeek.period.startDate
+  const weekEnd = activeWeek.period.endDate
+
   const productionDays = allProductionDays.filter(
     (day) =>
       isPackingProductionDay(day) &&
-      day.date <= activeWeek.period.endDate,
+      day.date <= weekEnd,
   )
   const outstandingPositions = calculateOutstandingBalances(
     productionDays,
     subsequentBalanceLots,
   ).filter((position) => position.pendingKg100 > 0 || position.excessKg100 > 0)
-  // Positions consumed above what their origin generated stay visible: an
-  // excess is an inconsistency to investigate, not "no pending balance".
+
+  // Full ledger up to week end (needed for correct excess/pending math).
   const freezingAvailability = calculateFreezingAvailability(
     allProductionDays,
-    activeWeek.period.endDate,
+    weekEnd,
   )
+
+  // UI scope: only positions whose Packing origin belongs to the active week.
   const freezingPositions = [...freezingAvailability]
-    .filter((position) => position.pendingKg100 > 0 || position.excessKg100 > 0)
+    .filter(
+      (position) =>
+        (position.pendingKg100 > 0 || position.excessKg100 > 0) &&
+        position.originDate >= weekStart &&
+        position.originDate <= weekEnd,
+    )
     .sort(
       (first, second) =>
-        // Inconsistencies first, then FIFO: oldest origin first.
         Number(second.excessKg100 > 0) - Number(first.excessKg100 > 0) ||
         first.originDate.localeCompare(second.originDate) ||
         first.familyName.localeCompare(second.familyName, 'es-PE') ||
         first.productName.localeCompare(second.productName, 'es-PE'),
     )
-  // Each open origin is explained with all of its products, not only the
-  // pending ones, so "available" is the complete amount of that journey.
+
   const openFreezingOriginIds = new Set(
     freezingPositions.map((position) => position.originDayId),
   )
@@ -84,7 +92,10 @@ export function BalancesPage() {
     ),
     allProductionDays,
   )
+
   const outstandingByOrigin = productionDays.flatMap((day) => {
+    if (day.date < weekStart || day.date > weekEnd) return []
+
     const positions = outstandingPositions.filter(
       (position) => position.originDayId === day.id,
     )
@@ -93,7 +104,11 @@ export function BalancesPage() {
       ? [{ day, calculation: calculateProductionDay(day), positions }]
       : []
   })
-  const visiblePositions = isFreezing ? freezingPositions : outstandingPositions
+
+  const visiblePositions = isFreezing ? freezingPositions : outstandingPositions.filter(
+    (position) =>
+      position.originDate >= weekStart && position.originDate <= weekEnd,
+  )
   const totalPendingKg100 = sumKg100(
     visiblePositions.map((position) => position.pendingKg100),
   )
@@ -117,8 +132,8 @@ export function BalancesPage() {
         title="Saldos"
         description={
           isFreezing
-            ? `Producto envasado pendiente de congelar al cierre de la semana ${activeWeek.number}.`
-            : `Posición acumulada al cierre de la semana ${activeWeek.number}, identificada por producto y jornada de origen.`
+            ? `Producto envasado pendiente de congelar · solo orígenes de la semana ${activeWeek.number}.`
+            : `Posición acumulada de la semana ${activeWeek.number}, identificada por producto y jornada de origen.`
         }
         actions={
           freezingWeek.canCreate && totalPendingKg100 > 0 ? (
@@ -156,8 +171,16 @@ export function BalancesPage() {
           icon={<Boxes className="size-5" />}
           tone="brand"
         />
-        <MetricCard label="Productos pendientes" value={pendingProductCount} icon={<Layers3 className="size-5" />} />
-        <MetricCard label="Jornadas de origen" value={originCount} icon={<CalendarClock className="size-5" />} />
+        <MetricCard
+          label="Productos pendientes"
+          value={pendingProductCount}
+          icon={<Layers3 className="size-5" />}
+        />
+        <MetricCard
+          label="Jornadas de origen"
+          value={originCount}
+          icon={<CalendarClock className="size-5" />}
+        />
         {totalExcessKg100 > 0 ? (
           <MetricCard
             label="Consumido en exceso"
@@ -169,36 +192,41 @@ export function BalancesPage() {
         ) : null}
       </section>
 
-      {!isFreezing ? outstandingByOrigin.map(({ day, calculation, positions }) => (
-        <BalancePanel
-          key={day.id}
-          products={calculation.products}
-          originDate={day.date}
-          positions={positions}
-          view="outstanding"
-        />
-      )) : freezingPositions.length > 0 ? (
+      {!isFreezing ? (
+        outstandingByOrigin.map(({ day, calculation, positions }) => (
+          <BalancePanel
+            key={day.id}
+            products={calculation.products}
+            originDate={day.date}
+            positions={positions}
+            view="outstanding"
+          />
+        ))
+      ) : freezingPositions.length > 0 ? (
         <>
           <FreezingAvailabilityExplanation origins={freezingOrigins} />
           <FreezingBalancesPanel positions={freezingPositions} />
         </>
       ) : null}
 
-      {(isFreezing ? freezingPositions.length : outstandingByOrigin.length) === 0 ? (
+      {(isFreezing ? freezingPositions.length : outstandingByOrigin.length) ===
+      0 ? (
         <SectionCard contentClassName="p-6 sm:p-8">
           <div className="flex flex-col items-center text-center">
             <span className="grid size-12 place-items-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
               <CheckCircle2 className="size-6" aria-hidden="true" />
             </span>
             <h2 className="mt-4 text-base font-bold text-slate-950">
-              {isFreezing ? 'Sin producto pendiente de congelar' : 'Sin saldos pendientes'}
+              {isFreezing
+                ? 'Sin producto pendiente de congelar en esta semana'
+                : 'Sin saldos pendientes en esta semana'}
             </h2>
             <p className="mt-1.5 max-w-xl text-sm leading-6 text-slate-500">
               {isFreezing
-                ? 'No existe producto envasado pendiente hasta la fecha consultada.'
+                ? 'No hay posiciones abiertas con origen en la semana seleccionada. Cambia de semana o revisa jornadas de Envasado anteriores si buscas saldo histórico.'
                 : activeWeek.isClosed
-                ? 'El saldo del sábado fue envasado completamente el domingo y los demás saldos cuentan con un consumo posterior registrado.'
-                : 'No existen posiciones abiertas hasta la fecha consultada. Los saldos permanecen vinculados a su jornada de origen hasta que registres su procesamiento real.'}
+                  ? 'El saldo del sábado fue envasado completamente el domingo y los demás saldos cuentan con un consumo posterior registrado.'
+                  : 'No existen posiciones abiertas con origen en esta semana.'}
             </p>
           </div>
         </SectionCard>

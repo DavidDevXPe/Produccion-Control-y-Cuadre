@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   FilePlus2,
+  FileSpreadsheet,
   Info,
   PackageCheck,
   Snowflake,
@@ -67,19 +68,22 @@ function processLabel(process: AttentionProcess | null) {
 
 const attentionToneStyles: Record<
   AttentionTone,
-  { Icon: LucideIcon; iconClass: string }
+  { Icon: LucideIcon; iconClass: string; rowClass: string }
 > = {
   danger: {
     Icon: XCircle,
     iconClass: 'bg-rose-600 text-white',
+    rowClass: 'bg-rose-50/80 dark:bg-rose-500/10',
   },
   warning: {
     Icon: AlertTriangle,
     iconClass: 'bg-amber-500 text-slate-950',
+    rowClass: '',
   },
   info: {
     Icon: Info,
     iconClass: 'bg-sky-600 text-white',
+    rowClass: '',
   },
 }
 
@@ -150,6 +154,7 @@ interface StatusCounterProps {
   label: string
   value: number
   tone: 'success' | 'warning' | 'danger'
+  hint?: string
 }
 
 const statusCounterClasses: Record<
@@ -170,7 +175,7 @@ const statusCounterClasses: Record<
   },
 }
 
-function StatusCounter({ label, value, tone }: StatusCounterProps) {
+function StatusCounter({ label, value, tone, hint }: StatusCounterProps) {
   return (
     <div
       className={`rounded-lg border px-2 py-2 text-center ${statusCounterClasses[tone].box}`}
@@ -183,6 +188,9 @@ function StatusCounter({ label, value, tone }: StatusCounterProps) {
       >
         {value}
       </dd>
+      {hint ? (
+        <p className="mt-0.5 text-[0.625rem] leading-4 text-slate-500">{hint}</p>
+      ) : null}
     </div>
   )
 }
@@ -455,33 +463,93 @@ export function DashboardPage() {
           />
         </div>
 
-        <SectionCard
-          title={`Semana ${packingWeek.number} sin actividad registrada`}
-          description={
-            activeWeekState.canCreate
-              ? 'La semana está lista para recibir Envasado y Congelamiento.'
-              : 'La semana permanece disponible como histórico de solo lectura.'
-          }
-          contentClassName="p-5"
-        >
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-sm font-bold text-slate-900">
-                Aún no existen jornadas para mostrar en el Dashboard.
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                {activeWeekState.canCreate
-                  ? 'Registra la primera jornada manualmente o importa un Excel estructurado para comenzar el seguimiento operativo.'
-                  : 'Puedes consultar otras semanas desde Jornadas, Saldos y Resumen.'}
-              </p>
+        <SectionCard contentClassName="p-0">
+          <div className="flex flex-col gap-6 p-6 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <span
+                className="grid size-12 shrink-0 place-items-center rounded-xl bg-sky-600 text-white shadow-sm"
+                aria-hidden="true"
+              >
+                <CalendarDays className="size-6" />
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-700">
+                  Semana {packingWeek.number}
+                </p>
+                <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
+                  Sin actividad registrada
+                </h2>
+                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
+                  {activeWeekState.canCreate
+                    ? 'Esta semana está lista para recibir jornadas de Envasado y Congelamiento. Registra la primera para activar el seguimiento operativo.'
+                    : 'Esta semana permanece disponible como histórico de solo lectura. Puedes consultar otras semanas desde el menú.'}
+                </p>
+              </div>
             </div>
 
             {activeWeekState.canCreate ? (
-              <ActionLink to="/jornadas/nueva?process=PACKING">
-                <FilePlus2 className="size-4" aria-hidden="true" />
-                Registrar primera jornada
-              </ActionLink>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 dark:bg-slate-50/5">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-6 place-items-center rounded-md bg-sky-600 text-[0.6875rem] font-bold text-white">
+                      1
+                    </span>
+                    <p className="text-xs font-bold text-slate-900">
+                      Registro manual
+                    </p>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-600">
+                    Captura la jornada de Envasado o Congelamiento desde el formulario.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 dark:bg-slate-50/5">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-6 place-items-center rounded-md bg-slate-600 text-[0.6875rem] font-bold text-white">
+                      2
+                    </span>
+                    <p className="text-xs font-bold text-slate-900">
+                      Importar Excel
+                    </p>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-600">
+                    En la captura de Envasado puedes cargar el reporte estructurado y revisarlo antes de guardar.
+                  </p>
+                </div>
+              </div>
             ) : null}
+
+            <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-slate-500">
+                {activeWeekState.canCreate
+                  ? 'Al registrar la primera jornada se habilitan indicadores, saldos y comparativos de la semana.'
+                  : 'Usa el selector de semana del encabezado para cambiar de periodo.'}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {activeWeekState.canCreate ? (
+                  <>
+                    <ActionLink
+                      to="/jornadas/nueva?process=PACKING"
+                      variant="primary"
+                    >
+                      <FilePlus2 className="size-4" aria-hidden="true" />
+                      Registrar primera jornada
+                    </ActionLink>
+                    <ActionLink to="/jornadas" variant="ghost" size="sm">
+                      <FileSpreadsheet className="size-4" aria-hidden="true" />
+                      Ir a Jornadas
+                    </ActionLink>
+                  </>
+                ) : (
+                  <ActionLink to="/jornadas" variant="ghost" size="sm">
+                    Ver jornadas
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </ActionLink>
+                )}
+              </div>
+            </div>
           </div>
         </SectionCard>
       </div>
@@ -569,9 +637,12 @@ export function DashboardPage() {
                 ? 'warning'
                 : 'success'
           }
-          description={`${notBalancedJourneyCount} críticas · ${observedJourneyCount} observadas`}
+          description={`${notBalancedJourneyCount} sin cuadrar · ${observedJourneyCount} con nota`}
           progress={{
-            percent: percentOf(journeysWithObservationCount, registeredJourneyCount),
+            percent: percentOf(
+              observedJourneyCount + reviewJourneyCount,
+              registeredJourneyCount,
+            ),
             label: 'Jornadas de la semana con observación o sin cuadrar',
           }}
         />
@@ -828,7 +899,7 @@ export function DashboardPage() {
         <div className="min-w-0 space-y-4">
           <SectionCard
             title="Estado de jornadas"
-            description={`${registeredOperationalDayCount} de ${COVERAGE_DAYS} días con actividad registrada.`}
+            description={`${registeredJourneyCount} jornadas en ${registeredOperationalDayCount} de ${COVERAGE_DAYS} días.`}
             action={
               <ActionLink to="/jornadas" variant="ghost" size="sm">
                 Ver jornadas
@@ -843,14 +914,33 @@ export function DashboardPage() {
             </div>
 
             <dl className="grid grid-cols-3 gap-2 border-t border-slate-200 pt-3">
-              <StatusCounter label="Cuadradas" value={balancedJourneyCount} tone="success" />
-              <StatusCounter label="Observadas" value={observedJourneyCount} tone="warning" />
+              <StatusCounter
+                label="Cuadradas"
+                value={balancedJourneyCount}
+                tone="success"
+                hint="Sin observaciones"
+              />
+              <StatusCounter
+                label="Con observación"
+                value={observedJourneyCount}
+                tone="warning"
+                hint="Cuadradas con nota"
+              />
               <StatusCounter
                 label="Por revisar"
                 value={reviewJourneyCount}
                 tone={notBalancedJourneyCount > 0 ? 'danger' : 'warning'}
+                hint="Pendientes o no cuadradas"
               />
             </dl>
+
+            <p className="border-t border-slate-100 pt-2 text-[0.6875rem] leading-5 text-slate-500">
+              Los tres grupos son excluyentes y suman las{' '}
+              <span className="font-semibold text-slate-700">
+                {registeredJourneyCount} jornadas
+              </span>{' '}
+              de la semana (Envasado + Congelamiento).
+            </p>
           </SectionCard>
 
           <SectionCard
@@ -951,6 +1041,11 @@ export function DashboardPage() {
           <SectionCard
             title="Alertas y excepciones"
             description="Primero lo crítico, luego las observaciones de la semana."
+            className={
+              attention.criticalCount > 0
+                ? 'border-rose-300/80 ring-1 ring-rose-200/60 dark:border-rose-500/40 dark:ring-rose-500/20'
+                : undefined
+            }
             action={
               <StatusBadge
                 tone={
@@ -977,10 +1072,15 @@ export function DashboardPage() {
             {attentionItems.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {attention.visible.map((item) => {
-                  const { Icon, iconClass } = attentionToneStyles[item.tone]
+                  const { Icon, iconClass, rowClass } =
+                    attentionToneStyles[item.tone]
+                  const isCritical = item.tone === 'danger'
 
                   return (
-                    <li key={item.key} className="flex items-start gap-3 px-4 py-3">
+                    <li
+                      key={item.key}
+                      className={`flex items-start gap-3 px-4 py-3 ${rowClass}`}
+                    >
                       <span
                         className={`grid size-8 shrink-0 place-items-center rounded-lg ${iconClass}`}
                         aria-hidden="true"
@@ -990,7 +1090,13 @@ export function DashboardPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-bold text-slate-950">
+                          <p
+                            className={`text-xs font-bold ${
+                              isCritical
+                                ? 'text-rose-950 dark:text-rose-100'
+                                : 'text-slate-950'
+                            }`}
+                          >
                             {item.title}
                           </p>
                           <span className="number-tabular shrink-0 text-[0.625rem] font-semibold text-slate-500">
@@ -1000,7 +1106,13 @@ export function DashboardPage() {
                         <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.05em] text-slate-500">
                           {processLabel(item.process)}
                         </p>
-                        <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-600">
+                        <p
+                          className={`mt-0.5 line-clamp-2 text-xs leading-5 ${
+                            isCritical
+                              ? 'text-rose-900/80 dark:text-rose-100/80'
+                              : 'text-slate-600'
+                          }`}
+                        >
                           {item.description}
                         </p>
                         <ActionLink

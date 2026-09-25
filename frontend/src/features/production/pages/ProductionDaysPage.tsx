@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, Gauge, LockKeyhole } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, FileSpreadsheet, Gauge, LockKeyhole } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
@@ -83,6 +83,10 @@ export function ProductionDaysPage() {
   const readyToCloseCount = registeredDays.filter(
     ({ operationalState }) => operationalState.state === 'READY_TO_CLOSE',
   ).length
+  const reviewCount = registeredDays.filter(
+    ({ journey }) =>
+      journey.status === 'PENDING_REVIEW' || journey.status === 'NOT_BALANCED',
+  ).length
   const belowReferenceCount = registeredDays.filter(
     ({ day, calculation }) => {
       if (isBalanceOnlyProductionDay(day)) return false
@@ -93,29 +97,29 @@ export function ProductionDaysPage() {
   const latestDay = activeWeek.productionDays.at(-1)
   const isFreezing = selectedProcess === 'FREEZING'
 
-const frozenPhysicalKg100 = sumKg100(
-  registeredDays.flatMap(({ day }) => [
-    day.declaredShiftTotalsKg100.DAY,
-    day.declaredShiftTotalsKg100.NIGHT,
-  ]),
-)
+  const frozenPhysicalKg100 = sumKg100(
+    registeredDays.flatMap(({ day }) => [
+      day.declaredShiftTotalsKg100.DAY,
+      day.declaredShiftTotalsKg100.NIGHT,
+    ]),
+  )
 
-const freezingLinkedKg100 = sumKg100(
-  registeredDays.map(
-    ({ calculation }) => calculation.processedPreviousBalanceKg100,
-  ),
-)
+  const freezingLinkedKg100 = sumKg100(
+    registeredDays.map(
+      ({ calculation }) => calculation.processedPreviousBalanceKg100,
+    ),
+  )
 
-const freezingDifferenceKg100 = kg100(
-  frozenPhysicalKg100 - freezingLinkedKg100,
-)
+  const freezingDifferenceKg100 = kg100(
+    frozenPhysicalKg100 - freezingLinkedKg100,
+  )
 
-const freezingPendingKg100 = sumKg100(
-  calculateFreezingAvailability(
-    allProductionDays,
-    activeWeek.period.endDate,
-  ).map((position) => position.pendingKg100),
-)
+  const freezingPendingKg100 = sumKg100(
+    calculateFreezingAvailability(
+      allProductionDays,
+      activeWeek.period.endDate,
+    ).map((position) => position.pendingKg100),
+  )
   const missingCalendarDays = activeWeek.calendarDays.filter(
     (calendarDay) =>
       !activeWeek.productionDays.some(
@@ -135,6 +139,27 @@ const freezingPendingKg100 = sumKg100(
     }
   }
 
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {activeWeekState.canCreate ? (
+        <ActionLink to={`/jornadas/nueva?process=${selectedProcess}`} size="sm">
+          <FilePlus2 className="size-4" aria-hidden="true" />
+          Nueva jornada
+        </ActionLink>
+      ) : null}
+      {activeWeekState.canCloseManually ? (
+        <button
+          type="button"
+          onClick={() => setIsWeekCloseOpen(true)}
+          className={buttonStyles('secondary', 'sm')}
+        >
+          <LockKeyhole className="size-4" aria-hidden="true" />
+          Cerrar semana
+        </button>
+      ) : null}
+    </div>
+  )
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -145,24 +170,7 @@ const freezingPendingKg100 = sumKg100(
             ? 'Controla lo congelado por turno contra la disponibilidad trazable de Envasado.'
             : 'Consulta el cuadre diario sin mezclarlo con el aprovechamiento operativo.'
         }
-        actions={
-          activeWeekState.canCloseManually ? (
-            <>
-            <ActionLink to={`/jornadas/nueva?process=${selectedProcess}`} size="sm">
-              <FilePlus2 className="size-4" aria-hidden="true" />
-              Nueva jornada
-            </ActionLink>
-            <button
-              type="button"
-              onClick={() => setIsWeekCloseOpen(true)}
-              className={buttonStyles('secondary', 'sm')}
-            >
-              <LockKeyhole className="size-4" aria-hidden="true" />
-              Cerrar semana
-            </button>
-            </>
-          ) : null
-        }
+        actions={headerActions}
       />
 
       <ProcessSelector
@@ -176,65 +184,78 @@ const freezingPendingKg100 = sumKg100(
       />
 
       <section
-  className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3"
-  aria-label="Resumen de jornadas"
->
-  <MetricCard
-    label="Jornadas registradas"
-    value={registeredDays.length}
-    icon={<CalendarDays className="size-5" />}
-    description={`${registeredDays.length} de 7 días de la semana`}
-  />
+        className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label="Resumen de jornadas"
+      >
+        <MetricCard
+          label="Jornadas registradas"
+          value={registeredDays.length}
+          icon={<CalendarDays className="size-5" />}
+          description={`${registeredDays.length} de 7 días de la semana`}
+        />
 
-  <MetricCard
-    label="Cuadradas"
-    value={balancedCount}
-    icon={<CheckCircle2 className="size-5" />}
-    tone={
-      registeredDays.length > 0 &&
-      balancedCount === registeredDays.length
-        ? 'success'
-        : 'warning'
-    }
-    description={
-      closedCount > 0 || readyToCloseCount > 0
-        ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'} · ${
-            readyToCloseCount
-          } lista${readyToCloseCount === 1 ? '' : 's'} para cerrar${
-            observedClosedCount > 0
-              ? ` · ${observedClosedCount} con observación`
-              : ''
-          }`
-        : 'Requiere revisión'
-    }
-  />
+        <MetricCard
+          label="Cuadradas"
+          value={balancedCount}
+          icon={<CheckCircle2 className="size-5" />}
+          tone={
+            registeredDays.length > 0 &&
+            balancedCount === registeredDays.length
+              ? 'success'
+              : balancedCount > 0
+                ? 'success'
+                : 'warning'
+          }
+          description={
+            registeredDays.length === 0
+              ? 'Sin jornadas registradas'
+              : [
+                  observedClosedCount > 0
+                    ? `${observedClosedCount} con observación`
+                    : null,
+                  reviewCount > 0
+                    ? `${reviewCount} por revisar`
+                    : null,
+                  readyToCloseCount > 0
+                    ? `${readyToCloseCount} lista${readyToCloseCount === 1 ? '' : 's'} para cerrar`
+                    : null,
+                  closedCount > 0
+                    ? `${closedCount} cerrada${closedCount === 1 ? '' : 's'}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || 'Todas sin observación'
+          }
+        />
 
-  {isFreezing ? (
-    <MetricCard
-      label="Con observación"
-      value={observedClosedCount}
-      icon={<AlertTriangle className="size-5" />}
-      tone={observedClosedCount > 0 ? 'warning' : 'success'}
-      description={
-        observedClosedCount > 0
-          ? `${observedClosedCount} ${
-              observedClosedCount === 1 ? 'jornada requiere' : 'jornadas requieren'
-            } revisión`
-          : 'Sin observaciones de cierre'
-      }
-    />
-  ) : (
-    <MetricCard
-      label="Bajo referencia (<80%)"
-      value={belowReferenceCount}
-      icon={<Gauge className="size-5" />}
-      tone={belowReferenceCount === 0 ? 'success' : 'warning'}
-      description="Referencia operativa: 80%"
-    />
-  )}
-</section>
+        {isFreezing ? (
+          <MetricCard
+            label="Con observación"
+            value={observedClosedCount}
+            icon={<AlertTriangle className="size-5" />}
+            tone={observedClosedCount > 0 ? 'warning' : 'success'}
+            description={
+              observedClosedCount > 0
+                ? `${observedClosedCount} ${
+                    observedClosedCount === 1
+                      ? 'jornada cuadrada con nota'
+                      : 'jornadas cuadradas con nota'
+                  }`
+                : 'Sin observaciones de cierre'
+            }
+          />
+        ) : (
+          <MetricCard
+            label="Bajo referencia (<80%)"
+            value={belowReferenceCount}
+            icon={<Gauge className="size-5" />}
+            tone={belowReferenceCount === 0 ? 'success' : 'warning'}
+            description="Referencia operativa: 80%"
+          />
+        )}
+      </section>
 
-{isFreezing ? (
+      {isFreezing ? (
         <section
           aria-labelledby="freezing-summary-title"
           className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel"
@@ -330,202 +351,287 @@ const freezingPendingKg100 = sumKg100(
         }
       >
         {registeredDays.length === 0 ? (
-          <div className="flex flex-col items-start gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-bold text-slate-900">Aún no hay jornadas registradas</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                {activeWeekState.canCreate
-                  ? 'Empieza con ingreso manual o importa una hoja del Excel para revisarla.'
-                  : 'Esta semana cerrada permanece disponible únicamente para consulta.'}
-              </p>
+          <div className="flex flex-col gap-6 p-6 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <span
+                className="grid size-12 shrink-0 place-items-center rounded-xl bg-sky-600 text-white shadow-sm"
+                aria-hidden="true"
+              >
+                <CalendarDays className="size-6" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-700">
+                  Semana {activeWeek.number}
+                </p>
+                <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950">
+                  Sin jornadas de {productionProcessLabels[selectedProcess]}
+                </h2>
+                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
+                  {activeWeekState.canCreate
+                    ? isFreezing
+                      ? 'Registra la primera jornada de Congelamiento o revisa la disponibilidad de Envasado en Saldos.'
+                      : 'Registra la primera jornada manualmente o importa un Excel estructurado para comenzar el cuadre.'
+                    : 'Esta semana cerrada permanece disponible únicamente para consulta.'}
+                </p>
+              </div>
             </div>
+
             {activeWeekState.canCreate ? (
-            <ActionLink to={`/jornadas/nueva?process=${selectedProcess}`}>
-                <FilePlus2 className="size-4" aria-hidden="true" />
-                Nueva jornada
-              </ActionLink>
+              <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-500">
+                  {isFreezing
+                    ? 'Congelamiento consume disponibilidad generada por Envasado.'
+                    : 'También puedes importar el reporte Excel desde la captura de Envasado.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ActionLink to={`/jornadas/nueva?process=${selectedProcess}`}>
+                    <FilePlus2 className="size-4" aria-hidden="true" />
+                    Registrar jornada
+                  </ActionLink>
+                  {!isFreezing ? (
+                    <ActionLink
+                      to={`/jornadas/nueva?process=${selectedProcess}`}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <FileSpreadsheet className="size-4" aria-hidden="true" />
+                      Importar Excel
+                    </ActionLink>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
           </div>
         ) : (
-        <DataTableScroll label={`Jornadas de producción registradas en la semana ${activeWeek.number}`}>
-          <table className="erp-table w-full min-w-[68rem] table-fixed border-collapse text-left">
-            <caption className="sr-only">Jornadas de producción registradas</caption>
-            <colgroup>
-  <col className="w-[14%]" />
-  <col className="w-[11%]" />
-  <col className="w-[12%]" />
-  <col className="w-[10%]" />
-  <col className="w-[9%]" />
-  <col className="w-[17%]" />
-  <col className="w-[15%]" />
-  <col className="w-[12%]" />
-</colgroup>
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/90 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">Jornada</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Día' : 'Materia prima'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Noche' : 'Producto terminado'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Total congelado' : 'Saldo final'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Dif. trazabilidad' : 'Diferencia'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Estado' : 'Cuadre'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">{isFreezing ? 'Vinculado' : 'Aprovechamiento'}</th>
-                <th scope="col" className="px-3 py-2.5 text-center align-middle">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {registeredDays.map(({ day, calculation, operationalState, journey }) => {
-                const isClosed = operationalState.lifecycle === 'CLOSED'
-                const isReadyToClose =
-                  operationalState.state === 'READY_TO_CLOSE'
-                const isBalanceOnly = isBalanceOnlyProductionDay(day)
-                const yieldStatus = getYieldStatus(calculation.performance.percent)
-                const performancePercent = calculation.performance.percent
-                // A yield above 100% is impossible: it is an integrity problem
-                // even before the journey is closed.
-                const hasInvalidYield =
-                  !isFreezing &&
-                  !isBalanceOnly &&
-                  performancePercent !== null &&
-                  performancePercent > 100
+          <DataTableScroll
+            label={`Jornadas de producción registradas en la semana ${activeWeek.number}`}
+          >
+            <table className="erp-table w-full min-w-[68rem] table-fixed border-collapse text-left">
+              <caption className="sr-only">Jornadas de producción registradas</caption>
+              <colgroup>
+                <col className="w-[14%]" />
+                <col className="w-[11%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+                <col className="w-[17%]" />
+                <col className="w-[15%]" />
+                <col className="w-[12%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/90 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500">
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    Jornada
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Día' : 'Materia prima'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Noche' : 'Producto terminado'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Total congelado' : 'Saldo final'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Dif. trazabilidad' : 'Diferencia'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Estado' : 'Cuadre'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    {isFreezing ? 'Vinculado' : 'Aprovechamiento'}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-center align-middle">
+                    Acción
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {registeredDays.map(
+                  ({ day, calculation, operationalState, journey }) => {
+                    const isClosed = operationalState.lifecycle === 'CLOSED'
+                    const isReadyToClose =
+                      operationalState.state === 'READY_TO_CLOSE'
+                    const isBalanceOnly = isBalanceOnlyProductionDay(day)
+                    const yieldStatus = getYieldStatus(
+                      calculation.performance.percent,
+                    )
+                    const performancePercent = calculation.performance.percent
+                    // A yield above 100% is impossible: it is an integrity problem
+                    // even before the journey is closed.
+                    const hasInvalidYield =
+                      !isFreezing &&
+                      !isBalanceOnly &&
+                      performancePercent !== null &&
+                      performancePercent > 100
 
-                const squareStatus = hasInvalidYield
-                  ? { tone: 'danger' as const, label: 'REVISAR INTEGRIDAD' }
-                  : { tone: journey.tone, label: journey.label }
-                const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
-                const rowAccentClass =
-                  squareStatus.tone === 'danger'
-                    ? 'before:bg-rose-500'
-                    : squareStatus.tone === 'warning'
-                      ? 'before:bg-amber-500'
-                      : 'before:bg-emerald-500'
-                // A difference is red only when the journey really is not
-                // balanced; on an open journey it is follow-up work.
-                const differenceClass =
-                  calculation.differenceKg100 === 0
-                    ? 'text-emerald-700'
-                    : journey.status === 'NOT_BALANCED'
-                      ? 'text-rose-700'
-                      : 'text-amber-700'
+                    const squareStatus = hasInvalidYield
+                      ? { tone: 'danger' as const, label: 'REVISAR INTEGRIDAD' }
+                      : { tone: journey.tone, label: journey.label }
+                    const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
+                    const rowAccentClass =
+                      squareStatus.tone === 'danger'
+                        ? 'before:bg-rose-500'
+                        : squareStatus.tone === 'warning'
+                          ? 'before:bg-amber-500'
+                          : 'before:bg-emerald-500'
+                    // A difference is red only when the journey really is not
+                    // balanced; on an open journey it is follow-up work.
+                    const differenceClass =
+                      calculation.differenceKg100 === 0
+                        ? 'text-emerald-700'
+                        : journey.status === 'NOT_BALANCED'
+                          ? 'text-rose-700'
+                          : 'text-amber-700'
 
-                return (
-                  <tr
-                    key={day.id}
-                    className="bg-white hover:bg-brand-50/35"
-                  >
-                    <th
-                      scope="row"
-                      className={`relative px-3 py-3 text-center align-middle before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${rowAccentClass}`}
-                    >
-                      <span className="flex w-full flex-col items-center justify-center text-center">
-                        <span className="block text-xs font-bold tracking-[0.04em] text-slate-950">
-                          {formatIsoWeekday(day.date)}
-                        </span>
-                        <span className="number-tabular mt-0.5 block text-xs font-semibold text-slate-600">
-                          {formatIsoDateCompact(day.date)}
-                        </span>
-                        {day.date === latestDay?.date ? (
-                          <span className="mt-0.5 block text-[0.625rem] font-medium text-slate-500">
-                            Último registro disponible
-                          </span>
-                        ) : null}
-                      </span>
-                    </th>
-                    <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
-                      <QuantityValue value={isFreezing ? day.declaredShiftTotalsKg100.DAY : day.declaredRawMaterialKg100} />
-                    </td>
-                    <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-950">
-                      <QuantityValue value={isFreezing ? day.declaredShiftTotalsKg100.NIGHT : calculation.declaredFinishedKg100} />
-                    </td>
-                    <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
-                      <QuantityValue value={isFreezing ? day.declaredShiftTotalsKg100.DAY + day.declaredShiftTotalsKg100.NIGHT : calculation.newClosingBalanceKg100} />
-                    </td>
-                    <td
-                      className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
-                        isFreezing
-                          ? calculation.ownTurnProductionKg100 === 0
-                            ? 'text-emerald-700'
-                            : 'text-amber-700'
-                          : differenceClass
-                      }`}
-                    >
-                      <QuantityValue
-                        value={
-                          isFreezing
-                            ? calculation.ownTurnProductionKg100
-                            : calculation.differenceKg100
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-center align-middle">
-                      <div className="flex w-full items-center justify-center">
-                        <StatusBadge
-                          tone={squareStatus.tone}
-                          truncateText={false}
-                        >
-                          {squareStatus.label}
-                        </StatusBadge>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-center align-middle">
-                      {isFreezing ? (
-  <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700 ">
-    <QuantityValue
-      value={calculation.processedPreviousBalanceKg100}
-    />
-  </div>
-) : isBalanceOnly ? (
-                        <div
-                          className="flex w-full flex-col items-center justify-center gap-1 text-center"
-                          aria-label="Aprovechamiento no aplicable. Jornada de saldos."
-                        >
-                          <span className="text-xs font-bold text-slate-600">NO APLICA</span>
-                          <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
-                        </div>
-                      ) : (
-                      <div
-                        className="flex w-full flex-col items-center justify-center gap-1 text-center"
-                        title={`${formatRatioAsPercent(calculation.performance.ratio)} · ${yieldStatus.label}: ${yieldStatus.interpretation}`}
-                        aria-label={`Aprovechamiento ${formatRatioAsPercent(calculation.performance.ratio)}. Estado ${yieldStatus.label}. ${yieldStatus.interpretation}`}
+                    return (
+                      <tr
+                        key={day.id}
+                        className="bg-white hover:bg-brand-50/35"
                       >
-                        <span
-                          className={`number-tabular whitespace-nowrap text-xs font-bold ${yieldStyles.textClass}`}
+                        <th
+                          scope="row"
+                          className={`relative px-3 py-3 text-center align-middle before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${rowAccentClass}`}
                         >
-                          {formatRatioAsPercent(calculation.performance.ratio)}
-                        </span>
-                        <StatusBadge
-                          tone={yieldStyles.badgeTone}
+                          <span className="flex w-full flex-col items-center justify-center text-center">
+                            <span className="block text-xs font-bold tracking-[0.04em] text-slate-950">
+                              {formatIsoWeekday(day.date)}
+                            </span>
+                            <span className="number-tabular mt-0.5 block text-xs font-semibold text-slate-600">
+                              {formatIsoDateCompact(day.date)}
+                            </span>
+                            {day.date === latestDay?.date ? (
+                              <span className="mt-0.5 block text-[0.625rem] font-medium text-slate-500">
+                                Último registro disponible
+                              </span>
+                            ) : null}
+                          </span>
+                        </th>
+                        <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
+                          <QuantityValue
+                            value={
+                              isFreezing
+                                ? day.declaredShiftTotalsKg100.DAY
+                                : day.declaredRawMaterialKg100
+                            }
+                          />
+                        </td>
+                        <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-950">
+                          <QuantityValue
+                            value={
+                              isFreezing
+                                ? day.declaredShiftTotalsKg100.NIGHT
+                                : calculation.declaredFinishedKg100
+                            }
+                          />
+                        </td>
+                        <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
+                          <QuantityValue
+                            value={
+                              isFreezing
+                                ? day.declaredShiftTotalsKg100.DAY +
+                                  day.declaredShiftTotalsKg100.NIGHT
+                                : calculation.newClosingBalanceKg100
+                            }
+                          />
+                        </td>
+                        <td
+                          className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
+                            isFreezing
+                              ? calculation.ownTurnProductionKg100 === 0
+                                ? 'text-emerald-700'
+                                : 'text-amber-700'
+                              : differenceClass
+                          }`}
                         >
-                          {yieldStatus.label}
-                        </StatusBadge>
-                      </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center align-middle">
-                      <div className="flex w-full items-center justify-center">
-                        <ActionLink
-                          to={`${
-                            isClosed || activeWeekState.isReadOnly || isReadyToClose
-                              ? `/jornadas/${day.date}`
-                              : `/jornadas/${day.date}/editar`
-                          }?process=${selectedProcess}`}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          {isClosed || activeWeekState.isReadOnly
-                            ? 'Ver detalle'
-                            : isReadyToClose
-                              ? 'Revisar y cerrar'
-                              : 'Seguir cuadrando'}
-                          <ArrowRight className="size-4" aria-hidden="true" />
-                        </ActionLink>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </DataTableScroll>
+                          <QuantityValue
+                            value={
+                              isFreezing
+                                ? calculation.ownTurnProductionKg100
+                                : calculation.differenceKg100
+                            }
+                          />
+                        </td>
+                        <td className="px-3 py-3 text-center align-middle">
+                          <div className="flex w-full items-center justify-center">
+                            <StatusBadge
+                              tone={squareStatus.tone}
+                              truncateText={false}
+                            >
+                              {squareStatus.label}
+                            </StatusBadge>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-center align-middle">
+                          {isFreezing ? (
+                            <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700">
+                              <QuantityValue
+                                value={calculation.processedPreviousBalanceKg100}
+                              />
+                            </div>
+                          ) : isBalanceOnly ? (
+                            <div
+                              className="flex w-full flex-col items-center justify-center gap-1 text-center"
+                              aria-label="Aprovechamiento no aplicable. Jornada de saldos."
+                            >
+                              <span className="text-xs font-bold text-slate-600">
+                                NO APLICA
+                              </span>
+                              <StatusBadge tone="neutral">
+                                JORNADA DE SALDOS
+                              </StatusBadge>
+                            </div>
+                          ) : (
+                            <div
+                              className="flex w-full flex-col items-center justify-center gap-1 text-center"
+                              title={`${formatRatioAsPercent(calculation.performance.ratio)} · ${yieldStatus.label}: ${yieldStatus.interpretation}`}
+                              aria-label={`Aprovechamiento ${formatRatioAsPercent(calculation.performance.ratio)}. Estado ${yieldStatus.label}. ${yieldStatus.interpretation}`}
+                            >
+                              <span
+                                className={`number-tabular whitespace-nowrap text-xs font-bold ${yieldStyles.textClass}`}
+                              >
+                                {formatRatioAsPercent(
+                                  calculation.performance.ratio,
+                                )}
+                              </span>
+                              <StatusBadge tone={yieldStyles.badgeTone}>
+                                {yieldStatus.label}
+                              </StatusBadge>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center align-middle">
+                          <div className="flex w-full items-center justify-center">
+                            <ActionLink
+                              to={`${
+                                isClosed ||
+                                activeWeekState.isReadOnly ||
+                                isReadyToClose
+                                  ? `/jornadas/${day.date}`
+                                  : `/jornadas/${day.date}/editar`
+                              }?process=${selectedProcess}`}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              {isClosed || activeWeekState.isReadOnly
+                                ? 'Ver detalle'
+                                : isReadyToClose
+                                  ? 'Revisar y cerrar'
+                                  : 'Seguir cuadrando'}
+                              <ArrowRight
+                                className="size-4"
+                                aria-hidden="true"
+                              />
+                            </ActionLink>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  },
+                )}
+              </tbody>
+            </table>
+          </DataTableScroll>
         )}
       </SectionCard>
 
@@ -541,11 +647,16 @@ const freezingPendingKg100 = sumKg100(
                 <AlertTriangle className="size-5" aria-hidden="true" />
               </span>
               <div>
-                <h2 id="week-close-title" className="text-base font-bold text-slate-950">
-              Cerrar semana {activeWeek.number} · {productionProcessLabels[selectedProcess]}
+                <h2
+                  id="week-close-title"
+                  className="text-base font-bold text-slate-950"
+                >
+                  Cerrar semana {activeWeek.number} ·{' '}
+                  {productionProcessLabels[selectedProcess]}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Jornadas registradas: {registeredDays.length} de 7. Después del cierre, la semana quedará disponible únicamente para consulta.
+                  Jornadas registradas: {registeredDays.length} de 7. Después del
+                  cierre, la semana quedará disponible únicamente para consulta.
                 </p>
               </div>
             </div>
@@ -557,18 +668,26 @@ const freezingPendingKg100 = sumKg100(
                 </p>
                 <ul className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
                   {missingCalendarDays.map((day) => (
-                    <li key={day.isoDate}>{day.label} {day.date} · SIN REGISTRO</li>
+                    <li key={day.isoDate}>
+                      {day.label} {day.date} · SIN REGISTRO
+                    </li>
                   ))}
                 </ul>
                 <p className="mt-3 text-xs leading-5 text-slate-600">
-                  Los días sin operación permanecerán como SIN REGISTRO; no se crearán jornadas de 0 kg.
+                  Los días sin operación permanecerán como SIN REGISTRO; no se
+                  crearán jornadas de 0 kg.
                 </p>
               </div>
             ) : null}
 
             {activeWeek.closureBlockers.length > 0 ? (
-              <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3">
-                <p className="text-xs font-bold text-rose-900">Jornadas que requieren revisión:</p>
+              <div
+                role="alert"
+                className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3"
+              >
+                <p className="text-xs font-bold text-rose-900">
+                  Jornadas que requieren revisión:
+                </p>
                 <ul className="mt-2 space-y-1 text-xs leading-5 text-rose-800">
                   {activeWeek.closureBlockers.map((blocker) => (
                     <li key={blocker.dayId}>• {blocker.message}</li>
