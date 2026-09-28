@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,

@@ -18,7 +18,7 @@ describe('balances page', () => {
     expect(totalCard).not.toBeNull()
     expect(within(totalCard!).getByText('0.00 kg')).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Sin saldos pendientes' }),
+      screen.getByRole('heading', { name: 'Sin saldos pendientes en esta semana' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText(/El saldo del sábado fue envasado completamente/),

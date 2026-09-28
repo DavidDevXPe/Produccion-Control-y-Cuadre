@@ -244,11 +244,11 @@ describe('dashboard journey status coherence', () => {
       .closest('article')!
     expect(within(observedCard).getByText('4')).toBeInTheDocument()
     expect(
-      within(observedCard).getByText('0 críticas · 4 observadas'),
+      within(observedCard).getByText('0 sin cuadrar · 4 con nota'),
     ).toBeInTheDocument()
 
     const balanced = screen.getByText('Cuadradas').closest('div')!
-    const observed = screen.getByText('Observadas').closest('div')!
+    const observed = screen.getByText('Con observación').closest('div')!
     const review = screen.getByText('Por revisar').closest('div')!
     expect(within(balanced).getByText('0')).toBeInTheDocument()
     expect(within(observed).getByText('4')).toBeInTheDocument()

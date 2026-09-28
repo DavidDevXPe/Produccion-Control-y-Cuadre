@@ -400,8 +400,6 @@ export function DashboardPage() {
   const totalAvailableKg100 = sumKg100(
     weekFreezingPositions.map((position) => position.generatedKg100),
   )
-  const journeysWithObservationCount =
-    observedJourneyCount + notBalancedJourneyCount
 
   // All journeys of the week, newest first; Packing before Freezing on a day.
   const journeyRows = [
