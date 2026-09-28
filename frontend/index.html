@@ -1,32 +1,36 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="TRABUNDA Producción: control y cuadre operativo diario y semanal"
-    />
-    <meta name="theme-color" content="#09121B" />
-    <link rel="icon" type="image/png" href="%BASE_URL%brand/trabunda-logo-white.png" />
-    <script>
-      (() => {
-        let savedTheme = null
-        try {
-          savedTheme = window.localStorage.getItem('trabunda-color-theme')
-        } catch {
-          savedTheme = null
-        }
 
-        const isDark = savedTheme !== 'light'
-        document.documentElement.classList.toggle('dark', isDark)
-        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
-      })()
-    </script>
-    <title>TRABUNDA Producción | Control y Cuadre Operativo</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TRABUNDA Producción: control y cuadre operativo diario y semanal" />
+  <meta name="theme-color" content="#09121B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="%BASE_URL%brand/trabunda-logo-white.png" />
+  <link rel="icon" type="image/png" href="%BASE_URL%brand/trabunda-logo-white.png" />
+  <script>
+    (() => {
+      let savedTheme = null
+      try {
+        savedTheme = window.localStorage.getItem('trabunda-color-theme')
+      } catch {
+        savedTheme = null
+      }
+
+      const isDark = savedTheme !== 'light'
+      document.documentElement.classList.toggle('dark', isDark)
+      document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
+    })()
+  </script>
+  <title>TRABUNDA Producción | Control y Cuadre Operativo</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

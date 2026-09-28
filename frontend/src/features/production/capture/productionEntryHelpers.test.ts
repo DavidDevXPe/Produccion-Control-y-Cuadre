@@ -47,9 +47,9 @@ describe("productionEntryHelpers", () => {
   });
 
   it("creates row from catalog product", () => {
-    const row = createRow("aleta-fresca", 0);
+    const row = createRow("aleta-cruda-ucrania-codificada", 0);
     expect(row).not.toBeNull();
-    expect(row?.product.productId).toBe("aleta-fresca");
+    expect(row?.product.productId).toBe("aleta-cruda-ucrania-codificada");
     expect(row?.dayReportedKg).toBe("");
   });
 

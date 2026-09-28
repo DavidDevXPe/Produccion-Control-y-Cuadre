@@ -40,7 +40,7 @@ export function PerformancePanel({
     >
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <p className="text-sm font-semibold text-slate-600 dark:text-ui-text-dark-pale">
             Resultado de la jornada
           </p>
           <p
@@ -68,7 +68,7 @@ export function PerformancePanel({
             aria-hidden="true"
           />
         </div>
-        <div className="mt-2 flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <div className="mt-2 flex justify-between text-xs font-semibold text-slate-600 dark:text-ui-text-dark-soft">
           <span>0%</span>
           <span>Referencia {performance.referencePercent.toFixed(0)}%</span>
           <span>100%</span>
@@ -82,13 +82,13 @@ export function PerformancePanel({
           <Info className="mt-0.5 size-4 shrink-0 opacity-90" aria-hidden="true" />
           <p className={`font-semibold ${yieldStyles.textClass}`}>
             {yieldStatus.interpretation}
-          </p>  
+          </p>
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-600 dark:bg-slate-800/40">
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-ui-line-dark dark:bg-ui-surface-dark/70">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-ui-text-dark-strong">
             Nuca semilimpia
           </h3>
           <StatusBadge
@@ -110,18 +110,18 @@ export function PerformancePanel({
         {nucaSemilimpia.applicable ? (
           <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-slate-600 dark:text-slate-300">
+              <dt className="text-slate-600 dark:text-ui-text-dark-soft">
                 Referencia 15%
               </dt>
-              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-slate-100">
+              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
                 {formatCentiKg(nucaSemilimpia.referenceKg100)}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-600 dark:text-slate-300">
+              <dt className="text-slate-600 dark:text-ui-text-dark-soft">
                 Producción real
               </dt>
-              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-slate-100">
+              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
                 {formatCentiKg(nucaSemilimpia.actualKg100)}
               </dd>
             </div>
@@ -148,18 +148,18 @@ export function PerformancePanel({
           <>
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <dt className="text-slate-600 dark:text-slate-300">
+                <dt className="text-slate-600 dark:text-ui-text-dark-soft">
                   Referencia 7%
                 </dt>
-                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-slate-100">
+                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
                   {formatCentiKg(nucaBikini.referenceKg100)}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-600 dark:text-slate-300">
+                <dt className="text-slate-600 dark:text-ui-text-dark-soft">
                   Producción real
                 </dt>
-                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-slate-100">
+                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
                   {formatCentiKg(nucaBikini.actualKg100)}
                 </dd>
               </div>
@@ -175,7 +175,7 @@ export function PerformancePanel({
         ) : null}
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+      <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-ui-text-dark-soft">
         Las referencias de Nuca son informativas y no intervienen en el cuadre
         matemático.
       </p>

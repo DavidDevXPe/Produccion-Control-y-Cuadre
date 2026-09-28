@@ -11,6 +11,7 @@ import {
   PackageOpen,
   Settings,
   Sun,
+  WifiOff,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -236,6 +237,7 @@ export function AdminLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [colorTheme, setColorTheme] = useState<ColorTheme>(getInitialColorTheme)
   const [currentTime, setCurrentTime] = useState(() => new Date())
+    const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const mobileNavigationRef = useRef<HTMLElement>(null)
   const location = useLocation()
@@ -291,6 +293,19 @@ export function AdminLayout() {
   useEffect(() => {
     const intervalId = window.setInterval(() => setCurrentTime(new Date()), 60_000)
     return () => window.clearInterval(intervalId)
+  }, [])
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
   }, [])
 
   useEffect(() => {
@@ -498,6 +513,15 @@ export function AdminLayout() {
           </div>
         </header>
 
+        {isOffline ? (
+          <div className="relative z-20 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:text-amber-200">
+            <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              Modo Sin Conexión (PWA activo): Los datos se guardan localmente en el navegador.
+            </span>
+          </div>
+        ) : null}
+        
         <main
           id="contenido-principal"
           tabIndex={-1}
