@@ -153,10 +153,10 @@ export function calculateFreezingAvailability(
   asOfDate?: string,
 ): readonly FreezingAvailabilityPosition[] {
   const sourceDays = productionDays.flatMap((day) => {
-    if (!isPackingProductionDay(day) || day.status !== "CLOSED") return [];
+    if (!isPackingProductionDay(day)) return [];
     if (asOfDate && day.date > asOfDate) return [];
     const calculation = calculateProductionDay(day);
-    return calculation.status === "BALANCED" ? [{ day, calculation }] : [];
+    return [{ day, calculation }];
   });
   const freezingDays = productionDays.filter(
     (day) =>

@@ -4,6 +4,7 @@ import {
   FilePlus2,
   Gauge,
   PackageCheck,
+  Printer,
   Scale,
   Waves,
 } from 'lucide-react'
@@ -14,6 +15,8 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
+import { buttonStyles } from '../../../components/ui/buttonStyles'  
+import { exportPageToPdf } from '../../../utils/pdfExport'
 import {
   formatCentiKg,
   formatRatioAsPercent,
@@ -297,17 +300,27 @@ export function WeeklySummaryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Reportes"
-        title="Resumen semanal"
-        description={`Semana ${activeWeek.number} · Validación acumulada con ${productionDays.length} jornadas registradas.`}
-        actions={
-          <StatusBadge tone="info">
-            {activeWeekState.isClosed
-              ? `SEMANA CERRADA · ${productionDays.length} ${productionDays.length === 1 ? 'JORNADA' : 'JORNADAS'}`
-              : `SEMANA PARCIAL · ${productionDays.length} DE 7`}
-          </StatusBadge>
-        }
-      />
+  eyebrow="Reportes"
+  title="Resumen semanal"
+  description={`Semana ${activeWeek.number} · Validación acumulada con ${productionDays.length} jornadas registradas.`}
+  actions={
+    <div className="flex flex-wrap items-center gap-2">
+      <StatusBadge tone="info">
+        {activeWeekState.isClosed
+          ? `SEMANA CERRADA · ${productionDays.length} ${productionDays.length === 1 ? 'JORNADA' : 'JORNADAS'}`
+          : `SEMANA PARCIAL · ${productionDays.length} DE 7`}
+      </StatusBadge>
+      <button
+        type="button"
+        onClick={() => exportPageToPdf(`Resumen Semanal ${activeWeek.number}`)}
+        className={buttonStyles('secondary', 'sm')}
+      >
+        <Printer className="size-4" aria-hidden="true" />
+        Exportar PDF
+      </button>
+    </div>
+  }
+/>
       {selector}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores semanales">

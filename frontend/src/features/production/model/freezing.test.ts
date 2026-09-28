@@ -133,6 +133,18 @@ describe("Packing to Freezing lifecycle", () => {
     expect(position?.originDayId).toBe(packing.id);
   });
 
+  it("derives availability from open (draft) Packing output so operators can track progress in real time", () => {
+    const packingDraft: ProductionDay = {
+      ...packingDay("2026-09-07", 75_095),
+      status: "DRAFT",
+    };
+    const [position] = calculateFreezingAvailability([packingDraft]);
+
+    expect(position?.generatedKg100).toBe(kg(75_095));
+    expect(position?.pendingKg100).toBe(kg(75_095));
+    expect(position?.originDayId).toBe(packingDraft.id);
+  });
+
   it("builds Freezing availability from own Day + own Night + closing balance and excludes Treatment", () => {
     const base = packingDay("2026-09-14", 100);
 
@@ -300,9 +312,9 @@ describe("Packing to Freezing lifecycle", () => {
     expect(positionB?.receivedBalanceDayKg100).toBe(kg(5_700));
     expect(positionB?.generatedKg100).toBe(kg(74_300));
     // Total congelable = envasado físico real (145 000), sin repetir 5 700.
-    expect(
-      positions.reduce((total, p) => total + p.generatedKg100, 0),
-    ).toBe(kg(145_000));
+    expect(positions.reduce((total, p) => total + p.generatedKg100, 0)).toBe(
+      kg(145_000),
+    );
   });
 
   it("does not generate new availability for a balance-only Sunday", () => {
@@ -641,10 +653,7 @@ describe("Packing to Freezing lifecycle", () => {
       ],
     };
 
-    const [position] = calculateFreezingAvailability([
-      packing,
-      legacyFreezing,
-    ]);
+    const [position] = calculateFreezingAvailability([packing, legacyFreezing]);
 
     expect(position?.pendingKg100).toBe(kg(0));
     expect(position?.processedTotalKg100).toBe(kg(46_970));
