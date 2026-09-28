@@ -4,9 +4,11 @@ import {
   CalendarClock,
   CheckCircle2,
   Layers3,
+  Search,
   Snowflake,
+  X,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
 import { MetricCard } from '../../../components/ui/MetricCard'
@@ -44,6 +46,9 @@ export function BalancesPage() {
     ? processParam
     : activeProcess
   const activeWeek = getWeekView(activeWeekNumber, selectedProcess)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
   useEffect(() => {
     if (selectedProcess !== activeProcess) setActiveProcess(selectedProcess)
   }, [activeProcess, selectedProcess, setActiveProcess])
@@ -93,22 +98,46 @@ export function BalancesPage() {
     allProductionDays,
   )
 
+  const filteredFreezingPositions = freezingPositions.filter((position) => {
+    const matchesSearch =
+      !searchQuery.trim() ||
+      position.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      position.familyName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesDate = !selectedDate || position.originDate === selectedDate
+    return matchesSearch && matchesDate
+  })
+
   const outstandingByOrigin = productionDays.flatMap((day) => {
     if (day.date < weekStart || day.date > weekEnd) return []
+    if (selectedDate && day.date !== selectedDate) return []
 
-    const positions = outstandingPositions.filter(
-      (position) => position.originDayId === day.id,
-    )
+    const positions = outstandingPositions.filter((position) => {
+      if (position.originDayId !== day.id) return false
+      if (!searchQuery.trim()) return true
+      return (
+        position.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        position.familyName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    })
 
     return positions.length > 0
       ? [{ day, calculation: calculateProductionDay(day), positions }]
       : []
   })
 
-  const visiblePositions = isFreezing ? freezingPositions : outstandingPositions.filter(
-    (position) =>
-      position.originDate >= weekStart && position.originDate <= weekEnd,
-  )
+  const visiblePositions = isFreezing
+    ? filteredFreezingPositions
+    : outstandingPositions.filter((position) => {
+        const inWeek =
+          position.originDate >= weekStart && position.originDate <= weekEnd
+        if (!inWeek) return false
+        const matchesSearch =
+          !searchQuery.trim() ||
+          position.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          position.familyName.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesDate = !selectedDate || position.originDate === selectedDate
+        return matchesSearch && matchesDate
+      })
   const totalPendingKg100 = sumKg100(
     visiblePositions.map((position) => position.pendingKg100),
   )
@@ -159,6 +188,53 @@ export function BalancesPage() {
         }}
       />
 
+      {/* Filter bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por producto o familia..."
+            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-8 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="origin-date-filter" className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+            Fecha de origen:
+          </label>
+          <input
+            id="origin-date-filter"
+            type="date"
+            value={selectedDate}
+            min={weekStart}
+            max={weekEnd}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          {selectedDate ? (
+            <button
+              type="button"
+              onClick={() => setSelectedDate('')}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              Limpiar fecha
+            </button>
+          ) : null}
+        </div>
+      </div>
+
       <section
         className={`grid gap-3 ${
           totalExcessKg100 > 0 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'
@@ -202,10 +278,10 @@ export function BalancesPage() {
             view="outstanding"
           />
         ))
-      ) : freezingPositions.length > 0 ? (
+      ) : filteredFreezingPositions.length > 0 ? (
         <>
           <FreezingAvailabilityExplanation origins={freezingOrigins} />
-          <FreezingBalancesPanel positions={freezingPositions} />
+          <FreezingBalancesPanel positions={filteredFreezingPositions} />
         </>
       ) : null}
 

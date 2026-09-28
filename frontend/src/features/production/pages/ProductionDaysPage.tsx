@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, FileSpreadsheet, Gauge, LockKeyhole } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, FilePlus2, FileSpreadsheet, Gauge, LockKeyhole, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
@@ -58,7 +58,10 @@ export function ProductionDaysPage() {
   const activeWeekState = activeWeek
   const [isWeekCloseOpen, setIsWeekCloseOpen] = useState(false)
   const [weekCloseError, setWeekCloseError] = useState('')
-  const registeredDays = activeWeek.productionDays.map((day) => {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+
+  const allRegisteredDays = activeWeek.productionDays.map((day) => {
     const operationalState = getProductionDayOperationalState(day)
     return {
       day,
@@ -66,6 +69,16 @@ export function ProductionDaysPage() {
       operationalState,
       journey: getJourneyStatus(day, operationalState),
     }
+  })
+
+  const registeredDays = allRegisteredDays.filter(({ day }) => {
+    const matchesDate = !selectedDate || day.date === selectedDate
+    const matchesQuery =
+      !searchQuery.trim() ||
+      formatIsoWeekday(day.date).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      formatIsoDateCompact(day.date).includes(searchQuery) ||
+      day.date.includes(searchQuery)
+    return matchesDate && matchesQuery
   })
   // Same criterion as the Dashboard: "Cuadradas" are closed, balanced and
   // without observations. Observed journeys are counted on their own.
@@ -182,6 +195,53 @@ export function ProductionDaysPage() {
           }
         }}
       />
+
+      {/* Filter bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por día de la semana o fecha..."
+            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-9 pr-8 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="day-date-filter" className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+            Fecha:
+          </label>
+          <input
+            id="day-date-filter"
+            type="date"
+            value={selectedDate}
+            min={activeWeek.period.startDate}
+            max={activeWeek.period.endDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          {selectedDate ? (
+            <button
+              type="button"
+              onClick={() => setSelectedDate('')}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              Limpiar fecha
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       <section
         className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3"
