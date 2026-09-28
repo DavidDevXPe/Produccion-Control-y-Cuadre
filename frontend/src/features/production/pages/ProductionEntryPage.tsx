@@ -123,6 +123,7 @@ interface QuantityInputProps {
   label: string
   value: string
   onChange: (value: string) => void
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void
   readOnly?: boolean
   disabled?: boolean
   className?: string
@@ -132,6 +133,7 @@ function QuantityInput({
   label,
   value,
   onChange,
+  onKeyDown,
   readOnly = false,
   disabled = false,
   className = '',
@@ -174,6 +176,7 @@ function QuantityInput({
             clearedZeroOnFocus.current = false
           }}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={onKeyDown}
           className="number-tabular h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-9 text-right text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 read-only:cursor-default read-only:bg-slate-100 read-only:text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] font-bold text-slate-400">
@@ -4034,10 +4037,50 @@ const applyFreezingExcelPreview =
                         <span className="mt-0.5 block max-w-[22rem] text-xs font-semibold leading-4 text-slate-800">{row.product.productName}</span>
                       </th>
                       <td className="w-36 px-2 py-2">
-                        <QuantityInput label="" value={inferred ? String((calculated?.day.reportedKg100 ?? 0) / 100) : row.dayReportedKg} readOnly={inferred} onChange={(value) => updateRow(row.key, 'dayReportedKg', value)} />
+                        <QuantityInput
+                          label=""
+                          value={inferred ? String((calculated?.day.reportedKg100 ?? 0) / 100) : row.dayReportedKg}
+                          readOnly={inferred}
+                          onChange={(value) => updateRow(row.key, 'dayReportedKg', value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                              e.preventDefault()
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const idx = inputs.indexOf(e.currentTarget)
+                              const targetInput = inputs[idx + 2]
+                              if (idx !== -1 && targetInput) targetInput.focus()
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault()
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const idx = inputs.indexOf(e.currentTarget)
+                              const targetInput = inputs[idx - 2]
+                              if (idx !== -1 && targetInput) targetInput.focus()
+                            }
+                          }}
+                        />
                       </td>
                       <td className="w-36 px-2 py-2">
-                        <QuantityInput label="" value={inferred ? String((calculated?.night.reportedKg100 ?? 0) / 100) : row.nightReportedKg} readOnly={inferred} onChange={(value) => updateRow(row.key, 'nightReportedKg', value)} />
+                        <QuantityInput
+                          label=""
+                          value={inferred ? String((calculated?.night.reportedKg100 ?? 0) / 100) : row.nightReportedKg}
+                          readOnly={inferred}
+                          onChange={(value) => updateRow(row.key, 'nightReportedKg', value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                              e.preventDefault()
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const idx = inputs.indexOf(e.currentTarget)
+                              const targetInput = inputs[idx + 2]
+                              if (idx !== -1 && targetInput) targetInput.focus()
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault()
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const idx = inputs.indexOf(e.currentTarget)
+                              const targetInput = inputs[idx - 2]
+                              if (idx !== -1 && targetInput) targetInput.focus()
+                            }
+                          }}
+                        />
                       </td>
                       <td className="number-tabular px-3 py-2.5 text-right text-xs font-bold text-slate-800">
                         {formatCentiKg(totalKg100)}

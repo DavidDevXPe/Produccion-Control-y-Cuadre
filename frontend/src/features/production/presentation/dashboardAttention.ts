@@ -205,6 +205,17 @@ function buildPackingItems({
     })
   }
 
+  if (day.status !== 'CLOSED') {
+    items.push({
+      key: `${day.id}-packing-open`,
+      tone: 'info',
+      title: 'Jornada de Envasado abierta',
+      description: `${weekday} permanece abierta. Recuerda completarla y cerrarla.`,
+      date: day.date,
+      process: 'PACKING',
+    })
+  }
+
   return items
 }
 
@@ -252,6 +263,17 @@ function buildFreezingItems({
       description:
         journey.observations[0]?.message ??
         'La jornada tiene observaciones de trazabilidad.',
+      date: day.date,
+      process: 'FREEZING',
+    })
+  }
+
+  if (day.status !== 'CLOSED') {
+    items.push({
+      key: `${day.id}-freezing-open`,
+      tone: 'info',
+      title: 'Jornada de Congelamiento abierta',
+      description: `${formatIsoWeekday(day.date)} permanece abierta. Recuerda completarla y cerrarla.`,
       date: day.date,
       process: 'FREEZING',
     })

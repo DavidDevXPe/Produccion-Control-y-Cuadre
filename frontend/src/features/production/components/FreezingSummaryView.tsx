@@ -1,10 +1,13 @@
-import { Moon, Snowflake, Sun, Waves } from 'lucide-react'
+import { Download, LoaderCircle, Moon, Printer, Snowflake, Sun, Waves } from 'lucide-react'
+import { useState } from 'react'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
+import { exportPageToPdf } from '../../../utils/pdfExport'
 import {
   calculateProductionDay,
   kg100,
@@ -28,6 +31,33 @@ export function FreezingSummaryView({
   allProductionDays,
   selector,
 }: FreezingSummaryViewProps) {
+  const [exportState, setExportState] = useState<'IDLE' | 'EXPORTING' | 'ERROR'>('IDLE')
+
+  const handleExportExcel = async () => {
+    if (exportState === 'EXPORTING') return
+    setExportState('EXPORTING')
+    try {
+      const { exportFreezingSummaryWorkbook } = await import(
+        '../export/freezingSummaryWorkbook'
+      )
+      await exportFreezingSummaryWorkbook({
+        week,
+        allProductionDays,
+      })
+      setExportState('IDLE')
+    } catch {
+      setExportState('ERROR')
+    }
+  }
+
+  const handleExportPdf = async () => {
+    try {
+      await exportPageToPdf(`Resumen_Congelamiento_Semana_${week.number}`)
+    } catch {
+      setExportState('ERROR')
+    }
+  }
+
   const calculations = week.productionDays.map((day) => ({
     day,
     calculation: calculateProductionDay(day),
@@ -76,11 +106,41 @@ export function FreezingSummaryView({
         title="Resumen semanal"
         description={`Semana ${week.number} · ${week.productionDays.length} de 7 jornadas de Congelamiento.`}
         actions={
-          <StatusBadge tone={week.isClosed ? 'success' : 'info'}>
-            {week.isClosed ? 'SEMANA CERRADA' : `SEMANA PARCIAL · ${week.productionDays.length} DE 7`}
-          </StatusBadge>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <StatusBadge tone={week.isClosed ? 'success' : 'info'}>
+              {week.isClosed ? 'SEMANA CERRADA' : `SEMANA PARCIAL · ${week.productionDays.length} DE 7`}
+            </StatusBadge>
+            <button
+              type="button"
+              className={buttonStyles('secondary', 'sm')}
+              onClick={handleExportExcel}
+              disabled={exportState === 'EXPORTING'}
+              title="Descargar resumen de congelamiento en Excel"
+            >
+              {exportState === 'EXPORTING' ? (
+                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="size-4" aria-hidden="true" />
+              )}
+              {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
+            </button>
+            <button
+              type="button"
+              className={buttonStyles('secondary', 'sm')}
+              onClick={handleExportPdf}
+              title="Imprimir o exportar resumen de congelamiento a PDF"
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
+            </button>
+          </div>
         }
       />
+      {exportState === 'ERROR' ? (
+        <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+          No se pudo generar el archivo Excel. Intenta nuevamente.
+        </p>
+      ) : null}
       {selector}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de Congelamiento">

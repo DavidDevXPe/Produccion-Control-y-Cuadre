@@ -3,6 +3,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -48,12 +49,16 @@ function OperationalLineChart({
   data,
   dayKey,
   nightKey,
+  referenceValue,
+  referenceLabel,
 }: {
   title: string
   description: string
   data: readonly ChartRow[]
   dayKey: 'dayProductivity' | 'dayKgPerHour'
   nightKey: 'nightProductivity' | 'nightKgPerHour'
+  referenceValue?: number
+  referenceLabel?: string
 }) {
   return (
     <SectionCard title={title} description={description} contentClassName="p-3 sm:p-4">
@@ -81,6 +86,19 @@ function OperationalLineChart({
               }}
             />
             <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+            {referenceValue ? (
+              <ReferenceLine
+                y={referenceValue}
+                stroke="#10b981"
+                strokeDasharray="4 4"
+                label={{
+                  value: referenceLabel ?? 'Benchmark',
+                  fill: '#10b981',
+                  fontSize: 10,
+                  position: 'insideTopRight',
+                }}
+              />
+            ) : null}
             <Line type="monotone" dataKey={dayKey} name="Día" stroke="#20a6d2" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
             <Line type="monotone" dataKey={nightKey} name="Noche" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
           </LineChart>

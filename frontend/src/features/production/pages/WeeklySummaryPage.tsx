@@ -2,6 +2,7 @@ import {
   ClipboardCheck,
   Droplets,
   FilePlus2,
+  FileSpreadsheet,
   Gauge,
   PackageCheck,
   Printer,
@@ -17,6 +18,7 @@ import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { exportPageToPdf } from '../../../utils/pdfExport'
+import { exportWeeklySummaryWorkbook } from '../export/weeklySummaryWorkbook'
 import {
   formatCentiKg,
   formatRatioAsPercent,
@@ -307,6 +309,21 @@ export function WeeklySummaryPage() {
         description={`Semana ${activeWeek.number} · Validación acumulada con ${productionDays.length} jornadas registradas.`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                exportWeeklySummaryWorkbook({
+                  weekNumber: activeWeek.number,
+                  period: activeWeek.period,
+                  summary,
+                  productionDays,
+                })
+              }
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
+            >
+              <FileSpreadsheet className="size-4" aria-hidden="true" />
+              Exportar Excel
+            </button>
             <button
               type="button"
               onClick={() => exportPageToPdf(`Resumen Semanal ${activeWeek.number}`)}

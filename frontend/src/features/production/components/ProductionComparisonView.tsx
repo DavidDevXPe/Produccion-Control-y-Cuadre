@@ -5,6 +5,7 @@ import {
   Link2,
   LoaderCircle,
   PackageCheck,
+  Printer,
   Scale,
   Snowflake,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg } from '../../../utils/formatters'
+import { exportPageToPdf } from '../../../utils/pdfExport'
 import { calculateFreezingComparison, type FreezingComparisonRow } from '../model/freezing'
 import type { ProductionDay, WeeklySummaryPeriod } from '../model/types'
 import { describeFreezingReviewReasons } from '../presentation/freezingComparisonReasons'
@@ -103,6 +105,14 @@ export function ProductionComparisonView({
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      await exportPageToPdf(`Comparativo_Envasado_Congelamiento_Semana_${weekNumber}`)
+    } catch {
+      setExportState('ERROR')
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -137,6 +147,15 @@ export function ProductionComparisonView({
                 <Download className="size-4" aria-hidden="true" />
               )}
               {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
+            </button>
+            <button
+              type="button"
+              className={buttonStyles('secondary', 'sm')}
+              onClick={handleExportPdf}
+              title="Imprimir o exportar comparativo a PDF"
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
             </button>
           </div>
         }
