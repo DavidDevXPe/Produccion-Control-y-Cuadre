@@ -1,6 +1,7 @@
-import { Activity, Clock3, Gauge, PackageCheck, UsersRound } from 'lucide-react'
+import { Activity, Clock3, FileSpreadsheet, Gauge, PackageCheck, Printer, UsersRound } from 'lucide-react'
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
@@ -12,6 +13,8 @@ import {
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
+import { exportPageToPdf } from '../../../utils/pdfExport'
+import { exportPerformanceWorkbook } from '../export/performanceWorkbook'
 import { getOperationalWeekContextForIsoDate } from '../../../utils/operationalContext'
 import { PerformanceCharts } from '../components/PerformanceCharts'
 import { PerformanceShiftCard } from '../components/PerformanceShiftCard'
@@ -222,7 +225,27 @@ export function OperationalPerformancePage() {
         eyebrow="Operación"
         title="Rendimiento operativo"
         description={`Semana ${activeWeekNumber} · eficiencia física separada del cuadre productivo.`}
-        actions={<StatusBadge tone="info">KG DESDE REPORTES</StatusBadge>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => exportPerformanceWorkbook(activeWeekNumber, weekRecords)}
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
+            >
+              <FileSpreadsheet className="size-4" aria-hidden="true" />
+              Exportar Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => exportPageToPdf(`Rendimiento Operativo Semana ${activeWeekNumber}`)}
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
+            </button>
+            <StatusBadge tone="info">KG DESDE REPORTES</StatusBadge>
+          </div>
+        }
       />
 
       <SegmentedTabs

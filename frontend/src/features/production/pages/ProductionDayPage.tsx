@@ -522,6 +522,7 @@ export function ProductionDayPage() {
         <ProductionBreakdown products={calculation.products} />
       </div>
 
+
       <div id="saldos" className="scroll-mt-28 space-y-5">
         <ReceivedBalancePanel
           productionDay={productionDay}
