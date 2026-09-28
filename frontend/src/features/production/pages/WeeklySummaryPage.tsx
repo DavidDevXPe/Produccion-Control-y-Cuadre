@@ -10,12 +10,12 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { ActionLink } from '../../../components/ui/ActionLink'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
-import { buttonStyles } from '../../../components/ui/buttonStyles'  
 import { exportPageToPdf } from '../../../utils/pdfExport'
 import {
   formatCentiKg,
@@ -149,14 +149,16 @@ export function WeeklySummaryPage() {
   const productionDays = activeWeek.productionDays
   const activeWeekState = activeWeek
   const selector = (
-    <ProcessSelector
-      value={view}
-      includeComparison
-      onChange={(nextView) => {
-        setSearchParams({ view: nextView }, { replace: true })
-        if (nextView !== 'COMPARISON') setActiveProcess(nextView)
-      }}
-    />
+    <div className="no-print">
+      <ProcessSelector
+        value={view}
+        includeComparison
+        onChange={(nextView) => {
+          setSearchParams({ view: nextView }, { replace: true })
+          if (nextView !== 'COMPARISON') setActiveProcess(nextView)
+        }}
+      />
+    </div>
   )
 
   if (view === 'FREEZING') {
@@ -300,27 +302,27 @@ export function WeeklySummaryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-  eyebrow="Reportes"
-  title="Resumen semanal"
-  description={`Semana ${activeWeek.number} · Validación acumulada con ${productionDays.length} jornadas registradas.`}
-  actions={
-    <div className="flex flex-wrap items-center gap-2">
-      <StatusBadge tone="info">
-        {activeWeekState.isClosed
-          ? `SEMANA CERRADA · ${productionDays.length} ${productionDays.length === 1 ? 'JORNADA' : 'JORNADAS'}`
-          : `SEMANA PARCIAL · ${productionDays.length} DE 7`}
-      </StatusBadge>
-      <button
-        type="button"
-        onClick={() => exportPageToPdf(`Resumen Semanal ${activeWeek.number}`)}
-        className={buttonStyles('secondary', 'sm')}
-      >
-        <Printer className="size-4" aria-hidden="true" />
-        Exportar PDF
-      </button>
-    </div>
-  }
-/>
+        eyebrow="Reportes"
+        title="Resumen semanal"
+        description={`Semana ${activeWeek.number} · Validación acumulada con ${productionDays.length} jornadas registradas.`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => exportPageToPdf(`Resumen Semanal ${activeWeek.number}`)}
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
+            </button>
+            <StatusBadge tone="info">
+              {activeWeekState.isClosed
+                ? `SEMANA CERRADA · ${productionDays.length} ${productionDays.length === 1 ? 'JORNADA' : 'JORNADAS'}`
+                : `SEMANA PARCIAL · ${productionDays.length} DE 7`}
+            </StatusBadge>
+          </div>
+        }
+      />
       {selector}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores semanales">
@@ -446,15 +448,15 @@ export function WeeklySummaryPage() {
               </div>
               {isNucaBikiniReferenceApplicable ? (
                 <dl className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Referencia 7%</dt>
+                  <div>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Referencia 7%</dt>
                     <dd className="number-tabular mt-1 font-bold text-slate-950">{formatCentiKg(summary.nucaBikini.referenceKg100)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Resultado real</dt>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Resultado real</dt>
                     <dd className="number-tabular mt-1 font-bold text-slate-950">{formatCentiKg(summary.nucaBikini.actualKg100)}</dd>
-                </div>
-              </dl>
+                  </div>
+                </dl>
               ) : null}
             </article>
 

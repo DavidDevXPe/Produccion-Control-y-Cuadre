@@ -602,3 +602,80 @@ a:focus-visible {
   outline: 2px solid #169fd0;
   outline-offset: 2px;
 }
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #169fd0;
+  outline-offset: 2px;
+}
+
+@media print {
+  /* Hide navigation, headers, buttons and non-printable UI elements */
+  aside,
+  header,
+  nav,
+  button,
+  a[role="button"],
+  .no-print,
+  [role="dialog"],
+  [aria-label="Abrir menú de navegación"] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .min-h-dvh,
+  .xl\:pl-64 {
+    padding-left: 0 !important;
+    min-height: auto !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent awkward page breaks in cards, metrics, and tables */
+  .metric-card,
+  section,
+  table,
+  tr,
+  article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+  }
+
+  .bg-white,
+  .bg-slate-50,
+  .bg-brand-50,
+  .theme-surface-translucent {
+    background-color: #ffffff !important;
+  }
+
+  /* Clear dark mode text colors in print */
+  h1,
+  h2,
+  h3,
+  h4,
+  dt,
+  dd,
+  th,
+  td,
+  p,
+  span {
+    color: #0f172a !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm 1cm;
+  }
+}

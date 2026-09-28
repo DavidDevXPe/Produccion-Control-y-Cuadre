@@ -9,6 +9,7 @@ import {
   Moon,
   PackageCheck,
   Pencil,
+  Printer,
   Scale,
   Sun,
   Waves,
@@ -23,6 +24,7 @@ import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
+import { exportPageToPdf } from '../../../utils/pdfExport'
 import { BalancePanel } from '../components/BalancePanel'
 import { CloseDayDialog } from '../components/CloseDayDialog'
 import { FreezingDayDetail } from '../components/FreezingDayDetail'
@@ -271,7 +273,7 @@ export function ProductionDayPage() {
     <div className="space-y-5">
       <Link
         to="/jornadas?process=PACKING"
-        className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-brand-800"
+        className="no-print inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-brand-800"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Todas las jornadas
@@ -318,7 +320,19 @@ export function ProductionDayPage() {
             ) : null}
             <button
               type="button"
-              className={buttonStyles('secondary', 'sm')}
+              onClick={() =>
+                exportPageToPdf(
+                  `Reporte Jornada ${formatIsoDate(productionDay.date)}`,
+                )
+              }
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
+            </button>
+            <button
+              type="button"
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
               disabled={!canExport || exportState === 'EXPORTING'}
               onClick={handleExport}
               title={
@@ -398,7 +412,7 @@ export function ProductionDayPage() {
 
       <nav
         aria-label="Secciones de la jornada"
-        className="flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 p-1 dark:bg-slate-50/5"
+        className="no-print flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 p-1 dark:bg-slate-50/5"
       >
         {(
           [
