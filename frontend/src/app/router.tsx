@@ -83,6 +83,14 @@ export const router = createBrowserRouter(
             ).DataBackupsPage,
           }),
         },
+        {
+          path: 'catalogos',
+          lazy: async () => ({
+            Component: (
+              await import('../features/catalogs/pages/CatalogsPage')
+            ).CatalogsPage,
+          }),
+        },
         { path: '*', element: <NotFoundPage /> },
       ],
     },
