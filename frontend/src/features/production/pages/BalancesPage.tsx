@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Layers3,
+  Printer,
   Search,
   Snowflake,
   X,
@@ -15,7 +16,9 @@ import { MetricCard } from '../../../components/ui/MetricCard'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { ProcessSelector } from '../components/ProcessSelector'
+import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { usePageTitle } from '../../../hooks/usePageTitle'
+import { exportPageToPdf } from '../../../utils/pdfExport'
 import { formatCentiKg } from '../../../utils/formatters'
 import { BalancePanel } from '../components/BalancePanel'
 import { FreezingAvailabilityExplanation } from '../components/FreezingAvailabilityExplanation'
@@ -165,16 +168,26 @@ export function BalancesPage() {
             : `Posición acumulada de la semana ${activeWeek.number}, identificada por producto y jornada de origen.`
         }
         actions={
-          freezingWeek.canCreate && totalPendingKg100 > 0 ? (
-            <ActionLink
-              to="/jornadas/nueva?process=FREEZING"
-              variant="secondary"
-              size="sm"
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => exportPageToPdf(`Saldos de Produccion Semana ${activeWeek.number}`)}
+              className={`no-print ${buttonStyles('secondary', 'sm')}`}
             >
-              <Snowflake className="size-4" aria-hidden="true" />
-              Registrar Congelamiento
-            </ActionLink>
-          ) : null
+              <Printer className="size-4" aria-hidden="true" />
+              Exportar PDF
+            </button>
+            {freezingWeek.canCreate && totalPendingKg100 > 0 ? (
+              <ActionLink
+                to="/jornadas/nueva?process=FREEZING"
+                variant="secondary"
+                size="sm"
+              >
+                <Snowflake className="size-4" aria-hidden="true" />
+                Registrar Congelamiento
+              </ActionLink>
+            ) : null}
+          </div>
         }
       />
 

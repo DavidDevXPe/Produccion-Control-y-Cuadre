@@ -522,29 +522,6 @@ export function ProductionDayPage() {
         <ProductionBreakdown products={calculation.products} />
       </div>
 
-      {/* Sección exclusiva para firmas e identificación de control operativo al imprimir */}
-      <div className="hidden print:block border-t-2 border-slate-900 pt-6 mt-8">
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-800 text-center mb-10">
-          FIRMAS DE CONFORMIDAD Y VALIDACIÓN OPERATIVA
-        </p>
-        <div className="grid grid-cols-3 gap-8 text-center text-xs text-slate-700">
-          <div>
-            <div className="border-b border-slate-900 h-12 mb-2" />
-            <p className="font-bold text-slate-900">Jefe de Planta / Producción</p>
-            <p className="text-[0.6875rem] text-slate-500">Firma y Sello</p>
-          </div>
-          <div>
-            <div className="border-b border-slate-900 h-12 mb-2" />
-            <p className="font-bold text-slate-900">Supervisor de Turno</p>
-            <p className="text-[0.6875rem] text-slate-500">Firma y Sello</p>
-          </div>
-          <div>
-            <div className="border-b border-slate-900 h-12 mb-2" />
-            <p className="font-bold text-slate-900">Aseguramiento de Calidad</p>
-            <p className="text-[0.6875rem] text-slate-500">Firma y Sello</p>
-          </div>
-        </div>
-      </div>
 
       <div id="saldos" className="scroll-mt-28 space-y-5">
         <ReceivedBalancePanel
