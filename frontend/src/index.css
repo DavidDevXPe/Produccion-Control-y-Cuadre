@@ -28,14 +28,16 @@
   --color-production-tooltip: #0a1a27;
   --color-production-tooltip-border: #2b5268;
   --color-shell: #edf2f3;
-  /* Chrome tokens (week selector, sidebar, identity). Same values as before. */
+  /* Chrome & Feature tokens (week selector, sidebar, entry cards, badges) */
   --color-ui-text-dark-brand: #00b7f1;
   --color-ui-surface-dark-canvas: #051120;
+  --color-ui-surface-dark-recessed: #07141f;
   --color-ui-text-on-brand: #07111d;
   --color-ui-surface-dark-deep: #0a1a27;
   --color-ui-text: #0b2233;
   --color-ui-surface-dark: #0d2534;
   --color-ui-surface-dark-hover-soft: #0f2230;
+  --color-ui-surface-dark-compact: #102b3b;
   --color-ui-active-dark: #0f5f9e;
   --color-ui-surface-dark-hover: #101f2c;
   --color-ui-surface-dark-hover-strong: #123247;
@@ -43,8 +45,10 @@
   --color-ui-line-navy: #16304a;
   --color-ui-brand-text: #168bb4;
   --color-ui-brand: #169fd0;
+  --color-ui-line-dark-grid: #203e50;
   --color-ui-line-dark-soft: #244052;
   --color-ui-line-dark: #2b5268;
+  --color-ui-accent-cyan: #58c8ea;
   --color-ui-accent-dark: #38bdf8;
   --color-ui-text-muted: #4c6a7d;
   --color-ui-text-dark-dim: #526274;
@@ -55,12 +59,31 @@
   --color-ui-text-dark-soft: #a5bed0;
   --color-ui-text-dark-info: #b7d7ea;
   --color-ui-text-dark-pale: #c3d2dc;
+  --color-ui-text-dark-subtle: #e3edf3;
   --color-ui-line: #d6e2ea;
   --color-ui-surface-accent: #ddf2f8;
   --color-ui-surface-hover: #edf5f8;
   --color-ui-text-dark: #eef4f8;
   --color-ui-text-dark-strong: #f3f8fb;
   --color-ui-surface-subtle: #f8fbfc;
+
+  /* Badge and status dark mode tokens */
+  --color-ui-emerald-surface-dark: #06351f;
+  --color-ui-emerald-border-dark: #1b7b4f;
+  --color-ui-emerald-text-dark: #32d094;
+
+  --color-ui-amber-surface-dark: #2a2414;
+  --color-ui-amber-surface-dark-deep: #211d12;
+  --color-ui-amber-border-dark: #805f22;
+  --color-ui-amber-border-dark-soft: #8a6a1f;
+  --color-ui-amber-border-dark-deep: #72581d;
+  --color-ui-amber-text-dark: #ffd166;
+  --color-ui-amber-text-dark-soft: #f2c866;
+  --color-ui-amber-text-dark-pale: #f4e7bc;
+  --color-ui-amber-text-dark-bright: #ffe6a3;
+
+  --color-ui-rose-text-dark: #ff6b6b;
+
   --shadow-panel: 0 1px 2px rgb(15 23 42 / 0.045);
   --color-sticky-divider: #e2e8f0;
   --color-family-divider: #cffafe;

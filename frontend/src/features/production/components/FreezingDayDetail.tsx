@@ -195,7 +195,7 @@ export function FreezingDayDetail({
                         ? 'Producto con origen insuficiente'
                         : 'Observación'}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#C3D2DC]">
+                  <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-ui-text-dark-pale">
                     {warning.message}
                   </p>
                 </div>
@@ -293,45 +293,45 @@ export function FreezingDayDetail({
           </StatusBadge>
         }
       >
-        <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-[#203E50]">
-          <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+        <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-ui-line-dark-grid">
+          <div className="bg-white px-4 py-4 text-center dark:bg-ui-surface-dark">
+            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-ui-text-soft">
               Saldo anterior utilizado
             </p>
             <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-amber-700 dark:text-amber-300">
               {formatCentiKg(previousOriginUsedKg100)}
             </p>
-            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-ui-text-soft">
               Proveniente de jornadas anteriores
             </p>
           </div>
 
-          <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+          <div className="bg-white px-4 py-4 text-center dark:bg-ui-surface-dark">
+            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-ui-text-soft">
               Envasado del día utilizado
             </p>
             <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-sky-700 dark:text-sky-300">
               {formatCentiKg(currentOriginUsedKg100)}
             </p>
-            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-ui-text-soft">
               Disponible generado en esta jornada
             </p>
           </div>
 
-          <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+          <div className="bg-white px-4 py-4 text-center dark:bg-ui-surface-dark">
+            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-ui-text-soft">
               Total vinculado
             </p>
             <p className="number-tabular mt-2 whitespace-nowrap text-lg font-extrabold text-emerald-700 dark:text-emerald-300">
               {formatCentiKg(linkedKg100)}
             </p>
-            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-ui-text-soft">
               Congelado con origen identificado
             </p>
           </div>
 
-          <div className="bg-white px-4 py-4 text-center dark:bg-[#0D2534]">
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-[#7F9BAD]">
+          <div className="bg-white px-4 py-4 text-center dark:bg-ui-surface-dark">
+            <p className="text-[0.625rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:text-ui-text-soft">
               {traceabilityDifferenceLabel}
             </p>
             <p
@@ -347,18 +347,18 @@ export function FreezingDayDetail({
                   : unsupportedFrozenKg100,
               )}
             </p>
-            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+            <p className="mt-1 text-[0.625rem] text-slate-400 dark:text-ui-text-soft">
               Diferencia de trazabilidad
             </p>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 px-4 py-4 dark:border-[#203E50] sm:px-5">
+        <div className="border-t border-slate-200 px-4 py-4 dark:border-ui-line-dark-grid sm:px-5">
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 dark:border-sky-500/20 dark:bg-sky-500/[0.06]">
             <p className="text-xs font-bold text-sky-900 dark:text-sky-200">
               Cómo se compone el congelamiento de esta jornada
             </p>
-            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#C3D2DC]">
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-ui-text-dark-pale">
               Se utilizaron{' '}
               <strong>{formatCentiKg(previousOriginUsedKg100)}</strong>{' '}
               de saldos anteriores y{' '}
@@ -444,7 +444,7 @@ export function FreezingDayDetail({
         <DataTableScroll label="Origen del producto congelado">
           <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:border-[#203E50] dark:bg-[#102B3B] dark:text-[#A5BED0]">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.07em] text-slate-500 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-soft">
                 <th className="w-[32%] px-4 py-2.5 text-left">Producto</th>
                 <th className="px-3 py-2.5 text-center">Origen Envasado</th>
                 <th className="px-3 py-2.5 text-center">Tipo de origen</th>
@@ -457,12 +457,12 @@ export function FreezingDayDetail({
               {freezingOriginRows.map((row) => (
                 <tr
                   key={row.lot.id}
-                  className="border-b border-slate-100 dark:border-[#203E50]"
+                  className="border-b border-slate-100 dark:border-ui-line-dark-grid"
                 >
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-800 dark:text-[#F3F8FB]">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-800 dark:text-ui-text-dark-strong">
                     {row.line?.productName ?? row.lot.productId}
                   </th>
-                  <td className="px-3 py-3 text-center text-xs text-slate-600 dark:text-[#A5BED0]">
+                  <td className="px-3 py-3 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">
                     {row.originDay
                       ? formatIsoDate(row.originDay.date)
                       : row.lot.originDayId}
@@ -486,7 +486,7 @@ export function FreezingDayDetail({
                           : 'ORIGEN HISTÓRICO'}
                     </StatusBadge>
                   </td>
-                  <td className="number-tabular px-3 py-3 text-center text-xs font-semibold text-slate-700 dark:text-[#C3D2DC]">
+                  <td className="number-tabular px-3 py-3 text-center text-xs font-semibold text-slate-700 dark:text-ui-text-dark-pale">
                     {formatCentiKg(row.lot.originalKg100)}
                   </td>
                   <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-sky-700 dark:text-sky-300">
