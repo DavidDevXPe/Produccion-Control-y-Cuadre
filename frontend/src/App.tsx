@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './app/router'
+import { Modal } from './components/ui/Modal'
 import { ProductionDataProvider } from './features/production/state/ProductionDataContext'
 
 function GlobalShortcuts() {
@@ -38,4 +39,3 @@ export function App() {
 }
 
 export default App
-

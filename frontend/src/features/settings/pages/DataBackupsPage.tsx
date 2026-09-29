@@ -24,6 +24,15 @@ export function DataBackupsPage() {
   const [quarantine] = useState(() => readStorageQuarantine())
   const [preview, setPreview] = useState<TrabundaBackupPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+
+  const usedBytes = Object.keys(localStorage).reduce((acc, key) => {
+    return acc + (localStorage.getItem(key)?.length || 0) * 2
+  }, 0)
+  const maxEstimatedBytes = 5 * 1024 * 1024 // 5 MB
+  const usagePercentage = Math.min(100, Math.round((usedBytes / maxEstimatedBytes) * 100))
+  const usedKb = (usedBytes / 1024).toFixed(1)
 
   const usedBytes = Object.keys(localStorage).reduce((acc, key) => {
     return acc + (localStorage.getItem(key)?.length || 0) * 2
@@ -40,12 +49,9 @@ export function DataBackupsPage() {
     downloadJsonFile(backupFilename('trabunda-datos-apartados'), quarantine)
   }
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const processBackupFile = async (file: File) => {
     setPreview(null)
     setError(null)
-    if (!file) return
-
     try {
       setPreview(parseTrabundaBackup(await file.text()))
     } catch (caughtError) {
@@ -54,9 +60,40 @@ export function DataBackupsPage() {
           ? caughtError.message
           : 'No se pudo leer el respaldo seleccionado.',
       )
-    } finally {
+    }
+  }
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      await processBackupFile(file)
       event.target.value = ''
     }
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setIsDragging(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file) {
+      await processBackupFile(file)
+    }
+  }
+
+  const confirmResetData = () => {
+    downloadJsonFile(backupFilename('trabunda-respaldo-autoguardado'), createTrabundaBackup())
+    localStorage.clear()
+    window.location.reload()
   }
 
   const confirmRestore = () => {
@@ -83,14 +120,24 @@ export function DataBackupsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={exportBackup}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700"
-        >
-          <Download className="size-4" aria-hidden="true" />
-          Exportar respaldo
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowResetModal(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300"
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Restablecer datos
+          </button>
+          <button
+            type="button"
+            onClick={exportBackup}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            Exportar respaldo
+          </button>
+        </div>
       </div>
 
       <section className="theme-surface overflow-hidden rounded-xl border border-slate-200 p-5 dark:border-ui-line-dark-soft">
@@ -177,13 +224,22 @@ export function DataBackupsPage() {
         </div>
 
         <div className="space-y-5 p-5">
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center transition hover:border-brand-400 hover:bg-brand-50 dark:border-ui-line-dark dark:hover:bg-ui-surface-dark-hover-soft">
+          <label
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-8 text-center transition ${
+              isDragging
+                ? 'border-brand-500 bg-brand-50/80 dark:bg-brand-500/20'
+                : 'border-slate-300 hover:border-brand-400 hover:bg-brand-50 dark:border-ui-line-dark dark:hover:bg-ui-surface-dark-hover-soft'
+            }`}
+          >
             <Upload className="size-7 text-brand-600 dark:text-ui-text-dark-brand" aria-hidden="true" />
             <span className="font-bold text-slate-900 dark:text-white">
-              Seleccionar archivo de respaldo
+              Arrastra aquí tu archivo de respaldo o haz clic para seleccionar
             </span>
             <span className="text-sm text-slate-600 dark:text-ui-text-faint">
-              El archivo no se sube a ningún servidor; se valida en este navegador.
+              El archivo no se sube a ningún servidor; se valida localmente en este navegador.
             </span>
             <input
               type="file"
@@ -245,6 +301,43 @@ export function DataBackupsPage() {
           ) : null}
         </div>
       </section>
+
+      {showResetModal ? (
+        <Modal
+          titleId="reset-modal-title"
+          onClose={() => setShowResetModal(false)}
+        >
+          <div className="space-y-4 p-6 text-sm text-slate-700 dark:text-slate-200">
+            <h2 id="reset-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
+              Restablecer datos locales
+            </h2>
+            <div className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-rose-600" aria-hidden="true" />
+              <p className="text-xs leading-5">
+                Esta acción borrará todas las jornadas y configuraciones guardadas en este navegador.
+                Se descargará automáticamente un archivo de respaldo antes de limpiar la memoria.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                className="rounded-lg border border-slate-300 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmResetData}
+                className="rounded-lg bg-rose-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-rose-700"
+              >
+                Respaldar y restablecer
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   )
 }

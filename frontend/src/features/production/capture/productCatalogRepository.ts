@@ -52,6 +52,7 @@ export function getActiveProducts(): ProductionCatalogItem[] {
 
     byId.set(dynamicProduct.productId, {
       ...seedProduct,
+      ...dynamicProduct,
       aliases: [
         ...new Set([
           ...(seedProduct.aliases ?? []),
@@ -67,15 +68,75 @@ export function getActiveProducts(): ProductionCatalogItem[] {
 export function addActiveProduct(product: ProductionCatalogItem): ProductionCatalogItem {
   const existing = dynamicProducts.find((item) => item.productId === product.productId)
   if (!existing) {
-    dynamicProducts.push(product)
+    dynamicProducts.push({
+      ...product,
+      active: product.active ?? true,
+    })
   } else {
     Object.assign(existing, {
       ...product,
       aliases: [...new Set([...(existing.aliases ?? []), ...(product.aliases ?? [])])],
+      active: product.active ?? existing.active ?? true,
     })
   }
   persist()
   return existing ?? product
+}
+
+export function updateActiveProduct(
+  productId: string,
+  updates: Partial<ProductionCatalogItem>,
+): ProductionCatalogItem | undefined {
+  const activeProducts = getActiveProducts()
+  const current = activeProducts.find((item) => item.productId === productId)
+  if (!current) return undefined
+
+  const updatedItem: ProductionCatalogItem = {
+    ...current,
+    ...updates,
+    productName: updates.productName?.trim() || current.productName,
+    canonicalName: updates.canonicalName?.trim() || updates.productName?.trim() || current.canonicalName || current.productName,
+    normalizedName: normalizeProductName(updates.productName || current.productName),
+  }
+
+  const existingDynamic = dynamicProducts.find((item) => item.productId === productId)
+  if (existingDynamic) {
+    Object.assign(existingDynamic, updatedItem)
+  } else {
+    dynamicProducts.push(updatedItem)
+  }
+
+  persist()
+  return updatedItem
+}
+
+export function removeAliasFromActiveProduct(productId: string, alias: string): void {
+  const item = dynamicProducts.find((candidate) => candidate.productId === productId)
+  if (item && item.aliases) {
+    item.aliases = item.aliases.filter((a) => a !== alias)
+    persist()
+    return
+  }
+
+  const seedItem = SEED_CAPTURE_PRODUCTS.find((candidate) => candidate.productId === productId)
+  if (seedItem) {
+    const currentAliases = (seedItem.aliases ?? []).filter((a) => a !== alias)
+    dynamicProducts.push({
+      ...seedItem,
+      aliases: currentAliases,
+    })
+    persist()
+  }
+}
+
+export function toggleProductActiveStatus(productId: string): boolean {
+  const activeProducts = getActiveProducts()
+  const current = activeProducts.find((item) => item.productId === productId)
+  if (!current) return false
+
+  const newStatus = !(current.active ?? true)
+  updateActiveProduct(productId, { active: newStatus })
+  return newStatus
 }
 
 export function createStableProductId(canonicalName: string): string {

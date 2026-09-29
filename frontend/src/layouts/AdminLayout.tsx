@@ -107,10 +107,10 @@ const primaryNavigation: readonly NavigationItem[] = [
 
 const administrationNavigation: readonly NavigationItem[] = [
   { label: 'Datos', to: '/datos', icon: Database },
+  { label: 'Catálogos', to: '/catalogos', icon: Settings },
 ]
 
 const upcomingNavigation: readonly UpcomingNavigationItem[] = [
-  { label: 'Catálogos', icon: Settings },
   { label: 'Auditoría', icon: History },
 ]
 
