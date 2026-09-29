@@ -528,8 +528,11 @@ export function ProductionEntryPage() {
     useState<ProductionProcess | null>(null)
   const [productSearch, setProductSearch] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
+  const manualProductSearchInputRef = useRef<HTMLInputElement>(null)
+
   const [treatmentSearch, setTreatmentSearch] = useState('')
   const [selectedTreatmentProductId, setSelectedTreatmentProductId] = useState('')
+  const treatmentSearchInputRef = useRef<HTMLInputElement>(null)
   const [treatmentProductIds, setTreatmentProductIds] = 
     useState<Set<string>>(() => new Set() )
   const effectiveTreatmentProductIds = useMemo(() => {
@@ -544,6 +547,7 @@ export function ProductionEntryPage() {
 
   const [tunnelSearch, setTunnelSearch] = useState('')
   const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
+  const tunnelSearchInputRef = useRef<HTMLInputElement>(null)
   const [tunnelProductIds, setTunnelProductIds] =
   useState<Set<string>>(() => new Set())
 
@@ -563,6 +567,7 @@ export function ProductionEntryPage() {
   }, [draft.rows, tunnelProductIds])
   const [closingSearch, setClosingSearch] = useState('')
   const [selectedClosingProductId, setSelectedClosingProductId] = useState('')
+  const closingSearchInputRef = useRef<HTMLInputElement>(null)
   const [closingProductIds, setClosingProductIds] = useState<Set<string>>(
     () =>
       new Set(
@@ -572,6 +577,7 @@ export function ProductionEntryPage() {
       ),
   )
   const [selectedBalanceKey, setSelectedBalanceKey] = useState('')
+  const balanceSelectRef = useRef<HTMLSelectElement>(null)
   const [isFreezingOriginsOpen, setIsFreezingOriginsOpen] = useState(false)
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
   const [isBulkFreezingLinkConfirmationOpen, setIsBulkFreezingLinkConfirmationOpen] = useState(false)
@@ -1582,6 +1588,7 @@ const freezingOriginLedgerSummary =
     setProductSearch('')
     setSelectedProductId('')
     setSaveError('')
+    manualProductSearchInputRef.current?.focus()
   }
 
   const addMovementProduct = (
@@ -1610,6 +1617,7 @@ const freezingOriginLedgerSummary =
     addMovementProduct(productId, () => {
       setClosingSearch('')
       setSelectedClosingProductId('')
+      closingSearchInputRef.current?.focus()
     })
   }
 
@@ -1831,6 +1839,7 @@ const freezingOriginLedgerSummary =
 
   setSelectedBalanceKey('')
   setSaveError('')
+  balanceSelectRef.current?.focus()
 }
 
   const autoLinkFreezingProduct = (productId: string) => {
@@ -3804,6 +3813,7 @@ const applyFreezingExcelPreview =
       ) : null}
 
       <SectionCard
+        allowStickyContent
         title="Reportes Día / Noche"
         description={
           draft.shiftAllocationMode === 'EXPLICIT'
@@ -3869,17 +3879,18 @@ const applyFreezingExcelPreview =
         </div>
 
         {mode === 'MANUAL' ? (
-          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end">
+          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
                 Buscar producto
               </span>
               <span className="relative block">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft"
                   aria-hidden="true"
                 />
                 <input
+                  ref={manualProductSearchInputRef}
                   type="search"
                   value={productSearch}
                   placeholder="Ej.: aleta, manto o nuca"
@@ -3888,7 +3899,7 @@ const applyFreezingExcelPreview =
                     setProductSearch(event.target.value)
                     setSelectedProductId('')
                   }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
                 />
               </span>
             </label>
@@ -4224,6 +4235,7 @@ const applyFreezingExcelPreview =
 
       {!usesExternalAvailability && draft.hasTunnelProduction ? (
       <SectionCard
+        allowStickyContent
         title="Túnel"
         description="Registra producción adicional por turno sin mezclarla con los reportes del supervisor."
         action={
@@ -4240,21 +4252,22 @@ const applyFreezingExcelPreview =
             Se indicó que existe producto para Túnel, pero no se registraron productos.
           </p>
         ) : null}
-        <fieldset disabled={!reportsReconciled} className="disabled:opacity-65">
+        <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Registro de producción de Túnel</legend>
           <div className="grid gap-3 border-b border-slate-200 bg-slate-50/55 p-4 sm:grid-cols-3 sm:p-5">
             <MetricCard label="Túnel Día" value={formatCentiKg(buildResult.calculation.tunnel.dayKg100)} />
             <MetricCard label="Túnel Noche" value={formatCentiKg(buildResult.calculation.tunnel.nightKg100)} />
             <MetricCard label="Total Túnel" value={formatCentiKg(buildResult.calculation.tunnel.totalKg100)} tone="brand" />
           </div>
-          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end">
+          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
                 Buscar producto de Túnel
               </span>
               <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
                 <input
+                  ref={tunnelSearchInputRef}
                   type="search"
                   value={tunnelSearch}
                   placeholder="Ej.: manto, nuca o anillas"
@@ -4263,7 +4276,7 @@ const applyFreezingExcelPreview =
                     setTunnelSearch(event.target.value)
                     setSelectedTunnelProductId('')
                   }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
                 />
               </span>
             </label>
@@ -4309,6 +4322,7 @@ const applyFreezingExcelPreview =
                 
                   setTunnelSearch('')
                   setSelectedTunnelProductId('')
+                  tunnelSearchInputRef.current?.focus()
                 })
               }}
               className={buttonStyles('secondary')}
@@ -4372,6 +4386,7 @@ const applyFreezingExcelPreview =
 
       {!usesExternalAvailability ? (
       <SectionCard
+        allowStickyContent
         title="Tratamiento"
         description="Registra movimientos de tratamiento de forma independiente al reporte de los turnos."
         action={
@@ -4380,16 +4395,17 @@ const applyFreezingExcelPreview =
           </StatusBadge>
         }
       >
-        <fieldset disabled={!reportsReconciled} className="disabled:opacity-65">
+        <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Registro de tratamiento</legend>
-          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end">
+          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
                 Buscar producto de tratamiento
               </span>
               <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
                 <input
+                  ref={treatmentSearchInputRef}
                   type="search"
                   value={treatmentSearch}
                   placeholder="Ej.: aleta, manto o nuca"
@@ -4398,7 +4414,7 @@ const applyFreezingExcelPreview =
                     setTreatmentSearch(event.target.value)
                     setSelectedTreatmentProductId('')
                   }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
                 />
               </span>
             </label>
@@ -4444,6 +4460,7 @@ const applyFreezingExcelPreview =
               
                 setTreatmentSearch('')
                 setSelectedTreatmentProductId('')
+                  treatmentSearchInputRef.current?.focus()
               })
             }}
               className={buttonStyles('secondary')}
@@ -4504,6 +4521,7 @@ const applyFreezingExcelPreview =
       ) : null}
 
       <SectionCard
+        allowStickyContent
         title={isFreezing ? 'Origen y consumo de saldos de Envasado' : 'Saldos anteriores procesados'}
         description={
           isFreezing
@@ -5196,17 +5214,18 @@ freezingOriginLedger.length > 0 ? (
   </div>
 ) : null}
 
-        <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="disabled:opacity-65">
+        <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Consumo de saldos anteriores</legend>
-          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[1fr_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
                 {isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
               </span>
               <select
+                ref={balanceSelectRef}
                 value={selectedBalanceKey}
                 onChange={(event) => setSelectedBalanceKey(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark"
               >
                 <option value="">
                   {availableBalances.length === 0
@@ -5645,21 +5664,22 @@ freezingOriginLedger.length > 0 ? (
 
       {!usesExternalAvailability ? (
       <SectionCard
+        allowStickyContent
         title="Saldo generado al cierre"
         description="Registra únicamente producto real de esta jornada que quedará pendiente para después."
         action={<StatusBadge tone="info">JORNADA ORIGEN ACTUAL</StatusBadge>}
-        style={{ overflow: 'visible' }}
       >
-        <fieldset disabled={!reportsReconciled} className="disabled:opacity-65">
+        <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Saldo generado al cierre</legend>
-          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end">
+          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
                 Buscar producto para saldo
               </span>
               <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
                 <input
+                  ref={closingSearchInputRef}
                   type="search"
                   value={closingSearch}
                   placeholder="Ej.: aleta, manto o nuca"
@@ -5668,7 +5688,7 @@ freezingOriginLedger.length > 0 ? (
                     setClosingSearch(event.target.value)
                     setSelectedClosingProductId('')
                   }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
                 />
               </span>
             </label>
