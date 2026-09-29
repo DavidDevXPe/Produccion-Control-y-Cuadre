@@ -6,6 +6,7 @@ interface SectionCardProps extends HTMLAttributes<HTMLElement> {
   action?: ReactNode
   children: ReactNode
   contentClassName?: string
+  allowStickyContent?: boolean
 }
 
 export function SectionCard({
@@ -15,12 +16,15 @@ export function SectionCard({
   children,
   className = '',
   contentClassName = '',
+  allowStickyContent = false,
   ...props
 }: SectionCardProps) {
+  const overflowClass = allowStickyContent ? 'overflow-clip' : 'overflow-hidden'
+
   return (
     <section
       {...props}
-      className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel dark:border-ui-line-dark dark:bg-ui-surface-dark-deep ${className}`}
+      className={`min-w-0 ${overflowClass} rounded-xl border border-slate-200 bg-white shadow-panel dark:border-ui-line-dark dark:bg-ui-surface-dark-deep ${className}`}
     >
       {title || description || action ? (
         <div className="flex flex-col gap-2.5 border-b border-slate-200 bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep">
