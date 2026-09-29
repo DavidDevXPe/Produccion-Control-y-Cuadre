@@ -38,18 +38,18 @@ const variants: Record<ButtonVariant, string> = {
     hover:bg-brand-800
     hover:shadow-md
 
-    dark:border-[#169FD0]
-    dark:bg-[#169FD0]
-    dark:hover:border-[#58C8EA]
-    dark:hover:bg-[#138BB6]
+    dark:border-ui-brand
+    dark:bg-ui-brand
+    dark:hover:border-ui-accent-cyan
+    dark:hover:bg-ui-brand
 
     disabled:border-slate-200
     disabled:bg-slate-200
     disabled:text-slate-400
 
-    dark:disabled:border-[#203E50]
-    dark:disabled:bg-[#102331]
-    dark:disabled:text-[#60798A]
+    dark:disabled:border-ui-line-dark-grid
+    dark:disabled:bg-ui-surface-dark-compact
+    dark:disabled:text-ui-text-subtle
   `,
 
   secondary: `
@@ -63,11 +63,11 @@ const variants: Record<ButtonVariant, string> = {
     hover:text-brand-800
     hover:shadow-md
 
-    dark:border-[#2B5268]
-    dark:bg-[#0D2534]
-    dark:text-[#C3D2DC]
-    dark:hover:border-[#3D6A80]
-    dark:hover:bg-[#123247]
+    dark:border-ui-line-dark
+    dark:bg-ui-surface-dark
+    dark:text-ui-text-dark-pale
+    dark:hover:border-ui-line-dark
+    dark:hover:bg-ui-surface-dark-hover-strong
     dark:hover:text-white
 
     disabled:opacity-50
@@ -83,11 +83,11 @@ const variants: Record<ButtonVariant, string> = {
     hover:bg-amber-100
     hover:shadow-md
 
-    dark:border-[#B58A27]
-    dark:bg-[#211D12]
-    dark:text-[#FFE7A3]
-    dark:hover:border-[#FFD166]
-    dark:hover:bg-[#2A2414]
+    dark:border-ui-amber-border-dark
+    dark:bg-ui-amber-surface-dark-deep
+    dark:text-ui-amber-text-dark-bright
+    dark:hover:border-ui-amber-text-dark
+    dark:hover:bg-ui-amber-surface-dark
 
     disabled:opacity-50
   `,
@@ -118,8 +118,8 @@ const variants: Record<ButtonVariant, string> = {
     hover:bg-slate-100
     hover:text-slate-950
 
-    dark:text-[#A5BED0]
-    dark:hover:bg-[#123247]
+    dark:text-ui-text-dark-soft
+    dark:hover:bg-ui-surface-dark-hover-strong
     dark:hover:text-white
 
     disabled:opacity-50
@@ -133,8 +133,8 @@ const variants: Record<ButtonVariant, string> = {
     hover:bg-slate-100
     hover:text-slate-900
 
-    dark:text-[#7F9BAD]
-    dark:hover:bg-[#123247]
+    dark:text-ui-text-soft
+    dark:hover:bg-ui-surface-dark-hover-strong
     dark:hover:text-white
 
     disabled:opacity-40

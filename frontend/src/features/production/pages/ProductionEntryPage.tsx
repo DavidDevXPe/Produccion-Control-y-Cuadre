@@ -2969,7 +2969,7 @@ const applyFreezingExcelPreview =
         >
                     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[12rem_minmax(0,1fr)_auto] lg:items-start">
             <label className="block">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-soft">
                 Turno a importar
               </span>
               <select
@@ -2977,7 +2977,7 @@ const applyFreezingExcelPreview =
                 onChange={(event) =>
                   changeExcelShift(event.target.value as 'DAY' | 'NIGHT')
                 }
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong dark:focus:border-ui-brand"
               >
                 <option value="DAY">Turno Día</option>
                 <option value="NIGHT">Turno Noche</option>
@@ -2985,7 +2985,7 @@ const applyFreezingExcelPreview =
             </label>
 
             <label className="block min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-[#A5BED0]">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-soft">
                 Archivo de producción
               </span>
               <span className="relative block">
@@ -2996,14 +2996,14 @@ const applyFreezingExcelPreview =
                 <input
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="block h-10 w-full cursor-pointer rounded-lg border border-dashed border-slate-300 bg-white pl-9 text-xs font-semibold text-slate-800 file:mr-3 file:h-10 file:border-0 file:border-r file:border-slate-200 file:bg-transparent file:px-3 file:text-xs file:font-bold file:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:file:border-[#2B5268] dark:file:text-[#58C8EA] dark:focus:ring-[#169FD0]"
+                  className="block h-10 w-full cursor-pointer rounded-lg border border-dashed border-slate-300 bg-white pl-9 text-xs font-semibold text-slate-800 file:mr-3 file:h-10 file:border-0 file:border-r file:border-slate-200 file:bg-transparent file:px-3 file:text-xs file:font-bold file:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong dark:file:border-ui-line-dark dark:file:text-ui-accent-cyan dark:focus:ring-ui-brand"
                   aria-describedby="excel-file-status"
                   onChange={handleWorkbook}
                 />
               </span>
               <span
                 id="excel-file-status"
-                className="mt-1 block truncate text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]"
+                className="mt-1 block truncate text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft"
               >
                 {fileName || 'Archivo .xlsx con hoja Reporte.'}
               </span>
@@ -3020,7 +3020,7 @@ const applyFreezingExcelPreview =
                 type="button"
                 disabled={!canConfirmExcelImport}
                 onClick={applyExcelPreview}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-[#203E50] lg:w-auto"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-ui-line-dark-grid lg:w-auto"
               >
                 Confirmar importación
               </button>
@@ -3029,7 +3029,7 @@ const applyFreezingExcelPreview =
 
           {excelImportMessage ? (
             <p
-              className="mx-5 mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-[#1B7B4F] dark:bg-[#06351F] dark:text-[#32D094]"
+              className="mx-5 mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-ui-emerald-border-dark dark:bg-ui-emerald-surface-dark dark:text-ui-emerald-text-dark"
               role="status"
             >
               {excelImportMessage}
@@ -3038,7 +3038,7 @@ const applyFreezingExcelPreview =
 
           {importState === 'READING' ? (
             <p
-              className="px-5 pb-4 text-center text-xs font-semibold text-brand-800 dark:text-[#58C8EA]"
+              className="px-5 pb-4 text-center text-xs font-semibold text-brand-800 dark:text-ui-accent-cyan"
               role="status"
             >
               Leyendo y validando la hoja Reporte…
@@ -3058,7 +3058,7 @@ const applyFreezingExcelPreview =
 
           {excelPreview?.warnings.length ? (
             <div
-              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]"
+              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft"
               role="status"
             >
               {excelPreview.warnings.map((warning) => (
@@ -3069,7 +3069,7 @@ const applyFreezingExcelPreview =
 
           {freezingExcelPreview?.warnings.length ? (
             <div
-              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]"
+              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft"
               role="status"
             >
               {freezingExcelPreview.warnings.map((warning) => (
@@ -3080,42 +3080,42 @@ const applyFreezingExcelPreview =
 
           {freezingExcelPreview ? (
             <div
-              className="mx-5 mb-5 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-3 lg:grid-cols-9 dark:border-[#203E50] dark:bg-[#07141F]"
+              className="mx-5 mb-5 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-3 lg:grid-cols-9 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed"
               role="region"
               aria-label="Validación de Excel de Congelamiento"
             >
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Archivo
                 </p>
-                <p className="mt-1 truncate font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 truncate font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.fileName}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Hoja
                 </p>
-                <p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.sheetName}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Turno
                 </p>
-                <p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.shift === 'DAY' ? 'Día' : 'Noche'}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Filas productivas
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {
                     freezingExcelPreview.rows.filter(
                       (row) => row.totalKg > 0,
@@ -3125,37 +3125,37 @@ const applyFreezingExcelPreview =
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Reconocidas
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.recognizedRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Revisión
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.reviewRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Total aros
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.totalAros.toLocaleString('es-PE')}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Total KG
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {freezingExcelPreview.totalKg.toLocaleString('es-PE', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -3164,14 +3164,14 @@ const applyFreezingExcelPreview =
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Estado
                 </p>
                 <p
                   className={`mt-1 font-extrabold ${
                     freezingExcelPreview.status === 'EXCEL RECONCILIADO'
-                      ? 'text-emerald-700 dark:text-[#32D094]'
-                      : 'text-amber-700 dark:text-[#E4AC35]'
+                      ? 'text-emerald-700 dark:text-ui-emerald-text-dark'
+                      : 'text-amber-700 dark:text-ui-amber-text-dark-soft'
                   }`}
                 >
                   {freezingExcelPreview.status}
@@ -3182,78 +3182,78 @@ const applyFreezingExcelPreview =
 
           {excelPreview ? (
             <div
-              className="mx-5 mb-5 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-4 lg:grid-cols-9 dark:border-[#203E50] dark:bg-[#07141F]"
+              className="mx-5 mb-5 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-4 lg:grid-cols-9 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed"
               role="region"
               aria-label="Validación de Excel de Envasado"
             >
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Archivo
                 </p>
-                <p className="mt-1 truncate font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 truncate font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.fileName}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Hoja
                 </p>
-                <p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.sheetName}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Turno
                 </p>
-                <p className="mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.shift === 'DAY' ? 'Día' : 'Noche'}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Filas productivas
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.productiveRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Reconocidas
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.recognizedRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Normalizadas / alias
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.normalizedRows} / {excelPreview.aliasRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Nuevas / revisión
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {excelPreview.newRows} / {excelPreview.reviewRows}
                 </p>
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Total KG
                 </p>
-                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-[#F3F8FB]">
+                <p className="number-tabular mt-1 font-bold text-slate-950 dark:text-ui-text-dark-strong">
                   {formatCentiKg(
                     captureQuantityKg100(
                       String(excelPreview.reconstructedTotalKg),
@@ -3263,16 +3263,16 @@ const applyFreezingExcelPreview =
               </div>
 
               <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                <p className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                   Estado
                 </p>
                 <p
                   className={`mt-1 font-extrabold ${
                     excelPreview.status === 'EXCEL RECONCILIADO'
-                      ? 'text-emerald-700 dark:text-[#32D094]'
+                      ? 'text-emerald-700 dark:text-ui-emerald-text-dark'
                       : excelPreview.status === 'EXCEL REQUIERE REVISIÓN'
-                        ? 'text-amber-700 dark:text-[#E4AC35]'
-                        : 'text-rose-700 dark:text-[#ff6b6b]'
+                        ? 'text-amber-700 dark:text-ui-amber-text-dark-soft'
+                        : 'text-rose-700 dark:text-ui-rose-text-dark'
                   }`}
                 >
                   {excelPreview.status}
@@ -3285,7 +3285,7 @@ const applyFreezingExcelPreview =
             ? unresolvedFreezingExcelRows.length
             : unresolvedExcelRows.length) > 0 ? (
             <p
-              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]"
+              className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft"
               role="status"
             >
               {isFreezing
@@ -3297,16 +3297,16 @@ const applyFreezingExcelPreview =
 
           {freezingExcelPreview?.rows.length ? (
             <div
-              className="mx-5 mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-[#203E50] dark:bg-[#07141F]"
+              className="mx-5 mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed"
               role="region"
               aria-label="Vista previa Excel de Congelamiento"
             >
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-[#203E50]">
-                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-950 dark:text-[#F3F8FB]">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-ui-line-dark-grid">
+                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-950 dark:text-ui-text-dark-strong">
                   Vista previa de Congelamiento
                 </p>
 
-                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
                   La cantidad del archivo corresponde a aros. Para la captura
                   operativa se aplica 1 aro = 10 kg. La presentación logística
                   se muestra solo como referencia y no cambia la identidad del
@@ -3316,7 +3316,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[76rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-[#0D2534] dark:text-[#A5BED0]">
+                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3332,19 +3332,19 @@ const applyFreezingExcelPreview =
                     {freezingExcelPreview.rows.map((row) => (
                       <tr
                         key={`freezing-excel-${row.rowNumber}`}
-                        className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-[#203E50] dark:text-[#F3F8FB] dark:hover:bg-[#0D2534]"
+                        className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark"
                       >
                         <td className="px-4 py-2.5 font-semibold">
                           {row.baseProductName}
                         </td>
 
-                        <td className="px-4 py-2.5 text-slate-600 dark:text-[#A5BED0]">
+                        <td className="px-4 py-2.5 text-slate-600 dark:text-ui-text-dark-soft">
                           {row.product?.canonicalName ??
                             row.product?.productName ??
                             '—'}
                         </td>
 
-                        <td className="px-4 py-2.5 text-center text-slate-600 dark:text-[#A5BED0]">
+                        <td className="px-4 py-2.5 text-center text-slate-600 dark:text-ui-text-dark-soft">
                           {row.packaging ?? '—'}
                         </td>
 
@@ -3364,8 +3364,8 @@ const applyFreezingExcelPreview =
                             title={row.matchReason}
                             className={`inline-flex rounded-full border px-2 py-1 text-[0.625rem] font-extrabold uppercase tracking-[0.06em] ${
                               row.status !== 'REQUIERE REVISIÓN'
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-[#1B7B4F] dark:bg-[#06351F] dark:text-[#32D094]'
-                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-ui-emerald-border-dark dark:bg-ui-emerald-surface-dark dark:text-ui-emerald-text-dark'
+                                : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft'
                             }`}
                           >
                             {displayImportStatus(row.status)}
@@ -3388,7 +3388,7 @@ const applyFreezingExcelPreview =
                                       [row.rowNumber]: event.target.value,
                                     }))
                                   }
-                                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB]"
+                                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong"
                                 >
                                   <option value="">
                                     Asociar a existente…
@@ -3427,10 +3427,10 @@ const applyFreezingExcelPreview =
                                 </button>
                               </div>
 
-                              <div className="flex items-center gap-2 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-400 dark:text-[#7F9BAD]">
-                                <span className="h-px flex-1 bg-slate-200 dark:bg-[#203E50]" />
+                              <div className="flex items-center gap-2 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-400 dark:text-ui-text-soft">
+                                <span className="h-px flex-1 bg-slate-200 dark:bg-ui-line-dark-grid" />
                                 o agregar como nuevo
-                                <span className="h-px flex-1 bg-slate-200 dark:bg-[#203E50]" />
+                                <span className="h-px flex-1 bg-slate-200 dark:bg-ui-line-dark-grid" />
                               </div>
 
                               <div className="flex gap-2">
@@ -3445,7 +3445,7 @@ const applyFreezingExcelPreview =
                                       [row.rowNumber]: event.target.value,
                                     }))
                                   }
-                                  className="min-w-0 flex-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-2 text-xs font-semibold text-sky-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#123247] dark:text-[#DDF6FF]"
+                                  className="min-w-0 flex-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-2 text-xs font-semibold text-sky-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-hover-strong dark:text-ui-text-dark-info"
                                 >
                                   <option value="">
                                     Seleccionar familia del producto…
@@ -3477,13 +3477,13 @@ const applyFreezingExcelPreview =
                                 </button>
                               </div>
 
-                              <p className="text-[0.625rem] leading-4 text-slate-500 dark:text-[#7F9BAD]">
+                              <p className="text-[0.625rem] leading-4 text-slate-500 dark:text-ui-text-soft">
                                 Se guardará como producto: {row.baseProductName}.
                                 La presentación {row.packaging ?? 'del Excel'} se conserva solo como referencia logística.
                               </p>
                             </div>
                           ) : (
-                            <span className="text-slate-400 dark:text-[#7F9BAD]">
+                            <span className="text-slate-400 dark:text-ui-text-soft">
                               —
                             </span>
                           )}
@@ -3498,16 +3498,16 @@ const applyFreezingExcelPreview =
 
           {excelPreview?.rows.length ? (
             <div
-              className="mx-5 mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-[#203E50] dark:bg-[#07141F]"
+              className="mx-5 mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed"
               role="region"
               aria-label="Vista previa Excel de Envasado"
             >
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-[#203E50]">
-                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-950 dark:text-[#F3F8FB]">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-ui-line-dark-grid">
+                <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-950 dark:text-ui-text-dark-strong">
                   Vista previa de Envasado
                 </p>
 
-                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
                   Cada fila usa únicamente Producto, Horario y la columna Total
                   KG.
                 </p>
@@ -3515,7 +3515,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[72rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-[#0D2534] dark:text-[#A5BED0]">
+                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3532,19 +3532,19 @@ const applyFreezingExcelPreview =
                     {excelPreview.rows.map((row, index) => (
                       <tr
                         key={`${row.productName}-${row.rowCalendarDate ?? 'sin-fecha'}-${index}`}
-                        className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-[#203E50] dark:text-[#F3F8FB] dark:hover:bg-[#0D2534]"
+                        className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark"
                       >
                         <td className="px-4 py-2.5 font-semibold">
                           {row.productName}
                         </td>
 
-                        <td className="px-4 py-2.5 text-slate-600 dark:text-[#A5BED0]">
+                        <td className="px-4 py-2.5 text-slate-600 dark:text-ui-text-dark-soft">
                           {row.product?.canonicalName ??
                             row.product?.productName ??
                             '—'}
                         </td>
 
-                        <td className="px-4 py-2.5 text-center text-slate-600 dark:text-[#A5BED0]">
+                        <td className="px-4 py-2.5 text-center text-slate-600 dark:text-ui-text-dark-soft">
                           {row.rowCalendarDate ?? 'No confirmada'}
                         </td>
 
@@ -3560,10 +3560,10 @@ const applyFreezingExcelPreview =
                               row.status === 'COINCIDENCIA EXACTA' ||
                               row.status === 'COINCIDENCIA NORMALIZADA' ||
                               row.status === 'ALIAS CONOCIDO'
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-[#1B7B4F] dark:bg-[#06351F] dark:text-[#32D094]'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-ui-emerald-border-dark dark:bg-ui-emerald-surface-dark dark:text-ui-emerald-text-dark'
                                 : row.status === 'NUEVO PRODUCTO'
-                                  ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-[#2B5268] dark:bg-[#123247] dark:text-[#58C8EA]'
-                                  : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-[#805f22] dark:bg-[#2a2414] dark:text-[#f2c866]'
+                                  ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-ui-line-dark dark:bg-ui-surface-dark-hover-strong dark:text-ui-accent-cyan'
+                                  : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft'
                             }`}
                             title={row.matchReason}
                           >
@@ -3578,7 +3578,7 @@ const applyFreezingExcelPreview =
                             <div className="flex min-w-72 flex-col gap-2">
                               <button
                                 type="button"
-                                className="rounded-lg bg-brand-700 px-3 py-2 text-xs font-bold text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-[#169FD0] dark:hover:bg-[#58C8EA] dark:hover:text-[#07141F] dark:focus:ring-[#58C8EA]"
+                                className="rounded-lg bg-brand-700 px-3 py-2 text-xs font-bold text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-ui-brand dark:hover:bg-ui-accent-cyan dark:hover:text-ui-surface-dark-recessed dark:focus:ring-ui-accent-cyan"
                                 onClick={() =>
                                   addExcelRowToCatalog(row.rowNumber)
                                 }
@@ -3599,7 +3599,7 @@ const applyFreezingExcelPreview =
                                       [row.rowNumber]: event.target.value,
                                     }))
                                   }
-                                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-900 focus:border-brand-400 dark:border-[#2B5268] dark:bg-[#07141F] dark:text-[#F3F8FB] dark:focus:border-[#169FD0]"
+                                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong dark:focus:border-ui-brand"
                                 >
                                   <option value="">
                                     Asociar a existente…
@@ -3621,7 +3621,7 @@ const applyFreezingExcelPreview =
                                   disabled={
                                     !excelExistingProductByRow[row.rowNumber]
                                   }
-                                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-brand-300 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2B5268] dark:text-[#A5BED0] dark:hover:border-[#58C8EA] dark:hover:text-[#F3F8FB]"
+                                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-brand-300 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-ui-line-dark dark:text-ui-text-dark-soft dark:hover:border-ui-accent-cyan dark:hover:text-ui-text-dark-strong"
                                   onClick={() =>
                                     associateExcelRowToExisting(row.rowNumber)
                                   }
@@ -3631,7 +3631,7 @@ const applyFreezingExcelPreview =
                               </div>
                             </div>
                           ) : (
-                            <span className="text-slate-400 dark:text-[#7F9BAD]">
+                            <span className="text-slate-400 dark:text-ui-text-soft">
                               —
                             </span>
                           )}
@@ -4582,17 +4582,17 @@ const applyFreezingExcelPreview =
   <div
     role="region"
     aria-label="Explicación del saldo de Congelamiento"
-    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-[#203E50]"
+    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
   >
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-[#203E50] dark:bg-[#07141F]/60">
-      <div className="border-b border-slate-200 px-4 py-4 dark:border-[#203E50]">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/60">
+      <div className="border-b border-slate-200 px-4 py-4 dark:border-ui-line-dark-grid">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-slate-800 dark:text-[#F3F8FB]">
+            <p className="text-xs font-extrabold uppercase tracking-[0.07em] text-slate-800 dark:text-ui-text-dark-strong">
               ¿De dónde sale el saldo?
             </p>
 
-            <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+            <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
               El saldo pendiente no representa necesariamente
               un error. Parte corresponde a producto que comenzó
               a congelarse y todavía queda disponible, y otra
@@ -4615,31 +4615,31 @@ const applyFreezingExcelPreview =
         </div>
       </div>
 
-      <div className="grid gap-px bg-slate-200 sm:grid-cols-3 dark:bg-[#203E50]">
-        <div className="bg-white px-4 py-3 dark:bg-[#0D2534]">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-3 dark:bg-ui-line-dark-grid">
+        <div className="bg-white px-4 py-3 dark:bg-ui-surface-dark">
+          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
             Envasado disponible
           </p>
 
-          <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+          <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
             {formatCentiKg(
               freezingTotalAvailableKg100,
             )}
           </p>
         </div>
 
-        <div className="bg-white px-4 py-3 dark:bg-[#0D2534]">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+        <div className="bg-white px-4 py-3 dark:bg-ui-surface-dark">
+          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
             Congelado físicamente
           </p>
 
-          <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+          <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
             {formatCentiKg(totalReportedKg100)}
           </p>
         </div>
 
-        <div className="bg-white px-4 py-3 dark:bg-[#0D2534]">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+        <div className="bg-white px-4 py-3 dark:bg-ui-surface-dark">
+          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
             Diferencia física
           </p>
 
@@ -4652,14 +4652,14 @@ const applyFreezingExcelPreview =
       </div>
 
       <div className="grid gap-4 p-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-[#203E50] dark:bg-[#0D2534]">
-          <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark">
+          <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
             Cómo se compone el saldo trazable
           </p>
 
           <dl className="mt-3 space-y-2 text-xs">
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500 dark:text-[#A5BED0]">
+              <dt className="text-slate-500 dark:text-ui-text-dark-soft">
                 Pendiente en productos que sí tuvieron movimiento
               </dt>
 
@@ -4671,7 +4671,7 @@ const applyFreezingExcelPreview =
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500 dark:text-[#A5BED0]">
+              <dt className="text-slate-500 dark:text-ui-text-dark-soft">
                 Producto todavía no utilizado
               </dt>
 
@@ -4682,12 +4682,12 @@ const applyFreezingExcelPreview =
               </dd>
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 dark:border-[#203E50]">
-              <dt className="font-bold text-slate-800 dark:text-[#F3F8FB]">
+            <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 dark:border-ui-line-dark-grid">
+              <dt className="font-bold text-slate-800 dark:text-ui-text-dark-strong">
                 Saldo trazable para jornadas siguientes
               </dt>
 
-              <dd className="number-tabular font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+              <dd className="number-tabular font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
                 {formatCentiKg(
                   freezingPendingAfterKg100,
                 )}
@@ -4695,7 +4695,7 @@ const applyFreezingExcelPreview =
             </div>
           </dl>
 
-          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[0.6875rem] leading-5 text-slate-600 dark:bg-[#07141F] dark:text-[#A5BED0]">
+          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[0.6875rem] leading-5 text-slate-600 dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-soft">
             {formatCentiKg(
               freezingBalanceExplanation.pendingInSelectedKg100,
             )}{' '}
@@ -4712,14 +4712,14 @@ const applyFreezingExcelPreview =
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-[#203E50] dark:bg-[#0D2534]">
-          <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark">
+          <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
             Diferencia frente al congelado físico
           </p>
 
           <dl className="mt-3 space-y-2 text-xs">
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500 dark:text-[#A5BED0]">
+              <dt className="text-slate-500 dark:text-ui-text-dark-soft">
                 Congelado con origen identificado
               </dt>
 
@@ -4731,7 +4731,7 @@ const applyFreezingExcelPreview =
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-slate-500 dark:text-[#A5BED0]">
+              <dt className="text-slate-500 dark:text-ui-text-dark-soft">
                 Congelado sin origen suficiente
               </dt>
 
@@ -4748,8 +4748,8 @@ const applyFreezingExcelPreview =
               </dd>
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 dark:border-[#203E50]">
-              <dt className="font-bold text-slate-800 dark:text-[#F3F8FB]">
+            <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 dark:border-ui-line-dark-grid">
+              <dt className="font-bold text-slate-800 dark:text-ui-text-dark-strong">
                 Diferencia física Envasado vs Congelado
               </dt>
 
@@ -4768,9 +4768,9 @@ const applyFreezingExcelPreview =
   text-[0.6875rem] font-semibold leading-5
   text-amber-900
 
-  dark:border-[#8A6A1F]
-  dark:bg-[#2A2414]
-  dark:text-[#FFE6A3]
+  dark:border-ui-amber-border-dark-soft
+  dark:bg-ui-amber-surface-dark
+  dark:text-ui-amber-text-dark-bright
 ">
   Hay producto congelado cuya presentación u origen
   no alcanza a justificarse completamente. La jornada
@@ -4782,8 +4782,8 @@ const applyFreezingExcelPreview =
       </div>
 
       {freezingBalanceExplanation.untouchedPositions.length > 0 ? (
-        <div className="border-t border-slate-200 px-4 py-3 dark:border-[#203E50]">
-          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-600 dark:text-[#A5BED0]">
+        <div className="border-t border-slate-200 px-4 py-3 dark:border-ui-line-dark-grid">
+          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-600 dark:text-ui-text-dark-soft">
             Producto disponible que todavía no fue utilizado
           </p>
 
@@ -4792,14 +4792,14 @@ const applyFreezingExcelPreview =
               (position) => (
                 <div
                   key={`${position.originDayId}-${position.productId}`}
-                  className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-[#203E50] dark:bg-[#0D2534]"
+                  className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[0.6875rem] font-bold text-slate-800 dark:text-[#F3F8FB]">
+                    <p className="truncate text-[0.6875rem] font-bold text-slate-800 dark:text-ui-text-dark-strong">
                       {position.productName}
                     </p>
 
-                    <p className="mt-0.5 text-[0.625rem] text-slate-400 dark:text-[#7F9BAD]">
+                    <p className="mt-0.5 text-[0.625rem] text-slate-400 dark:text-ui-text-soft">
                       Origen {formatIsoDate(position.originDate)}
                     </p>
                   </div>
@@ -4820,22 +4820,22 @@ const applyFreezingExcelPreview =
 ) : null}
 
         {isFreezing && freezingPendingLinkCount > 0 ? (
-          <div className="border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-[#203E50]">
+          <div className="border-b border-slate-200 px-4 py-3 sm:px-5 dark:border-ui-line-dark-grid">
             <div className="
   flex flex-col gap-3 rounded-xl
   border border-amber-300 bg-amber-50
   px-4 py-3
   sm:flex-row sm:items-center sm:justify-between
 
-  dark:border-[#8A6A1F]
-  dark:bg-[#211D12]
+  dark:border-ui-amber-border-dark-soft
+  dark:bg-ui-amber-surface-dark-deep
 ">
   <div className="min-w-0">
-    <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
+    <p className="text-xs font-extrabold text-amber-900 dark:text-ui-amber-text-dark">
       Vinculación FIFO disponible
     </p>
 
-    <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-[#F4E7BC]">
+    <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-ui-amber-text-dark-pale">
       {freezingPendingLinkCount}{' '}
       {freezingPendingLinkCount === 1
         ? 'producto tiene'
@@ -4865,13 +4865,13 @@ const applyFreezingExcelPreview =
 
   active:scale-[0.98]
 
-  dark:border-[#B58A27]
-  dark:bg-[#0D2534]
-  dark:text-[#FFE7A3]
+  dark:border-ui-amber-border-dark
+  dark:bg-ui-surface-dark
+  dark:text-ui-amber-text-dark-bright
 
-  dark:hover:border-[#FFD166]
-  dark:hover:bg-[#2A2414]
-  dark:hover:text-[#FFF1BF]
+  dark:hover:border-ui-amber-text-dark
+  dark:hover:bg-ui-amber-surface-dark
+  dark:hover:text-ui-amber-text-dark-pale
 "
   >
     Vincular todos FIFO
@@ -4885,16 +4885,16 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
   <div
     role="region"
     aria-label="Resumen de trazabilidad de Congelamiento"
-    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-[#203E50]"
+    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
   >
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-[#203E50] dark:bg-[#07141F]/60">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/60">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-700 dark:text-[#A5BED0]">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-700 dark:text-ui-text-dark-soft">
             Resumen de trazabilidad
           </p>
 
-          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-[#7F9BAD]">
+          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-text-soft">
             Estado de los productos reportados en
             Congelamiento frente a su origen trazable
             de Envasado.
@@ -4909,12 +4909,12 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-[#203E50] dark:bg-[#0D2534]">
-          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
             Productos reportados
           </dt>
 
-          <dd className="mt-1 text-lg font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+          <dd className="mt-1 text-lg font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
             {freezingTraceabilitySummary.totalProducts}
           </dd>
         </div>
@@ -4953,17 +4953,17 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
       <div className="mt-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold text-slate-700 dark:text-[#C3D2DC]">
+            <p className="text-xs font-bold text-slate-700 dark:text-ui-text-dark-pale">
               Cobertura vinculada
             </p>
 
-            <p className="mt-0.5 text-[0.6875rem] text-slate-500 dark:text-[#7F9BAD]">
+            <p className="mt-0.5 text-[0.6875rem] text-slate-500 dark:text-ui-text-soft">
               Kg reportados que ya cuentan con origen
               de Envasado identificado.
             </p>
           </div>
 
-          <span className="number-tabular shrink-0 text-lg font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+          <span className="number-tabular shrink-0 text-lg font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
             {freezingTraceabilityCoveragePercent === null
               ? '—'
               : `${freezingTraceabilityCoveragePercent.toFixed(
@@ -4972,7 +4972,7 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
           </span>
         </div>
 
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#203E50]">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-ui-line-dark-grid">
           <div
             className={`h-full rounded-full transition-[width] duration-300 ${freezingTraceabilityProgressClass}`}
             style={{
@@ -4983,15 +4983,15 @@ freezingTraceabilitySummary.totalProducts > 0 ? (
           />
         </div>
 
-        <div className="mt-3 flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between dark:text-[#A5BED0]">
+        <div className="mt-3 flex flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between dark:text-ui-text-dark-soft">
           <p>
-            <strong className="number-tabular text-slate-900 dark:text-[#F3F8FB]">
+            <strong className="number-tabular text-slate-900 dark:text-ui-text-dark-strong">
               {formatCentiKg(
                 freezingTraceabilitySummary.tracedKg100,
               )}
             </strong>{' '}
             de{' '}
-            <strong className="number-tabular text-slate-900 dark:text-[#F3F8FB]">
+            <strong className="number-tabular text-slate-900 dark:text-ui-text-dark-strong">
               {formatCentiKg(
                 freezingTraceabilitySummary.reportedKg100,
               )}
@@ -5034,16 +5034,16 @@ freezingOriginLedger.length > 0 ? (
   <div
     role="region"
     aria-label="Cuenta corriente por jornada origen de Envasado"
-    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-[#203E50]"
+    className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
   >
-    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-[#203E50]">
-      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-[#203E50] dark:bg-[#07141F]/60">
+    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-ui-line-dark-grid">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/60">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-800 dark:text-[#F3F8FB]">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-800 dark:text-ui-text-dark-strong">
             Cuenta corriente por jornada origen
           </p>
 
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-[#A5BED0]">
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
             Cada jornada de Envasado conserva sus kilos
             pendientes hasta que todo el producto generado
             quede congelado al 100%.
@@ -5086,7 +5086,7 @@ freezingOriginLedger.length > 0 ? (
           aria-label="Saldo de Congelamiento por jornada origen"
         >
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:border-[#203E50] dark:bg-[#0D2534] dark:text-[#7F9BAD]">
+            <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:text-ui-text-soft">
               <th className="px-4 py-3">
                 Jornada origen
               </th>
@@ -5125,37 +5125,37 @@ freezingOriginLedger.length > 0 ? (
             {freezingOriginLedger.map((row) => (
               <tr
                 key={row.originDayId}
-                className="border-b border-slate-100 bg-white last:border-b-0 dark:border-[#203E50] dark:bg-[#0D2534]"
+                className="border-b border-slate-100 bg-white last:border-b-0 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark"
               >
                 <th className="px-4 py-3">
-                  <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                  <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
                     {formatIsoDate(
                       row.originDate,
                     )}
                   </p>
 
-                  <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-slate-400 dark:text-[#7F9BAD]">
+                  <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-slate-400 dark:text-ui-text-soft">
                     Envasado
                   </p>
                 </th>
 
-                <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-700 dark:text-[#C3D2DC]">
+                <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-700 dark:text-ui-text-dark-pale">
                   {row.productCount}
                 </td>
 
-                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
                   {formatCentiKg(
                     row.generatedKg100,
                   )}
                 </td>
 
-                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
                   {formatCentiKg(
                     row.frozenAccumulatedKg100,
                   )}
                 </td>
 
-                <td className="number-tabular px-3 py-3 text-right text-xs text-brand-700 dark:text-[#58C8EA]">
+                <td className="number-tabular px-3 py-3 text-right text-xs text-brand-700 dark:text-ui-accent-cyan">
                   {formatCentiKg(
                     row.frozenCurrentKg100,
                   )}
@@ -5179,7 +5179,7 @@ freezingOriginLedger.length > 0 ? (
                       )}
                 </td>
 
-                <td className="number-tabular px-3 py-3 text-right text-xs font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                <td className="number-tabular px-3 py-3 text-right text-xs font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
                   {row.completionPercent.toFixed(
                     2,
                   )}
@@ -5328,7 +5328,7 @@ freezingOriginLedger.length > 0 ? (
           </div>
 
           {draft.balanceUses.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-slate-500 dark:text-[#A5BED0]">
+            <p className="px-5 py-8 text-center text-sm text-slate-500 dark:text-ui-text-dark-soft">
               {isFreezing
                 ? 'No se ha vinculado producto disponible desde Envasado.'
                 : 'No se han asignado saldos de jornadas anteriores.'}
@@ -5336,28 +5336,28 @@ freezingOriginLedger.length > 0 ? (
           ) : (
             <>
               {isFreezing && freezingBalanceUseSummary ? (
-                <div className="border-b border-slate-200 bg-slate-50/55 dark:border-[#203E50] dark:bg-[#07141F]/45">
-                  <dl className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-[#203E50]">
-                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
-                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                <div className="border-b border-slate-200 bg-slate-50/55 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/45">
+                  <dl className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:bg-ui-line-dark-grid">
+                    <div className="bg-white px-4 py-3 text-center dark:bg-ui-surface-dark">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                         Orígenes vinculados
                       </dt>
-                      <dd className="mt-1 text-base font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+                      <dd className="mt-1 text-base font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
                         {freezingBalanceUseSummary.originCount}
                       </dd>
                     </div>
 
-                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
-                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                    <div className="bg-white px-4 py-3 text-center dark:bg-ui-surface-dark">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                         Disponible vinculado
                       </dt>
-                      <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-slate-950 dark:text-[#F3F8FB]">
+                      <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
                         {formatCentiKg(freezingBalanceUseSummary.availableKg100)}
                       </dd>
                     </div>
 
-                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
-                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                    <div className="bg-white px-4 py-3 text-center dark:bg-ui-surface-dark">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                         Total utilizado
                       </dt>
                       <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-sky-700 dark:text-sky-300">
@@ -5365,8 +5365,8 @@ freezingOriginLedger.length > 0 ? (
                       </dd>
                     </div>
 
-                    <div className="bg-white px-4 py-3 text-center dark:bg-[#0D2534]">
-                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                    <div className="bg-white px-4 py-3 text-center dark:bg-ui-surface-dark">
+                      <dt className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                         Saldo restante
                       </dt>
                       <dd className="number-tabular mt-1 whitespace-nowrap text-sm font-extrabold text-amber-700 dark:text-amber-300">
@@ -5399,18 +5399,18 @@ freezingOriginLedger.length > 0 ? (
                           setIsFreezingOriginsOpen((current) => !current)
                         }
                         aria-expanded={isFreezingOriginsOpen}
-                        className="flex w-full items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:bg-[#0D2534]"
+                        className="flex w-full items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:hover:bg-ui-surface-dark"
                       >
                         <span className="min-w-0">
-                          <span className="block text-xs font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                          <span className="block text-xs font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
                             Detalle de orígenes vinculados
                           </span>
-                          <span className="mt-0.5 block text-[0.6875rem] leading-5 text-slate-500 dark:text-[#A5BED0]">
+                          <span className="mt-0.5 block text-[0.6875rem] leading-5 text-slate-500 dark:text-ui-text-dark-soft">
                             Revisa el consumo Día/Noche y el saldo restante de cada jornada origen.
                           </span>
                         </span>
 
-                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-brand-700 dark:text-[#58C8EA]">
+                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-brand-700 dark:text-ui-accent-cyan">
                           {isFreezingOriginsOpen
                             ? 'Ocultar detalle'
                             : 'Ver detalle'}
@@ -5428,7 +5428,7 @@ freezingOriginLedger.length > 0 ? (
               ) : null}
 
               {shouldShowBalanceUseDetails ? (
-                <div className="divide-y divide-slate-100 dark:divide-[#203E50]">
+                <div className="divide-y divide-slate-100 dark:divide-ui-line-dark-grid">
                   {draft.balanceUses.map((balance) => {
                     const position = captureBalancePosition(balance)
                     const requiresProductDistribution =
@@ -5446,10 +5446,10 @@ freezingOriginLedger.length > 0 ? (
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 dark:text-[#F3F8FB]">
+                            <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
                               {balance.familyName} · {balance.productName}
                             </p>
-                            <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-[#A5BED0]">
+                            <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">
                               {isFreezing ? 'Origen Envasado' : 'Origen'}:{' '}
                               {balance.originDate
                                 ? formatIsoDate(balance.originDate)
@@ -5501,7 +5501,7 @@ freezingOriginLedger.length > 0 ? (
                                       event.target.value,
                                     )
                                   }
-                                  className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-amber-500/30 dark:bg-[#07141F] dark:text-[#F3F8FB]"
+                                  className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-amber-500/30 dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong"
                                 >
                                   <option value="">Seleccionar producto…</option>
                                   {catalogItems
@@ -5525,13 +5525,13 @@ freezingOriginLedger.length > 0 ? (
                         ) : null}
 
                         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
-                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                               {isFreezing
                                 ? 'Saldo disponible del origen'
                                 : 'Disponible'}
                             </p>
-                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
                               {formatCentiKg(balance.availableKg100)}
                             </p>
                           </div>
@@ -5558,24 +5558,24 @@ freezingOriginLedger.length > 0 ? (
                             }
                           />
 
-                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
-                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                               {isFreezing ? 'Total utilizado' : 'Total procesado'}
                             </p>
-                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-[#F3F8FB]">
+                            <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
                               {formatCentiKg(position.processedKg100)}
                             </p>
                           </div>
 
-                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
-                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-[#7F9BAD]">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
+                            <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
                               {isFreezing ? 'Saldo restante' : 'Pendiente'}
                             </p>
                             <p
                               className={`number-tabular mt-1 text-sm font-extrabold ${
                                 position.overusedKg100 > 0
                                   ? 'text-rose-700 dark:text-rose-300'
-                                  : 'text-slate-900 dark:text-[#F3F8FB]'
+                                  : 'text-slate-900 dark:text-ui-text-dark-strong'
                               }`}
                             >
                               {position.overusedKg100 > 0
@@ -5586,7 +5586,7 @@ freezingOriginLedger.length > 0 ? (
                             </p>
                           </div>
 
-                          <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 dark:border-[#2B5268] dark:bg-[#0D2534]">
+                          <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
                             <StatusBadge
                               tone={
                                 requiresProductDistribution ||
@@ -6020,24 +6020,24 @@ freezingOriginLedger.length > 0 ? (
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="yield-warning-title"
-                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#203E50] dark:bg-[#0D2534]"
+                className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-ui-line-dark-grid dark:bg-ui-surface-dark"
               >
                 {/* Encabezado */}
-                <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-[#203E50]">
+                <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-ui-line-dark-grid">
                   <div className="flex items-start gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-[#FFD166]">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-ui-amber-text-dark">
                       <AlertTriangle className="size-4" aria-hidden="true" />
                     </span>
         
                     <div className="min-w-0">
                       <h2
                         id="yield-warning-title"
-                        className="text-base font-bold text-slate-950 dark:text-[#F3F8FB]"
+                        className="text-base font-bold text-slate-950 dark:text-ui-text-dark-strong"
                       >
                         Cerrar jornada
                       </h2>
         
-                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-[#A5BED0]">
+                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-ui-text-dark-soft">
                         Después del cierre, esta jornada quedará en solo lectura.
                       </p>
                     </div>
@@ -6046,7 +6046,7 @@ freezingOriginLedger.length > 0 ? (
         
                 {/* Contenido */}
                 <div className="px-5 py-4 sm:px-6">
-                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3 dark:border-[#203E50] dark:bg-[#07141F]/70">
+                  <dl className="grid gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/70">
                     {(
   isFreezing
     ? [
@@ -6121,11 +6121,11 @@ freezingOriginLedger.length > 0 ? (
       ]
 ).map(([label, value]) => (
                       <div key={label} className="min-w-0">
-                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-[#7F9BAD]">
+                        <dt className="text-[0.625rem] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-ui-text-soft">
                           {label}
                         </dt>
                     
-                        <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-[#F3F8FB]">
+                        <dd className="number-tabular mt-1 text-sm font-bold text-slate-950 dark:text-ui-text-dark-strong">
                           {value}
                         </dd>
                       </div>
@@ -6135,11 +6135,11 @@ freezingOriginLedger.length > 0 ? (
                   {closureValidation.warnings.length > 0 ? (
                     <div className="mt-5">
                       <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-[#A5BED0]">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-600 dark:text-ui-text-dark-soft">
                           Advertencias antes del cierre
                         </p>
                   
-                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.625rem] font-extrabold text-amber-800 dark:border-[#8A6A1F] dark:bg-[#2A2414] dark:text-[#FFD166]">
+                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.625rem] font-extrabold text-amber-800 dark:border-ui-amber-border-dark-soft dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark">
                           {closureValidation.warnings.length}{' '}
                           {closureValidation.warnings.length === 1
                             ? 'advertencia'
@@ -6147,7 +6147,7 @@ freezingOriginLedger.length > 0 ? (
                         </span>
                       </div>
                           
-                      <div className="overflow-hidden rounded-xl border border-amber-300 bg-amber-50 dark:border-[#72581D] dark:bg-[#211D12]">
+                      <div className="overflow-hidden rounded-xl border border-amber-300 bg-amber-50 dark:border-ui-amber-border-dark-deep dark:bg-ui-amber-surface-dark-deep">
                         {closureValidation.warnings.map((warning, index) => (
                           <div
                             key={`${warning.code}-${warning.familyKey ?? warning.productId ?? 'GENERAL'}`}
@@ -6158,12 +6158,12 @@ freezingOriginLedger.length > 0 ? (
                             }`}
                           >
                             <AlertTriangle
-                              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-[#FFD166]"
+                              className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-ui-amber-text-dark"
                               aria-hidden="true"
                             />
 
                             <div className="min-w-0">
-                              <p className="text-xs font-extrabold text-amber-900 dark:text-[#FFD166]">
+                              <p className="text-xs font-extrabold text-amber-900 dark:text-ui-amber-text-dark">
                                 {warning.code === 'FREEZING_TRACEABILITY_DIFFERENCE'
   ? 'Diferencia de trazabilidad'
   : warning.code ===
@@ -6176,7 +6176,7 @@ freezingOriginLedger.length > 0 ? (
         : 'Advertencia operativa'}
                               </p>
                                 
-                              <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-[#E3EDF3]">
+                              <p className="mt-1 text-xs leading-5 text-slate-700 dark:text-ui-text-dark-subtle">
                                 {warning.message}
                               </p>
                             </div>
@@ -6188,7 +6188,7 @@ freezingOriginLedger.length > 0 ? (
                 </div>
                 
                 {/* Botones */}
-                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-[#203E50] dark:bg-[#0A1A27]">
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-deep">
                   <button
   type="button"
   onClick={() => {
@@ -6202,10 +6202,10 @@ freezingOriginLedger.length > 0 ? (
     transition
     hover:bg-slate-100 hover:text-slate-950
 
-    dark:border-[#2B5268]
+    dark:border-ui-line-dark
     dark:bg-transparent
-    dark:text-[#C3D2DC]
-    dark:hover:bg-[#123247]
+    dark:text-ui-text-dark-pale
+    dark:hover:bg-ui-surface-dark-hover-strong
     dark:hover:text-white
   "
 >
@@ -6246,13 +6246,13 @@ freezingOriginLedger.length > 0 ? (
           )
         : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-[#2b5268] dark:bg-[#0a1a27] xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-ui-line-dark dark:bg-ui-surface-dark-deep xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
         <div className="mx-auto flex w-full max-w-[92.5rem] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6 xl:h-full xl:px-7 2xl:px-8">
           <div className="flex items-center gap-2" role="status" aria-live="polite">
             {canClose ? <CheckCircle2 className="size-5 text-emerald-600" aria-hidden="true" /> : <AlertTriangle className="size-5 text-amber-600" aria-hidden="true" />}
             <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-[#f3f8fb]">{footerStatus.title}</p>
-              <p className="text-[0.6875rem] text-slate-500 dark:text-[#a5bed0]">{footerStatus.description}</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">{footerStatus.title}</p>
+              <p className="text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">{footerStatus.description}</p>
             </div>
           </div>
           <div className="flex gap-2">

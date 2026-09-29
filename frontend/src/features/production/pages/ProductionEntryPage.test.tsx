@@ -523,8 +523,8 @@ describe('capture product status labels', () => {
       screen.getByText('Puedes guardar un borrador válido y continuar después.'),
     ).toBeInTheDocument()
     expect(actionBar).toHaveClass(
-      'dark:border-[#2b5268]',
-      'dark:bg-[#0a1a27]',
+      'dark:border-ui-line-dark',
+      'dark:bg-ui-surface-dark-deep',
     )
     expect(page).toHaveClass(
       'pb-[calc(var(--entry-action-bar-height)+1rem)]',
