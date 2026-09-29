@@ -1,5 +1,6 @@
-import { ChangeEvent, useState } from 'react'
-import { AlertTriangle, Database, Download, ShieldCheck, Upload } from 'lucide-react'
+import { ChangeEvent, DragEvent, useState } from 'react'
+import { AlertTriangle, Database, Download, RotateCcw, ShieldCheck, Upload } from 'lucide-react'
+import { Modal } from '../../../components/ui/Modal'
 import {
   readStorageQuarantine,
   STORAGE_QUARANTINE_REASON_LABELS,
@@ -26,13 +27,6 @@ export function DataBackupsPage() {
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
-
-  const usedBytes = Object.keys(localStorage).reduce((acc, key) => {
-    return acc + (localStorage.getItem(key)?.length || 0) * 2
-  }, 0)
-  const maxEstimatedBytes = 5 * 1024 * 1024 // 5 MB
-  const usagePercentage = Math.min(100, Math.round((usedBytes / maxEstimatedBytes) * 100))
-  const usedKb = (usedBytes / 1024).toFixed(1)
 
   const usedBytes = Object.keys(localStorage).reduce((acc, key) => {
     return acc + (localStorage.getItem(key)?.length || 0) * 2
