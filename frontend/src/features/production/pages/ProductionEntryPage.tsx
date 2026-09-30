@@ -6,7 +6,6 @@ import {
   FileSpreadsheet,
   Plus,
   Save,
-  Search,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -26,6 +25,7 @@ import {
 } from '../components/ClosingBalanceYieldControl'
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { ProcessSelector } from '../components/ProcessSelector'
+import { ProductPicker } from '../components/ProductPicker'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -51,7 +51,6 @@ import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
 import { buildFreezingOriginLedger } from '../capture/freezingOriginLedger'
 import {
   CAPTURE_CATALOG_ITEMS,
-  filterCaptureCatalogItems,
   PRODUCTION_CATALOG_ITEMS,
   type ProductionCatalogItem,
 } from '../capture/productionCatalog'
@@ -526,12 +525,8 @@ export function ProductionEntryPage() {
   )
   const [pendingProcessChange, setPendingProcessChange] =
     useState<ProductionProcess | null>(null)
-  const [productSearch, setProductSearch] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState('')
   const manualProductSearchInputRef = useRef<HTMLInputElement>(null)
 
-  const [treatmentSearch, setTreatmentSearch] = useState('')
-  const [selectedTreatmentProductId, setSelectedTreatmentProductId] = useState('')
   const treatmentSearchInputRef = useRef<HTMLInputElement>(null)
   const [treatmentProductIds, setTreatmentProductIds] = 
     useState<Set<string>>(() => new Set() )
@@ -545,8 +540,6 @@ export function ProductionEntryPage() {
       return ids
     }, [draft.rows, treatmentProductIds])
 
-  const [tunnelSearch, setTunnelSearch] = useState('')
-  const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
   const tunnelSearchInputRef = useRef<HTMLInputElement>(null)
   const [tunnelProductIds, setTunnelProductIds] =
   useState<Set<string>>(() => new Set())
@@ -565,8 +558,6 @@ export function ProductionEntryPage() {
 
     return ids
   }, [draft.rows, tunnelProductIds])
-  const [closingSearch, setClosingSearch] = useState('')
-  const [selectedClosingProductId, setSelectedClosingProductId] = useState('')
   const closingSearchInputRef = useRef<HTMLInputElement>(null)
   const [closingProductIds, setClosingProductIds] = useState<Set<string>>(
     () =>
@@ -576,8 +567,6 @@ export function ProductionEntryPage() {
           .map((line) => line.productId) ?? [],
       ),
   )
-  const [selectedBalanceKey, setSelectedBalanceKey] = useState('')
-  const balanceSelectRef = useRef<HTMLSelectElement>(null)
   const [isFreezingOriginsOpen, setIsFreezingOriginsOpen] = useState(false)
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
   const [isBulkFreezingLinkConfirmationOpen, setIsBulkFreezingLinkConfirmationOpen] = useState(false)
@@ -958,9 +947,9 @@ const freezingCurrentOriginPositions =
     )
   }
 
-  const filteredCatalogItems = useMemo(
+  const reportCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(productSearch, catalogItems)
+      catalogItems
         .filter(
           (product) =>
             !isTreatmentOnlyProduct(product) &&
@@ -979,39 +968,37 @@ const freezingCurrentOriginPositions =
       draft.rows,
       freezingAvailabilityByProduct,
       isFreezing,
-      productSearch,
     ],
   )
   const treatmentCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(treatmentSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) =>
           !effectiveTreatmentProductIds.has(product.productId),
       ),
     [
       catalogItems,
       effectiveTreatmentProductIds,
-      treatmentSearch,
     ],
   )
   const tunnelCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(tunnelSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) =>
-          !effectiveTunnelProductIds.has(product.productId),
+          !effectiveTunnelProductIds.has(product.productId) &&
+          !isTreatmentOnlyProduct(product),
       ),
     [
       catalogItems,
       effectiveTunnelProductIds,
-      tunnelSearch,
     ],
   )
   const closingCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(closingSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) => !closingProductIds.has(product.productId),
       ),
-    [catalogItems, closingProductIds, closingSearch],
+    [catalogItems, closingProductIds],
   )
   const closingRows = useMemo(
     () =>
@@ -1072,37 +1059,6 @@ const freezingCurrentOriginPositions =
     isFreezing,
     subsequentBalanceLots,
   ])
-  const availableFreezingPreviousOriginBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate >=
-                freezingAutomaticOriginStartDate &&
-              balance.originDate <
-                draft.date,
-          )
-        : [],
-    [
-      availableBalances,
-      draft.date,
-      freezingAutomaticOriginStartDate,
-      isFreezing,
-    ],
-  )
-
-const availableFreezingCurrentOriginBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate === draft.date,
-          )
-        : [],
-    [availableBalances, draft.date, isFreezing],
-  )
   const totalReportedKg100 = sumKg100([
     buildResult.calculation.day.declaredReportedKg100,
     buildResult.calculation.night.declaredReportedKg100,
@@ -1112,23 +1068,6 @@ const availableFreezingCurrentOriginBalances =
     freezingPreviousOriginPositions.map(
       (position) => position.pendingKg100,
     ),
-  )
-
-const availableFreezingHistoricalBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate <
-              freezingAutomaticOriginStartDate,
-          )
-        : [],
-    [
-      availableBalances,
-      freezingAutomaticOriginStartDate,
-      isFreezing,
-    ],
   )
 
 const freezingCurrentOriginAvailableKg100 =
@@ -1482,9 +1421,6 @@ const freezingOriginLedgerSummary =
     processDraftsRef.current[process] = nextDraft
     setMode(processModesRef.current[process] ?? 'MANUAL')
     setDraft(nextDraft)
-    setProductSearch('')
-    setSelectedProductId('')
-    setSelectedBalanceKey('')
     setExcelPreview(null)
     setFreezingExcelPreview(null)
     setFileName('')
@@ -1576,17 +1512,15 @@ const freezingOriginLedgerSummary =
     setTunnelToggleError('')
   }
 
-  const addSelectedProduct = () => {
-    if (!selectedProductId) return
-    if (draft.rows.some((row) => row.product.productId === selectedProductId)) {
+  const addReportProduct = (productId: string) => {
+    if (!productId) return
+    if (draft.rows.some((row) => row.product.productId === productId)) {
       setSaveError('Ese producto ya está agregado a la jornada.')
       return
     }
-    const row = createRow(selectedProductId, draft.rows.length)
+    const row = createRow(productId, draft.rows.length)
     if (!row) return
     updateDraft('rows', [...draft.rows, row])
-    setProductSearch('')
-    setSelectedProductId('')
     setSaveError('')
     manualProductSearchInputRef.current?.focus()
   }
@@ -1610,13 +1544,10 @@ const freezingOriginLedgerSummary =
     setSaveError('')
   }
 
-  const addClosingProduct = () => {
-    if (!selectedClosingProductId) return
-    const productId = selectedClosingProductId
+  const addClosingProduct = (productId: string) => {
+    if (!productId) return
     setClosingProductIds((current) => new Set(current).add(productId))
     addMovementProduct(productId, () => {
-      setClosingSearch('')
-      setSelectedClosingProductId('')
       closingSearchInputRef.current?.focus()
     })
   }
@@ -1735,13 +1666,8 @@ const freezingOriginLedgerSummary =
   setSaveError('')
 }
 
-  const addSelectedBalance = () => {
-  const position = availableBalances.find(
-    (balance) =>
-      `${balance.originDayId}|${balance.productId}` === selectedBalanceKey,
-  )
-
-  if (!position) return
+  const addSelectedBalance = (position: (typeof availableBalances)[number]) => {
+    if (!position) return
 
   const normalizedBalanceName = normalizeProductName(position.productName)
 
@@ -1837,9 +1763,7 @@ const freezingOriginLedgerSummary =
     }
   })
 
-  setSelectedBalanceKey('')
   setSaveError('')
-  balanceSelectRef.current?.focus()
 }
 
   const autoLinkFreezingProduct = (productId: string) => {
@@ -3879,67 +3803,26 @@ const applyFreezingExcelPreview =
         </div>
 
         {mode === 'MANUAL' ? (
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto
-              </span>
-              <span className="relative block">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft"
-                  aria-hidden="true"
-                />
-                <input
-                  ref={manualProductSearchInputRef}
-                  type="search"
-                  value={productSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setProductSearch(event.target.value)
-                    setSelectedProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto con movimiento
-              </span>
-              <select
-                value={selectedProductId}
-                onChange={(event) => setSelectedProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {filteredCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${filteredCatalogItems.length} producto${filteredCatalogItems.length === 1 ? '' : 's'} detectado${filteredCatalogItems.length === 1 ? '' : 's'}…`}
-                </option>
-                {filteredCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                    {isFreezing
-                      ? ` · Disponible: ${formatCentiKg(
-                          freezingAvailabilityByProduct.get(product.productId) ??
-                            kg100(0),
-                        )}`
-                      : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={addSelectedProduct}
-              disabled={!selectedProductId}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar
-            </button>
-          </div>
+          <ProductPicker
+            items={reportCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+              secondaryText: isFreezing
+                ? `Disponible: ${formatCentiKg(
+                    freezingAvailabilityByProduct.get(product.productId) ??
+                      kg100(0),
+                  )}`
+                : undefined,
+            })}
+            onAdd={(product) => addReportProduct(product.productId)}
+            label="Buscar producto"
+            placeholder="Ej.: aleta, manto o nuca"
+            buttonLabel="Agregar"
+            scopeKey={`${selectedProcess}:REPORTS`}
+            searchInputRef={manualProductSearchInputRef}
+          />
         ) : null}
 
         {draft.rows.length === 0 ? (
@@ -4259,78 +4142,30 @@ const applyFreezingExcelPreview =
             <MetricCard label="Túnel Noche" value={formatCentiKg(buildResult.calculation.tunnel.nightKg100)} />
             <MetricCard label="Total Túnel" value={formatCentiKg(buildResult.calculation.tunnel.totalKg100)} tone="brand" />
           </div>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto de Túnel
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={tunnelSearchInputRef}
-                  type="search"
-                  value={tunnelSearch}
-                  placeholder="Ej.: manto, nuca o anillas"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setTunnelSearch(event.target.value)
-                    setSelectedTunnelProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedTunnelProductId}
-                onChange={(event) => setSelectedTunnelProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {tunnelCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${tunnelCatalogItems.length} producto${
-                        tunnelCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        tunnelCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {tunnelCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedTunnelProductId}
-              onClick={() => {
-                const productId = selectedTunnelProductId
-
-                if (!productId) return
-
-                addMovementProduct(productId, () => {
-                  setTunnelProductIds((current) => {
-                    const next = new Set(current)
-                    next.add(productId)
-                    return next
-                  })
-                
-                  setTunnelSearch('')
-                  setSelectedTunnelProductId('')
-                  tunnelSearchInputRef.current?.focus()
+          <ProductPicker
+            items={tunnelCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => {
+              addMovementProduct(product.productId, () => {
+                setTunnelProductIds((current) => {
+                  const next = new Set(current)
+                  next.add(product.productId)
+                  return next
                 })
-              }}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar a Túnel
-            </button>
-          </div>
+                tunnelSearchInputRef.current?.focus()
+              })
+            }}
+            label="Buscar producto de Túnel"
+            placeholder="Ej.: manto, nuca o anillas"
+            buttonLabel="Agregar a Túnel"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:TUNNEL`}
+            searchInputRef={tunnelSearchInputRef}
+          />
 
           {tunnelRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
@@ -4397,78 +4232,30 @@ const applyFreezingExcelPreview =
       >
         <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Registro de tratamiento</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto de tratamiento
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={treatmentSearchInputRef}
-                  type="search"
-                  value={treatmentSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setTreatmentSearch(event.target.value)
-                    setSelectedTreatmentProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedTreatmentProductId}
-                onChange={(event) => setSelectedTreatmentProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {treatmentCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${treatmentCatalogItems.length} producto${
-                        treatmentCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        treatmentCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {treatmentCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedTreatmentProductId}
-              onClick={() => {
-              const productId = selectedTreatmentProductId
-
-              if (!productId) return
-
-              addMovementProduct(productId, () => {
+          <ProductPicker
+            items={treatmentCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => {
+              addMovementProduct(product.productId, () => {
                 setTreatmentProductIds((current) => {
                   const next = new Set(current)
-                  next.add(productId)
+                  next.add(product.productId)
                   return next
                 })
-              
-                setTreatmentSearch('')
-                setSelectedTreatmentProductId('')
-                  treatmentSearchInputRef.current?.focus()
+                treatmentSearchInputRef.current?.focus()
               })
             }}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar tratamiento
-            </button>
-          </div>
+            label="Buscar producto de tratamiento"
+            placeholder="Ej.: aleta, manto o nuca"
+            buttonLabel="Agregar tratamiento"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:TREATMENT`}
+            searchInputRef={treatmentSearchInputRef}
+          />
 
           {treatmentRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
@@ -5216,116 +5003,41 @@ freezingOriginLedger.length > 0 ? (
 
         <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Consumo de saldos anteriores</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[1fr_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                {isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
-              </span>
-              <select
-                ref={balanceSelectRef}
-                value={selectedBalanceKey}
-                onChange={(event) => setSelectedBalanceKey(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark"
-              >
-                <option value="">
-                  {availableBalances.length === 0
-                    ? isFreezing
-                      ? 'No hay producto envasado pendiente de congelar'
-                      : 'No hay otros saldos pendientes disponibles'
-                    : 'Seleccionar jornada origen y producto…'}
-                </option>
-                {isFreezing ? (
-                  <>
-                    {availableFreezingPreviousOriginBalances.length >
-0 ? (
-                  <optgroup
-                    label={`JORNADAS ANTERIORES CON SALDO · ${availableFreezingPreviousOriginBalances.length}`}
-                  >
-                    {availableFreezingPreviousOriginBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(balance.originDate)} ·{' '}
-                          {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(balance.pendingKg100)}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-
-                {availableFreezingCurrentOriginBalances.length >
-                0 ? (
-                  <optgroup
-                    label={`JORNADA ACTUAL DE ENVASADO · ${availableFreezingCurrentOriginBalances.length}`}
-                  >
-                    {availableFreezingCurrentOriginBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(balance.originDate)} ·{' '}
-                          {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(balance.pendingKg100)}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-                {availableFreezingHistoricalBalances.length >
-                0 ? (
-                  <optgroup
-                    label={`HISTÓRICO · VINCULACIÓN MANUAL · ${availableFreezingHistoricalBalances.length}`}
-                  >
-                    {availableFreezingHistoricalBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(
-                            balance.originDate,
-                          )}{' '}
-                          · {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(
-                            balance.pendingKg100,
-                          )}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-                  </>
-                ) : (
-                  availableBalances.map((balance) => (
-                    <option
-                      key={`${balance.originDayId}|${balance.productId}`}
-                      value={`${balance.originDayId}|${balance.productId}`}
-                    >
-                      {formatIsoDate(balance.originDate)} · {balance.familyName} ·{' '}
-                      {balance.productName} ·{' '}
-                      {formatCentiKg(balance.pendingKg100)}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedBalanceKey}
-              onClick={addSelectedBalance}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {isFreezing ? 'Vincular origen' : 'Usar saldo'}
-            </button>
-          </div>
+          <ProductPicker
+            items={availableBalances}
+            getItemId={(balance) => `${balance.originDayId}|${balance.productId}`}
+            getItemLabel={(balance) =>
+              `${formatIsoDate(balance.originDate)} · ${balance.familyName} · ${balance.productName}`
+            }
+            getItemMeta={(balance) => ({
+              group: isFreezing
+                ? balance.originDate === draft.date
+                  ? 'JORNADA ACTUAL DE ENVASADO'
+                  : balance.originDate >= freezingAutomaticOriginStartDate &&
+                      balance.originDate < draft.date
+                    ? 'JORNADAS ANTERIORES CON SALDO'
+                    : 'HISTÓRICO · VINCULACIÓN MANUAL'
+                : balance.familyName,
+              secondaryText: formatCentiKg(balance.pendingKg100),
+            })}
+            onAdd={(balance) => addSelectedBalance(balance)}
+            label={isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
+            placeholder={
+              isFreezing
+                ? 'Buscar jornada origen o producto…'
+                : 'Buscar saldo pendiente…'
+            }
+            buttonLabel={isFreezing ? 'Vincular origen' : 'Usar saldo'}
+            disabled={!usesExternalAvailability && !reportsReconciled}
+            scopeKey={`${selectedProcess}:BALANCES`}
+            noResultsText={
+              availableBalances.length === 0
+                ? isFreezing
+                  ? 'No hay producto envasado pendiente de congelar'
+                  : 'No hay otros saldos pendientes disponibles'
+                : 'Sin saldos coincidentes'
+            }
+          />
 
           {draft.balanceUses.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500 dark:text-ui-text-dark-soft">
@@ -5671,62 +5383,22 @@ freezingOriginLedger.length > 0 ? (
       >
         <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Saldo generado al cierre</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto para saldo
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={closingSearchInputRef}
-                  type="search"
-                  value={closingSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setClosingSearch(event.target.value)
-                    setSelectedClosingProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedClosingProductId}
-                onChange={(event) => setSelectedClosingProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {closingCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${closingCatalogItems.length} producto${
-                        closingCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        closingCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {closingCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedClosingProductId}
-              onClick={addClosingProduct}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar saldo
-            </button>
-          </div>
+          <ProductPicker
+            items={closingCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => addClosingProduct(product.productId)}
+            label="Buscar producto para saldo"
+            placeholder="Ej.: aleta, manto o nuca"
+            buttonLabel="Agregar saldo"
+            buttonClassName="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:CLOSING`}
+            searchInputRef={closingSearchInputRef}
+          />
 
           <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4 lg:p-4">
             {closingRows.length === 0 ? (

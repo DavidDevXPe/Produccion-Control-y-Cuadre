@@ -47,15 +47,13 @@ function completeShiftReport({
   fireEvent.change(screen.getByLabelText(/^Reporte Noche/), {
     target: { value: nightReport },
   })
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar producto' }), {
+  const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, {
     target: { value: productSearch },
   })
-  const productSelect = screen.getByRole('combobox', {
-    name: 'Producto con movimiento',
-  })
-  const product = within(productSelect).getAllByRole('option')[1] as HTMLOptionElement
-  fireEvent.change(productSelect, { target: { value: product.value } })
-  fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
+  const productOption = screen.getAllByRole('option')[0]!
+  fireEvent.click(productOption)
 
   const captureInputs = within(
     screen.getByRole('region', { name: 'Captura por producto y turno' }),
@@ -68,20 +66,13 @@ function addClosingBalanceProduct(query: string) {
   const closingSection = screen
     .getByRole('heading', { name: 'Saldo generado al cierre' })
     .closest('section')!
-  fireEvent.change(
-    within(closingSection).getByRole('searchbox', {
-      name: 'Buscar producto para saldo',
-    }),
-    { target: { value: query } },
-  )
-  const productSelect = within(closingSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(closingSection).getByRole('combobox', {
+    name: 'Buscar producto para saldo',
   })
-  const product = within(productSelect).getAllByRole(
-    'option',
-  )[1] as HTMLOptionElement
-  fireEvent.change(productSelect, { target: { value: product.value } })
-  fireEvent.click(within(closingSection).getByRole('button', { name: 'Agregar saldo' }))
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
+  const productOption = within(closingSection).getAllByRole('option')[0]!
+  fireEvent.click(productOption)
 }
 
 function addTunnelProduct(query: string) {
@@ -89,40 +80,15 @@ function addTunnelProduct(query: string) {
     .getByRole('heading', { name: 'Túnel' })
     .closest('section')!
 
-  fireEvent.change(
-    within(tunnelSection).getByRole('searchbox', {
-      name: 'Buscar producto de Túnel',
-    }),
-    {
-      target: { value: query },
-    },
-  )
-
-  const productSelect = within(tunnelSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(tunnelSection).getByRole('combobox', {
+    name: 'Buscar producto de Túnel',
   })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
 
-  const productOptions = within(productSelect)
-    .getAllByRole('option')
-    .filter((option) => (option as HTMLOptionElement).value !== '')
-
+  const productOptions = within(tunnelSection).getAllByRole('option')
   expect(productOptions.length).toBeGreaterThan(0)
-
-  const product = productOptions[0] as HTMLOptionElement
-
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  expect(productSelect).toHaveValue(product.value)
-
-  const addButton = within(tunnelSection).getByRole('button', {
-    name: 'Agregar a Túnel',
-  })
-
-  expect(addButton).toBeEnabled()
-
-  fireEvent.click(addButton)
+  fireEvent.click(productOptions[0]!)
 
   return tunnelSection
 }
@@ -136,32 +102,16 @@ function addTreatmentProduct(query: string) {
 
   expect(treatmentSection).not.toBeNull()
 
-  fireEvent.change(
-    within(treatmentSection).getByRole('searchbox', {
-      name: 'Buscar producto de tratamiento',
-    }),
-    {
-      target: { value: query },
-    },
-  )
-
-  const productSelect = within(treatmentSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(treatmentSection).getByRole('combobox', {
+    name: 'Buscar producto de tratamiento',
   })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
 
-  const product = within(productSelect).getAllByRole(
-    'option',
-  )[1] as HTMLOptionElement
+  const productOptions = within(treatmentSection).getAllByRole('option')
+  expect(productOptions.length).toBeGreaterThan(0)
+  fireEvent.click(productOptions[0]!)
 
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  fireEvent.click(
-    within(treatmentSection).getByRole('button', {
-      name: 'Agregar tratamiento',
-    }),
-  )
   return treatmentSection
 }
 
@@ -187,21 +137,17 @@ describe('ProductionEntryPage product selector', () => {
       </ProductionDataProvider>,
     )
 
-    fireEvent.change(
-      screen.getByRole('searchbox', { name: 'Buscar producto' }),
-      { target: { value: 'aleta' } },
-    )
+    const input = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'aleta' } })
 
-    const productSelect = screen.getByRole('combobox', {
-      name: 'Producto con movimiento',
-    })
-    const options = within(productSelect).getAllByRole('option').slice(1)
+    const options = screen.getAllByRole('option')
 
     expect(options.length).toBeGreaterThan(0)
     expect(
       options.every((option) => option.textContent?.toLowerCase().includes('aleta')),
     ).toBe(true)
-    expect(within(productSelect).queryByText(/manto japonés/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/manto japonés/i)).not.toBeInTheDocument()
   })
 
   it('adapts capture to Freezing and prioritizes traceable Packing availability', () => {
@@ -295,59 +241,36 @@ expect(
     expect(screen.queryByLabelText('Existe producto para Túnel')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Balance MP Tubo' })).toBeNull()
 
-    fireEvent.change(
-      screen.getByRole('searchbox', { name: 'Buscar producto' }),
-      { target: { value: 'aleta 1000 2000' } },
-    )
-    const selector = screen.getByRole('combobox', {
-      name: 'Producto con movimiento',
-    })
-    expect(within(selector).getAllByRole('option')[1]).toHaveTextContent(
+    const input = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'aleta 1000 2000' } })
+
+    const options = screen.getAllByRole('option')
+    expect(options[0]).toHaveTextContent(
       /Disponible:/,
     )
   })
 
   it('shows the freezing traceability summary for reported product movement', () => {
-  renderNewEntry('/jornadas/nueva?process=FREEZING')
+    renderNewEntry('/jornadas/nueva?process=FREEZING')
 
-  fireEvent.change(
-    screen.getByLabelText(/^Reporte Día/),
-    {
-      target: { value: '10' },
-    },
-  )
+    fireEvent.change(
+      screen.getByLabelText(/^Reporte Día/),
+      {
+        target: { value: '10' },
+      },
+    )
 
-  fireEvent.change(
-    screen.getByRole('searchbox', {
+    const productInput = screen.getByRole('combobox', {
       name: 'Buscar producto',
-    }),
-    {
+    })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, {
       target: { value: 'aleta 1000 2000' },
-    },
-  )
+    })
 
-  const productSelect = screen.getByRole('combobox', {
-    name: 'Producto con movimiento',
-  })
-
-  const product = within(productSelect)
-    .getAllByRole('option')
-    .filter(
-      (option) =>
-        (option as HTMLOptionElement).value !== '',
-    )[0] as HTMLOptionElement
-
-  expect(product).toBeDefined()
-
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  fireEvent.click(
-    screen.getByRole('button', {
-      name: 'Agregar',
-    }),
-  )
+    const productOption = screen.getAllByRole('option')[0]!
+    fireEvent.click(productOption)
 
   const captureRegion = screen.getByRole('region', {
     name: 'Captura por producto y turno',
@@ -574,7 +497,7 @@ describe('capture product status labels', () => {
 
     expect(screen.getByText('DISPONIBLE')).toBeInTheDocument()
     expect(
-      screen.getByRole('searchbox', { name: 'Buscar producto de tratamiento' }),
+      screen.getByRole('combobox', { name: 'Buscar producto de tratamiento' }),
     ).not.toBeDisabled()
   })
 
@@ -863,7 +786,7 @@ describe('capture product status labels', () => {
       screen.getByRole('heading', { name: 'Esta semana es de solo lectura' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('searchbox', { name: 'Buscar producto' }),
+      screen.queryByRole('combobox', { name: 'Buscar producto' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Nueva jornada' }),
@@ -918,21 +841,14 @@ describe('capture product status labels', () => {
     const balancesSection = screen
       .getByRole('heading', { name: 'Saldos anteriores procesados' })
       .closest('section')!
-    const balanceSelect = within(balancesSection).getByRole('combobox', {
+    const balanceInput = within(balancesSection).getByRole('combobox', {
       name: 'Saldo pendiente disponible',
     })
-    const balanceOption = within(balanceSelect).getAllByRole(
+    fireEvent.focus(balanceInput)
+    const balanceOption = within(balancesSection).getAllByRole(
       'option',
-    )[1] as HTMLOptionElement
-    fireEvent.change(balanceSelect, {
-      target: { value: balanceOption.value },
-    })
-
-    fireEvent.click(
-      within(balancesSection).getByRole('button', {
-        name: 'Usar saldo',
-      }),
-    )
+    )[0]!
+    fireEvent.click(balanceOption)
 
     // El primer saldo disponible es una Aleta histórica genérica.
     // Ahora debe reclasificarse antes de consumirse.
