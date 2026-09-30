@@ -207,7 +207,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
             }
           }}
           onKeyDown={handleKeyDown}
-          className={`w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-border-soft dark:bg-surface-raised dark:text-slate-100 dark:placeholder:text-slate-500 ${inputClassName}`}
+          className={`w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:text-ui-text-dark-strong dark:placeholder:text-ui-text-dark-soft [color-scheme:light] dark:[color-scheme:dark] ${inputClassName}`}
         />
         <button
           type="button"
@@ -221,7 +221,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
               setIsOpen(false)
             }
           }}
-          className="absolute right-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+          className="absolute right-2 text-slate-500 hover:text-slate-700 dark:text-ui-text-dark-soft dark:hover:text-ui-text-dark-strong"
           aria-label="Abrir opciones"
         >
           <ChevronDown className="h-4 w-4" />
@@ -235,17 +235,17 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
           role="listbox"
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5 dark:border-border-soft dark:bg-surface-raised dark:ring-white/10"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
         >
           {flatSelectable.length === 0 ? (
-            <div className="px-3 py-2 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div className="px-3 py-2 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">
               {noResultsText}
             </div>
           ) : (
             <>
               {displayItems.recents.length > 0 && (
-                <div className="border-b border-slate-100 pb-1 dark:border-border-soft">
-                  <div className="px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                <div className="border-b border-slate-200 pb-1 dark:border-ui-line-dark-grid">
+                  <div className="px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider text-brand-800 dark:text-ui-text-dark-brand">
                     {recentSectionTitle}
                   </div>
                   {displayItems.recents.map((opt) => {
@@ -267,7 +267,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
               {displayItems.groups.map((group) => (
                 <div key={`group-${group.name}`} className="py-1">
                   {group.name && (
-                    <div className="px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                    <div className="px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider text-brand-900 dark:text-ui-accent-cyan">
                       {group.name}
                     </div>
                   )}

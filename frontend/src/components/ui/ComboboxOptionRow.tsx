@@ -22,15 +22,15 @@ export function ComboboxOptionRow({
       aria-selected={isSelected}
       data-index={index}
       onClick={() => onSelect(opt)}
-      className={`flex cursor-pointer items-center justify-between px-3 py-1.5 text-sm ${
+      className={`flex cursor-pointer items-center justify-between px-3 py-1.5 text-sm transition-colors ${
         isSelected
-          ? 'bg-brand-50 text-brand-900 dark:bg-brand-900/30 dark:text-brand-100'
-          : 'text-slate-800 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-surface'
+          ? 'bg-brand-100 text-brand-950 font-bold dark:bg-ui-surface-dark-accent dark:text-ui-text-dark-strong'
+          : 'text-slate-900 hover:bg-slate-100 dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark'
       }`}
     >
       <span className="font-medium">{opt.label}</span>
       {opt.secondaryText && (
-        <span className="text-xs text-slate-400 dark:text-slate-400">{opt.secondaryText}</span>
+        <span className="text-xs text-slate-600 dark:text-ui-text-dark-soft">{opt.secondaryText}</span>
       )}
     </div>
   )
