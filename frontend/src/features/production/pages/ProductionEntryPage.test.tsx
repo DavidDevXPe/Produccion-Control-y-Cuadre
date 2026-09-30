@@ -57,7 +57,7 @@ function completeShiftReport({
 
   const captureInputs = within(
     screen.getByRole('region', { name: 'Captura por producto y turno' }),
-  ).getAllByRole('spinbutton')
+  ).getAllByRole('textbox')
   fireEvent.change(captureInputs[0]!, { target: { value: dayReport } })
   fireEvent.change(captureInputs[1]!, { target: { value: nightReport } })
 }
@@ -277,7 +277,7 @@ expect(
   })
 
   const captureInputs =
-    within(captureRegion).getAllByRole('spinbutton')
+    within(captureRegion).getAllByRole('textbox')
 
   fireEvent.change(captureInputs[0]!, {
     target: { value: '10' },
@@ -375,8 +375,8 @@ describe('capture product status labels', () => {
       within(packingDialog).getByRole('button', { name: 'Cambiar proceso' }),
     )
 
-    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue(123)
-    expect(screen.getByLabelText(/^Reporte Día/)).toHaveValue(null)
+    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue('123')
+    expect(screen.getByLabelText(/^Reporte Día/)).toHaveValue('')
   })
 
   it('shows the Tube MP balance and distinguishes overall utilization', () => {
@@ -461,7 +461,7 @@ describe('capture product status labels', () => {
 
     const captureInputs = within(
       screen.getByRole('region', { name: 'Captura por producto y turno' }),
-    ).getAllByRole('spinbutton')
+    ).getAllByRole('textbox')
     fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
 
     expect(
@@ -552,16 +552,16 @@ describe('capture product status labels', () => {
     addClosingBalanceProduct('recorte crudo manto')
 
     const closingInput = screen.getByLabelText(/^Saldo al cierre/)
-    expect(closingInput).toHaveValue(0)
+    expect(closingInput).toHaveValue('0')
 
     fireEvent.focus(closingInput)
-    expect(closingInput).toHaveValue(null)
+    expect(closingInput).toHaveValue('')
     fireEvent.blur(closingInput)
-    expect(closingInput).toHaveValue(0)
+    expect(closingInput).toHaveValue('0')
 
     fireEvent.change(closingInput, { target: { value: '2.5' } })
     fireEvent.focus(closingInput)
-    expect(closingInput).toHaveValue(2.5)
+    expect(closingInput).toHaveValue('2.5')
   })
 
   it('updates Tunnel Day, Night and total reactively after reports reconcile', () => {
@@ -609,7 +609,7 @@ describe('capture product status labels', () => {
     fireEvent.click(tunnelCheckbox)
 
     expect(tunnelCheckbox).toBeChecked()
-    expect(dayInput).toHaveValue(5)
+    expect(dayInput).toHaveValue('5')
     expect(
       screen.getByText(
         'Existen productos de Túnel registrados. Elimina estos movimientos antes de desactivar la opción.',
@@ -639,7 +639,7 @@ describe('capture product status labels', () => {
 
     expect(screen.getByLabelText('Existe producto para Túnel')).toBeChecked()
     const reopenedTunnel = screen.getByRole('heading', { name: 'Túnel' }).closest('section')!
-    expect(within(reopenedTunnel).getByLabelText(/^Kg Día/)).toHaveValue(5)
+    expect(within(reopenedTunnel).getByLabelText(/^Kg Día/)).toHaveValue('5')
   })
 
   it('preserves later-stage values when an earlier report becomes unbalanced', () => {
@@ -675,7 +675,7 @@ describe('capture product status labels', () => {
     screen.getByRole('region', {
       name: 'Captura por producto y turno',
     }),
-  ).getAllByRole('spinbutton')[0]!
+  ).getAllByRole('textbox')[0]!
 
   // Rompemos temporalmente el cuadre.
   fireEvent.change(reportInput, {
@@ -683,7 +683,7 @@ describe('capture product status labels', () => {
   })
 
   // El valor de Tratamiento debe conservarse.
-  expect(treatmentInput).toHaveValue(1.2)
+  expect(treatmentInput).toHaveValue('1.2')
 
   // Mientras los turnos no cuadren, Tratamiento queda bloqueado.
   expect(treatmentInput).toBeDisabled()
@@ -701,7 +701,7 @@ describe('capture product status labels', () => {
     within(treatmentSection).getByLabelText(/^Kg tratamiento/)
 
   // El valor no debe haberse perdido.
-  expect(restoredTreatmentInput).toHaveValue(1.2)
+  expect(restoredTreatmentInput).toHaveValue('1.2')
 
   // Y Tratamiento vuelve a quedar disponible.
   expect(restoredTreatmentInput).not.toBeDisabled()
@@ -818,7 +818,7 @@ describe('capture product status labels', () => {
     )
     expect(discharge).not.toBeChecked()
     expect(screen.getByLabelText(/^Materia prima/)).toBeDisabled()
-    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue(0)
+    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue('0')
     expect(screen.queryByRole('heading', { name: 'Tratamiento' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Saldo generado al cierre' })).not.toBeInTheDocument()
     expect(screen.getByText('NO APLICA')).toBeInTheDocument()
@@ -875,8 +875,8 @@ describe('capture product status labels', () => {
     const processedNightInput =
       within(balancesSection).getByLabelText(/^Procesado Noche/)
 
-    expect(processedDayInput).toHaveValue(0)
-    expect(processedNightInput).toHaveValue(0)
+    expect(processedDayInput).toHaveValue('0')
+    expect(processedNightInput).toHaveValue('0')
 
     const processedKg = '100'
 

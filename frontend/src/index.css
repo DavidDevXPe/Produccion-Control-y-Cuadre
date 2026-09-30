@@ -342,6 +342,17 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Ocultar flechitas (spinners) en inputs numéricos en toda la app */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* Form selects, options and optgroups high-contrast theme styles */
 select {
   color-scheme: light;

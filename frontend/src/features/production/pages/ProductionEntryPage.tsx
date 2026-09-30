@@ -26,6 +26,7 @@ import {
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { ProcessSelector } from '../components/ProcessSelector'
 import { ProductPicker } from '../components/ProductPicker'
+import { QuantityInput } from '../components/QuantityInput'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -116,74 +117,6 @@ interface FreezingExcelPreview
   status:
     | 'EXCEL RECONCILIADO'
     | 'EXCEL REQUIERE REVISIÓN'
-}
-
-interface QuantityInputProps {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void
-  readOnly?: boolean
-  disabled?: boolean
-  className?: string
-}
-
-function QuantityInput({
-  label,
-  value,
-  onChange,
-  onKeyDown,
-  readOnly = false,
-  disabled = false,
-  className = '',
-}: QuantityInputProps) {
-  const clearedZeroOnFocus = useRef(false)
-
-  return (
-    <label className={`block ${className}`}>
-      {label ? (
-        <span className="mb-1.5 block text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-          {label}
-        </span>
-      ) : null}
-      <span className="relative block">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          value={value}
-          readOnly={readOnly}
-          disabled={disabled}
-          onFocus={() => {
-            if (
-              !readOnly &&
-              !disabled &&
-              value.trim() !== '' &&
-              Number(value.replace(',', '.')) === 0
-            ) {
-              clearedZeroOnFocus.current = true
-              onChange('')
-            } else {
-              clearedZeroOnFocus.current = false
-            }
-          }}
-          onBlur={() => {
-            if (clearedZeroOnFocus.current && value.trim() === '') {
-              onChange('0')
-            }
-            clearedZeroOnFocus.current = false
-          }}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={onKeyDown}
-          className="number-tabular h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-9 text-right text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 read-only:cursor-default read-only:bg-slate-100 read-only:text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-        />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] font-bold text-slate-400">
-          kg
-        </span>
-      </span>
-    </label>
-  )
 }
 
 function createRow(productId: string, index: number): ProductionCaptureRow | null {
@@ -3939,13 +3872,13 @@ const applyFreezingExcelPreview =
                           onKeyDown={(e) => {
                             if (e.key === 'ArrowDown' || e.key === 'Enter') {
                               e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
                               const idx = inputs.indexOf(e.currentTarget)
                               const targetInput = inputs[idx + 2]
                               if (idx !== -1 && targetInput) targetInput.focus()
                             } else if (e.key === 'ArrowUp') {
                               e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
                               const idx = inputs.indexOf(e.currentTarget)
                               const targetInput = inputs[idx - 2]
                               if (idx !== -1 && targetInput) targetInput.focus()
@@ -3962,13 +3895,13 @@ const applyFreezingExcelPreview =
                           onKeyDown={(e) => {
                             if (e.key === 'ArrowDown' || e.key === 'Enter') {
                               e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
                               const idx = inputs.indexOf(e.currentTarget)
                               const targetInput = inputs[idx + 2]
                               if (idx !== -1 && targetInput) targetInput.focus()
                             } else if (e.key === 'ArrowUp') {
                               e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
+                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
                               const idx = inputs.indexOf(e.currentTarget)
                               const targetInput = inputs[idx - 2]
                               if (idx !== -1 && targetInput) targetInput.focus()
