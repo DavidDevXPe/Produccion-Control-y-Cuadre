@@ -27,6 +27,7 @@ import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { ProcessSelector } from '../components/ProcessSelector'
 import { ProductPicker } from '../components/ProductPicker'
 import { QuantityInput } from '../components/QuantityInput'
+import { useGridKeyboardNavigation } from '../hooks/useGridKeyboardNavigation'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -597,6 +598,15 @@ export function ProductionEntryPage() {
     ),
   [buildResult],
 )
+  const orderedProductIds = useMemo(
+    () => reportFamilySubtotals.flatMap((s) => s.productIds),
+    [reportFamilySubtotals],
+  )
+  const { getGridCellProps: getCaptureCellProps } = useGridKeyboardNavigation({
+    totalRows: orderedProductIds.length,
+    columns: 2,
+    gridId: 'capture-grid',
+  })
   const closureValidation = useMemo(
     () =>
       validateProductionClosure(
@@ -956,6 +966,21 @@ const freezingCurrentOriginPositions =
       ),
     [draft.rows, effectiveTunnelProductIds],
   )
+  const { getGridCellProps: getTreatmentCellProps } = useGridKeyboardNavigation({
+    totalRows: treatmentRows.length,
+    columns: 1,
+    gridId: 'treatment-grid',
+  })
+  const { getGridCellProps: getTunnelCellProps } = useGridKeyboardNavigation({
+    totalRows: tunnelRows.length,
+    columns: 2,
+    gridId: 'tunnel-grid',
+  })
+  const { getGridCellProps: getBalancesCellProps } = useGridKeyboardNavigation({
+    totalRows: draft.balanceUses.length,
+    columns: 2,
+    gridId: 'balances-grid',
+  })
   const availableBalances = useMemo(() => {
     const selectedKeys = new Set(
       draft.balanceUses.map(
@@ -3857,6 +3882,7 @@ const applyFreezingExcelPreview =
                             ...packingProductStatus(totalKg100),
                             pendingToLinkKg100: kg100(0),
                           }
+                      const rowIndex = orderedProductIds.indexOf(productId)
                       return (
                     <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
                       <th className="sticky left-0 z-10 bg-white px-4 py-2.5">
@@ -3869,21 +3895,7 @@ const applyFreezingExcelPreview =
                           value={inferred ? String((calculated?.day.reportedKg100 ?? 0) / 100) : row.dayReportedKg}
                           readOnly={inferred}
                           onChange={(value) => updateRow(row.key, 'dayReportedKg', value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx + 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            } else if (e.key === 'ArrowUp') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx - 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            }
-                          }}
+                          {...getCaptureCellProps(rowIndex, 0)}
                         />
                       </td>
                       <td className="w-36 px-2 py-2">
@@ -3892,21 +3904,7 @@ const applyFreezingExcelPreview =
                           value={inferred ? String((calculated?.night.reportedKg100 ?? 0) / 100) : row.nightReportedKg}
                           readOnly={inferred}
                           onChange={(value) => updateRow(row.key, 'nightReportedKg', value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx + 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            } else if (e.key === 'ArrowUp') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[data-quantity-input="true"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx - 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            }
-                          }}
+                          {...getCaptureCellProps(rowIndex, 1)}
                         />
                       </td>
                       <td className="number-tabular px-3 py-2.5 text-right text-xs font-bold text-slate-800">
@@ -4106,7 +4104,7 @@ const applyFreezingExcelPreview =
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {tunnelRows.map((row) => {
+              {tunnelRows.map((row, tunnelIdx) => {
                 const tunnelTotalKg100 = sumKg100([
                   captureQuantityKg100(row.tunnelDayKg),
                   captureQuantityKg100(row.tunnelNightKg),
@@ -4130,12 +4128,14 @@ const applyFreezingExcelPreview =
                       value={row.tunnelDayKg}
                       disabled={!reportsReconciled}
                       onChange={(value) => updateRow(row.key, 'tunnelDayKg', value)}
+                      {...getTunnelCellProps(tunnelIdx, 0)}
                     />
                     <QuantityInput
                       label="Kg Noche"
                       value={row.tunnelNightKg}
                       disabled={!reportsReconciled}
                       onChange={(value) => updateRow(row.key, 'tunnelNightKg', value)}
+                      {...getTunnelCellProps(tunnelIdx, 1)}
                     />
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:min-h-10">
                       <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">Total</p>
@@ -4196,7 +4196,7 @@ const applyFreezingExcelPreview =
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {treatmentRows.map((row) => (
+              {treatmentRows.map((row, treatmentIdx) => (
             <div
               key={`treatment-${row.key}`}
               className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_10rem_2.5rem] sm:items-end sm:px-5"
@@ -4221,6 +4221,7 @@ const applyFreezingExcelPreview =
                 onChange={(value) =>
                   updateRow(row.key, 'treatmentKg', value)
                 }
+                {...getTreatmentCellProps(treatmentIdx, 0)}
               />
 
               <button
@@ -5074,7 +5075,7 @@ freezingOriginLedger.length > 0 ? (
 
               {shouldShowBalanceUseDetails ? (
                 <div className="divide-y divide-slate-100 dark:divide-ui-line-dark-grid">
-                  {draft.balanceUses.map((balance) => {
+                  {draft.balanceUses.map((balance, balanceIdx) => {
                     const position = captureBalancePosition(balance)
                     const requiresProductDistribution =
                       balance.requiresProductDistribution === true
@@ -5189,6 +5190,7 @@ freezingOriginLedger.length > 0 ? (
                             onChange={(value) =>
                               updateBalanceUse(balance.key, 'dayKg', value)
                             }
+                            {...getBalancesCellProps(balanceIdx, 0)}
                           />
 
                           <QuantityInput
@@ -5201,6 +5203,7 @@ freezingOriginLedger.length > 0 ? (
                             onChange={(value) =>
                               updateBalanceUse(balance.key, 'nightKg', value)
                             }
+                            {...getBalancesCellProps(balanceIdx, 1)}
                           />
 
                           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">

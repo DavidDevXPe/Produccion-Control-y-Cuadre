@@ -14,6 +14,10 @@ export interface QuantityInputProps {
   name?: string
   id?: string
   'data-testid'?: string
+  'data-grid-id'?: string
+  'data-grid-row'?: number
+  'data-grid-col'?: number
+  [key: `data-${string}`]: string | number | boolean | undefined
 }
 
 export function QuantityInput({
@@ -29,6 +33,7 @@ export function QuantityInput({
   name,
   id,
   'data-testid': testId,
+  ...rest
 }: QuantityInputProps) {
   const clearedZeroOnFocus = useRef(false)
 
@@ -90,6 +95,7 @@ export function QuantityInput({
           id={id}
           data-testid={testId}
           data-quantity-input="true"
+          {...rest}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onChange={handleChange}

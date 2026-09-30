@@ -915,4 +915,46 @@ describe('capture product status labels', () => {
       declaredFinishedTotalKg100: 0,
     })
   })
+
+  it('supports Excel-style grid keyboard navigation between cells and products', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // Agregar un segundo producto para tener múltiples filas navegables
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'aleta' } })
+    const productOptions = screen.getAllByRole('option')
+    if (productOptions[1]) {
+      fireEvent.click(productOptions[1])
+    }
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+    const inputs = within(captureRegion).getAllByRole<HTMLInputElement>('textbox')
+    expect(inputs.length).toBeGreaterThanOrEqual(4)
+
+    inputs[0]!.focus()
+    expect(document.activeElement).toBe(inputs[0])
+
+    // Flecha derecha salta de Día a Noche en la misma fila
+    inputs[0]!.setSelectionRange(inputs[0]!.value.length, inputs[0]!.value.length)
+    fireEvent.keyDown(inputs[0]!, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(inputs[1])
+
+    // Flecha izquierda salta de Noche a Día en la misma fila
+    inputs[1]!.setSelectionRange(0, 0)
+    fireEvent.keyDown(inputs[1]!, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(inputs[0])
+
+    // Enter salta a la fila siguiente en la misma columna (Día -> Día)
+    fireEvent.keyDown(inputs[0]!, { key: 'Enter', shiftKey: false })
+    expect(document.activeElement).toBe(inputs[2])
+
+    // Shift+Enter salta a la fila anterior en la misma columna
+    fireEvent.keyDown(inputs[2]!, { key: 'Enter', shiftKey: true })
+    expect(document.activeElement).toBe(inputs[0])
+  })
 })
+
