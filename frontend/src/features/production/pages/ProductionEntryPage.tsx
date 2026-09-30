@@ -3240,7 +3240,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[76rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
+                  <thead className="border-b border-slate-300 bg-slate-100 text-[0.625rem] uppercase tracking-[0.08em] text-slate-700 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3439,7 +3439,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[72rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
+                  <thead className="border-b border-slate-300 bg-slate-100 text-[0.625rem] uppercase tracking-[0.08em] text-slate-700 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3834,8 +3834,8 @@ const applyFreezingExcelPreview =
             <table className="erp-table w-full min-w-[76rem] border-collapse text-left">
               <caption className="sr-only">Ingreso de producción por producto</caption>
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                  <th className="sticky left-0 z-20 w-[24rem] bg-slate-50 px-4 py-2.5">Familia / producto</th>
+                <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
+                  <th className="sticky left-0 z-20 w-[24rem] bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-compact">Familia / producto</th>
                   <th className="px-2 py-2.5 text-right">Día reportado</th>
                   <th className="px-2 py-2.5 text-right">Noche reportado</th>
                   <th className="px-3 py-2.5 text-right">Total jornada</th>
@@ -3889,8 +3889,8 @@ const applyFreezingExcelPreview =
 
                   return (
                   <Fragment key={subtotal.key}>
-                    <tr className="border-b border-brand-100 bg-brand-50/45">
-                      <th colSpan={9} className="sticky left-0 z-10 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-800">
+                    <tr className="border-b border-brand-200 bg-brand-50/70 dark:border-ui-line-dark dark:bg-ui-surface-dark-accent">
+                      <th colSpan={9} className="sticky left-0 z-10 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-900 dark:text-ui-accent-cyan">
                         {subtotal.label}
                       </th>
                     </tr>
@@ -4036,14 +4036,14 @@ const applyFreezingExcelPreview =
                     </tr>
                       )
                     })}
-                    <tr className="border-b border-slate-200 bg-slate-50/80 font-bold">
-                      <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-xs uppercase text-slate-800">
+                    <tr className="border-b border-slate-300 bg-slate-100 font-bold dark:border-ui-line-dark dark:bg-ui-surface-dark-compact">
+                      <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-xs uppercase text-slate-900 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800">{formatCentiKg(subtotal.dayKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800">{formatCentiKg(subtotal.nightKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">{formatCentiKg(subtotal.totalKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.dayKg100)}</td>
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.nightKg100)}</td>
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">{formatCentiKg(subtotal.totalKg100)}</td>
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.availableKg100,
@@ -4054,7 +4054,7 @@ const applyFreezingExcelPreview =
                               ? 'No disponible'
                               : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800 dark:text-ui-text-dark">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.linkedKg100,
@@ -4065,7 +4065,7 @@ const applyFreezingExcelPreview =
                               ? 'Sin objetivo'
                               : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
+                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800 dark:text-ui-text-dark">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceabilityStatus.pendingToLinkKg100,
@@ -4873,7 +4873,7 @@ freezingOriginLedger.length > 0 ? (
           aria-label="Saldo de Congelamiento por jornada origen"
         >
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:text-ui-text-soft">
+            <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
               <th className="px-4 py-3">
                 Jornada origen
               </th>

@@ -207,7 +207,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
             }
           }}
           onKeyDown={handleKeyDown}
-          className={`w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:text-ui-text-dark-strong dark:placeholder:text-ui-text-dark-soft [color-scheme:light] dark:[color-scheme:dark] ${inputClassName}`}
+          className={`w-full rounded-lg border border-slate-400 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:text-ui-text-dark-strong dark:placeholder:text-ui-text-dark-soft [color-scheme:light] dark:[color-scheme:dark] ${inputClassName}`}
         />
         <button
           type="button"

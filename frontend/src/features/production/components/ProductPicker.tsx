@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Combobox, type ComboboxOption } from '../../../components/ui/Combobox'
 import { buttonStyles } from '../../../components/ui/buttonStyles'
@@ -48,6 +48,25 @@ export function ProductPicker<T>({
 }: ProductPickerProps<T>) {
   const { recentIds, addRecent } = useRecentProducts(scopeKey ?? 'global')
   const [selectedItem, setSelectedItem] = useState<T | null>(null)
+  const [isStuck, setIsStuck] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) {
+          setIsStuck(!entry.isIntersecting)
+        }
+      },
+      { threshold: [0, 1] },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
 
   const itemsMap = useMemo(() => {
     const map = new Map<string, T>()
@@ -97,9 +116,15 @@ export function ProductPicker<T>({
   }
 
   return (
-    <div
-      className={`sm:sticky sm:top-14 xl:top-0 z-[25] flex flex-col gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:flex-row sm:items-center sm:p-5 sm:py-3.5 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)] ${className}`}
-    >
+    <>
+      <div ref={sentinelRef} className="pointer-events-none -mt-px h-px w-full" aria-hidden="true" />
+      <div
+        className={`sm:sticky sm:top-14 xl:top-0 z-[25] flex flex-col gap-3 border-b border-slate-300 bg-slate-50/95 p-4 transition-[box-shadow,background-color] sm:flex-row sm:items-center sm:p-5 sm:py-3.5 dark:border-ui-line-dark-soft dark:bg-ui-surface-dark-recessed/95 ${
+          isStuck
+            ? 'shadow-[0_6px_14px_-4px_rgb(15_23_42/0.18)] dark:shadow-[0_8px_18px_-4px_rgba(0,0,0,0.6)]'
+            : 'shadow-none'
+        } ${className}`}
+      >
       <div className="min-w-0 flex-1">
         <Combobox
           options={options}
@@ -130,5 +155,6 @@ export function ProductPicker<T>({
         {buttonLabel}
       </button>
     </div>
+    </>
   )
 }
