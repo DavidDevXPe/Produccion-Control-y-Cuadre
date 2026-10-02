@@ -3804,8 +3804,8 @@ const applyFreezingExcelPreview =
               </colgroup>
               <caption className="sr-only">Ingreso de producción por producto</caption>
               <thead>
-                <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
-                  <th className="sticky left-0 z-20 bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-compact">Familia / producto</th>
+                <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong">
+                  <th className="sticky left-0 z-20 bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-recessed">Familia / producto</th>
                   <th className="px-2 py-2.5 text-right">Día reportado</th>
                   <th className="px-2 py-2.5 text-right">Noche reportado</th>
                   <th className="px-3 py-2.5 text-right">Total jornada</th>
@@ -3859,8 +3859,8 @@ const applyFreezingExcelPreview =
 
                   return (
                   <Fragment key={subtotal.key}>
-                    <tr className="border-b border-brand-200 bg-brand-50/70 dark:border-ui-line-dark dark:bg-ui-surface-dark-accent">
-                      <th colSpan={9} className="sticky left-0 z-10 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-900 dark:text-ui-accent-cyan">
+                    <tr className="border-b border-brand-200 bg-brand-50/70 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-compact">
+                      <th colSpan={9} className="sticky left-0 z-10 border-l-4 border-l-brand-600 bg-brand-50/70 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-900 dark:border-l-ui-accent-cyan dark:bg-ui-surface-dark-compact dark:text-ui-accent-cyan">
                         {subtotal.label}
                       </th>
                     </tr>
@@ -3896,8 +3896,8 @@ const applyFreezingExcelPreview =
                           }
                       const rowIndex = orderedProductIds.indexOf(productId)
                       return (
-                    <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
-                      <th className="sticky left-0 z-10 bg-white px-4 py-2">
+                    <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:hover:bg-ui-surface-dark-hover-strong">
+                      <th className="sticky left-0 z-10 bg-white px-4 py-2 dark:bg-ui-surface-dark">
                         <span className="sr-only">{row.product.familyName}: </span>
                         <span className="block text-xs font-semibold leading-4 text-slate-800 dark:text-ui-text-dark">{row.product.productName}</span>
                       </th>
@@ -3990,8 +3990,8 @@ const applyFreezingExcelPreview =
                     </tr>
                       )
                     })}
-                    <tr className="border-b border-slate-300 bg-slate-100 font-bold dark:border-ui-line-dark dark:bg-ui-surface-dark-compact">
-                      <th className="sticky left-0 z-10 bg-slate-100 px-4 py-2 text-xs uppercase text-slate-900 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
+                    <tr className="border-b border-slate-300 border-t-2 border-slate-300 bg-slate-100 font-bold dark:border-b-ui-line-dark dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact">
+                      <th className="sticky left-0 z-10 border-t-2 border-slate-300 bg-slate-100 px-4 py-2 text-xs uppercase text-slate-900 dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
                       <td className={`number-tabular px-3 py-2 text-right text-xs ${
