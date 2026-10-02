@@ -1117,6 +1117,20 @@ describe('capture product status labels', () => {
     fireEvent.change(captureInputs[0]!, { target: { value: '110' } })
     expect(within(dayCard).getByText(/Excede/)).toBeInTheDocument()
   })
+
+  it('renders family band product counter and dimmed kg units in calculated cells', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // By default, completeShiftReport adds 1 product: 'recorte crudo manto'
+    // Family band should show "1 producto"
+    expect(screen.getByText('1 producto')).toBeInTheDocument()
+
+    // Calculated table cells contain separated value and dimmed kg unit
+    const captureRegion = screen.getByRole('region', { name: 'Captura por producto y turno' })
+    const kgUnits = within(captureRegion).getAllByText('kg')
+    expect(kgUnits.length).toBeGreaterThan(0)
+  })
 })
 
 

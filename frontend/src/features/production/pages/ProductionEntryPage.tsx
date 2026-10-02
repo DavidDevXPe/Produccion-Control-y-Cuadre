@@ -4143,33 +4143,57 @@ const applyFreezingExcelPreview =
                           ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
                           : 'font-normal text-slate-400 dark:text-ui-text-subtle'
                       }`}>
-                        {formatCentiKg(totalKg100)}
+                        <span>{formatCentiKgValue(totalKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          totalKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
                       </td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(availableKg100)
-                          : '—'}
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(availableKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                         
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(linkedKg100)
-                          : '—'}
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(linkedKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                         
                       <td
                         className={`number-tabular px-3 py-2 text-right text-xs ${
                           isFreezing &&
                           productStatus.pendingToLinkKg100 > 0
-                            ? 'font-bold text-amber-700'
-                            : 'text-slate-400'
+                            ? 'font-bold text-amber-700 dark:text-amber-400'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
                         }`}
                       >
-                        {isFreezing
-                          ? formatCentiKg(
-                              productStatus.pendingToLinkKg100,
-                            )
-                          : '—'}
+                        {isFreezing ? (
+                          <>
+                            <span>{formatCentiKgValue(productStatus.pendingToLinkKg100)}</span>
+                            <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
@@ -4223,67 +4247,110 @@ const applyFreezingExcelPreview =
                         subtotal.dayKg100 > 0
                           ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
                           : 'font-normal text-slate-400 dark:text-ui-text-subtle'
-                      }`}>{formatCentiKg(subtotal.dayKg100)}</td>
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.dayKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.dayKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
+                      </td>
                       <td className={`number-tabular px-3 py-2 text-right text-xs ${
                         subtotal.nightKg100 > 0
                           ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
                           : 'font-normal text-slate-400 dark:text-ui-text-subtle'
-                      }`}>{formatCentiKg(subtotal.nightKg100)}</td>
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.nightKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.nightKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
+                      </td>
                       <td className={`number-tabular px-3 py-2 text-right text-xs ${
                         subtotal.totalKg100 > 0
                           ? 'font-extrabold text-brand-700 dark:text-cyan-400'
                           : 'font-normal text-slate-400 dark:text-ui-text-subtle'
-                      }`}>{formatCentiKg(subtotal.totalKg100)}</td>
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.totalKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.totalKg100 > 0
+                            ? 'text-brand-600/80 dark:text-cyan-400/80'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
+                      </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceability.availableKg100,
-                            )
-                          : isBalanceOnly
-                            ? 'No aplica'
-                            : subtotal.preliminaryYieldPercent === null
-                              ? (
-                                <span title="Rendimiento disponible al ingresar kg" aria-label="Rendimiento disponible al ingresar kg" className="text-slate-400 dark:text-ui-text-subtle">
-                                  —
-                                </span>
-                              )
-                              : (
-                                <span
-                                  className={
-                                    subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
-                                      ? subtotal.status === 'COMPLIES'
-                                        ? 'font-bold text-emerald-700 dark:text-emerald-400'
-                                        : 'font-bold text-amber-700 dark:text-amber-400'
-                                      : 'font-semibold text-slate-800 dark:text-ui-text-dark'
-                                  }
-                                >
-                                  {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
-                                </span>
-                              )}
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceability.availableKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly ? (
+                          'No aplica'
+                        ) : subtotal.preliminaryYieldPercent === null ? (
+                          <span title="Rendimiento disponible al ingresar kg" aria-label="Rendimiento disponible al ingresar kg" className="text-slate-400 dark:text-ui-text-subtle">
+                            —
+                          </span>
+                        ) : (
+                          <span
+                            className={
+                              subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
+                                ? subtotal.status === 'COMPLIES'
+                                  ? 'font-bold text-emerald-700 dark:text-emerald-400'
+                                  : 'font-bold text-amber-700 dark:text-amber-400'
+                                : 'font-semibold text-slate-800 dark:text-ui-text-dark'
+                            }
+                          >
+                            {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                          </span>
+                        )}
                       </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceability.linkedKg100,
-                            )
-                          : isBalanceOnly
-                            ? 'No aplica'
-                            : subtotal.totalKg100 === 0
-                              ? '—'
-                              : subtotal.targetPercent === null
-                                ? '—'
-                                : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceability.linkedKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly ? (
+                          'No aplica'
+                        ) : subtotal.totalKg100 === 0 ? (
+                          '—'
+                        ) : subtotal.targetPercent === null ? (
+                          '—'
+                        ) : (
+                          `≥ ${subtotal.targetPercent.toFixed(0)}%`
+                        )}
                       </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceabilityStatus.pendingToLinkKg100,
-                            )
-                          : isBalanceOnly || subtotal.targetPercent === null || subtotal.totalKg100 === 0
-                            ? '—'
-                            : formatCentiKg(
-                                subtotal.missingToTargetKg100,
-                              )}
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceabilityStatus.pendingToLinkKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly || subtotal.targetPercent === null || subtotal.totalKg100 === 0 ? (
+                          '—'
+                        ) : (
+                          <>
+                            <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">
+                              {formatCentiKgValue(subtotal.missingToTargetKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-600 dark:text-ui-text-dark-soft">
+                              kg
+                            </span>
+                          </>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-center">
                         <StatusBadge
