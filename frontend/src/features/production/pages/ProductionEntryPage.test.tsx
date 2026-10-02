@@ -1069,6 +1069,54 @@ describe('capture product status labels', () => {
     // The Objetivo cell in this subtotal displays "—" instead of duplicated "Sin objetivo"
     expect(within(subtotalRow).queryByText('Sin objetivo')).not.toBeInTheDocument()
   })
+
+  it('renders shift cards with schedule, hierarchical metrics, and accessible progress bar', () => {
+    renderNewEntry()
+
+    // Initially with empty shift reports, both prompt to complete report
+    expect(screen.getByText('(07:00 – 19:00)')).toBeInTheDocument()
+    expect(screen.getByText('(19:00 – 07:00)')).toBeInTheDocument()
+    expect(screen.getByText('Completa el reporte del Turno Día.')).toBeInTheDocument()
+
+    // Complete day report with 100 kg declared and 80 kg registered (80% progress)
+    fireEvent.change(screen.getByLabelText(/^Materia prima/), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/^Reporte Día/), { target: { value: '100' } })
+
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'recorte crudo manto' } })
+    const productOption = screen.getAllByRole('option')[0]!
+    fireEvent.click(productOption)
+
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
+
+    // Progress bar for Turno Día
+    const dayHeading = screen.getByRole('heading', { name: 'Turno Día' })
+    const dayCard = dayHeading.closest('article')!
+    expect(dayCard).not.toBeNull()
+
+    const progressBar = within(dayCard).getByRole('progressbar', {
+      name: 'Avance de registro Turno Día',
+    })
+    expect(progressBar).toBeInTheDocument()
+    expect(progressBar).toHaveAttribute('aria-valuenow', '80')
+    expect(within(dayCard).getByText(/Avance de registro:/)).toBeInTheDocument()
+    expect(within(dayCard).getByText('80.0%')).toBeInTheDocument()
+    expect(within(dayCard).getByText(/Faltan 20\.00 kg por registrar/)).toBeInTheDocument()
+
+    // Update to exact match: 100 kg registered (100% progress -> Cuadrado)
+    fireEvent.change(captureInputs[0]!, { target: { value: '100' } })
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+    expect(within(dayCard).getByText('100.0%')).toBeInTheDocument()
+    expect(within(dayCard).getByText('Cuadrado')).toBeInTheDocument()
+
+    // Update to exceeded: 110 kg registered (Excede 10.00 kg)
+    fireEvent.change(captureInputs[0]!, { target: { value: '110' } })
+    expect(within(dayCard).getByText(/Excede/)).toBeInTheDocument()
+  })
 })
 
 

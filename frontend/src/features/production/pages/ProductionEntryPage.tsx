@@ -142,16 +142,6 @@ function createRow(productId: string, index: number): ProductionCaptureRow | nul
   }
 }
 
-function shiftDifferenceMessage(
-  label: 'Día' | 'Noche',
-  differenceKg100: ReturnType<typeof kg100>,
-) {
-  if (differenceKg100 === 0) return `Turno ${label} conciliado.`
-  if (differenceKg100 > 0) {
-    return `Faltan ${formatCentiKg(differenceKg100)} por registrar en Turno ${label}.`
-  }
-  return `Sobran ${formatCentiKg(kg100(-differenceKg100))} en el detalle del Turno ${label}.`
-}
 
 function captureQuantityKg100(value: string) {
   const quantity = Number(value.trim().replace(',', '.'))
@@ -3768,47 +3758,148 @@ const applyFreezingExcelPreview =
           ] as const).map(([label, shift, hasShiftData]) => (
             <article
               key={label}
-              className="rounded-xl border border-slate-200 bg-white p-4"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark dark:shadow-none"
             >
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-slate-950">Turno {label}</h3>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block size-2 rounded-full shadow-xs ${
+                      label === 'Día'
+                        ? 'bg-amber-400'
+                        : 'bg-sky-500 dark:bg-sky-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-ui-text-dark-strong">
+                    Turno {label}
+                  </h3>
+                  <span className="text-xs font-normal text-slate-500 dark:text-ui-text-dark-soft">
+                    {label === 'Día' ? '(07:00 – 19:00)' : '(19:00 – 07:00)'}
+                  </span>
+                </div>
                 <StatusBadge
                   tone={hasShiftData && shift.detailDifferenceKg100 === 0 ? 'success' : 'warning'}
                 >
                   {hasShiftData && shift.detailDifferenceKg100 === 0 ? 'CONCILIADO' : 'PENDIENTE'}
                 </StatusBadge>
               </div>
-              <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
+              <dl className="mt-4 grid grid-cols-3 gap-3 border-y border-slate-100 py-3 text-xs dark:border-ui-line-dark">
                 <div>
-                  <dt className="text-slate-500">Reporte supervisor</dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-900">
-                    {hasShiftData ? formatCentiKg(shift.declaredReportedKg100) : '—'}
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Reporte supervisor
+                  </dt>
+                  <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
+                    {hasShiftData ? (
+                      <>
+                        <span>{formatCentiKgValue(shift.declaredReportedKg100)}</span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Productos registrados</dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-900">
-                    {hasShiftData ? formatCentiKg(shift.reportedKg100) : '—'}
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Productos registrados
+                  </dt>
+                  <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-brand-600 dark:text-cyan-400">
+                    {hasShiftData ? (
+                      <>
+                        <span>{formatCentiKgValue(shift.reportedKg100)}</span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Diferencia</dt>
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Diferencia
+                  </dt>
                   <dd
-                    className={`number-tabular mt-1 font-extrabold ${
-                      hasShiftData && shift.detailDifferenceKg100 === 0
-                        ? 'text-emerald-700'
-                        : 'text-amber-700'
+                    className={`number-tabular mt-1 text-base sm:text-lg font-extrabold ${
+                      !hasShiftData
+                        ? 'text-slate-400 dark:text-ui-text-subtle'
+                        : shift.detailDifferenceKg100 === 0
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : shift.detailDifferenceKg100 < 0
+                            ? 'text-rose-700 dark:text-rose-400'
+                            : 'text-amber-700 dark:text-amber-400'
                     }`}
                   >
-                    {hasShiftData ? formatCentiKg(shift.detailDifferenceKg100) : '—'}
+                    {hasShiftData ? (
+                      <>
+                        <span>
+                          {shift.detailDifferenceKg100 < 0
+                            ? `- ${formatCentiKgValue(-shift.detailDifferenceKg100)}`
+                            : formatCentiKgValue(shift.detailDifferenceKg100)}
+                        </span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
               </dl>
-              <p className="mt-3 text-xs font-semibold text-slate-600">
-                {hasShiftData
-                  ? shiftDifferenceMessage(label, shift.detailDifferenceKg100)
-                  : `Completa el reporte del Turno ${label}.`}
-              </p>
+              {!hasShiftData || shift.declaredReportedKg100 === 0 ? (
+                <p className="mt-3 text-xs font-semibold text-slate-500 dark:text-ui-text-dark-soft">
+                  Completa el reporte del Turno {label}.
+                </p>
+              ) : (() => {
+                const progressPercent = (shift.reportedKg100 / shift.declaredReportedKg100) * 100
+                const clampedPercent = Math.min(100, Math.max(0, progressPercent))
+                const isSquared = shift.detailDifferenceKg100 === 0
+                const isExceeded = shift.detailDifferenceKg100 < 0
+
+                const rightText = isSquared
+                  ? 'Cuadrado'
+                  : isExceeded
+                    ? `Excede ${formatCentiKg(kg100(-shift.detailDifferenceKg100))}`
+                    : `Faltan ${formatCentiKg(shift.detailDifferenceKg100)} por registrar en Turno ${label}.`
+
+                return (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                      <span className="text-slate-600 dark:text-ui-text-dark">
+                        Avance de registro: <span className="number-tabular font-bold text-slate-900 dark:text-ui-text-dark-strong">{progressPercent.toFixed(1)}%</span>
+                      </span>
+                      <span
+                        className={`number-tabular font-semibold ${
+                          isSquared
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : isExceeded
+                              ? 'text-rose-700 dark:text-rose-400'
+                              : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {rightText}
+                      </span>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-valuenow={Math.round(clampedPercent)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Avance de registro Turno ${label}`}
+                      className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-ui-surface-dark-deep"
+                    >
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isSquared
+                            ? 'bg-emerald-500'
+                            : isExceeded
+                              ? 'bg-rose-500'
+                              : 'bg-gradient-to-r from-sky-500 to-amber-500 dark:from-cyan-400 dark:to-amber-400'
+                        }`}
+                        style={{ width: `${clampedPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
             </article>
           ))}
         </div>
