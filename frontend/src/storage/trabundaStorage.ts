@@ -6,6 +6,7 @@ export const TRABUNDA_STORAGE_KEYS = {
   productCatalog: 'trabunda-product-catalog-v2',
   legacyProductionCatalog: 'trabunda-production-catalog-v1',
   productionDays: 'trabunda-production-days-v2',
+  recentProducts: 'trabunda-recent-products-v1',
   storageQuarantine: 'trabunda-storage-quarantine-v1',
   weekProcessClosures: 'trabunda-week-process-closures-v2',
 } as const

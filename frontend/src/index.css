@@ -342,6 +342,60 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Ocultar flechitas (spinners) en inputs numéricos en toda la app */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Form selects, options and optgroups high-contrast theme styles */
+select {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: var(--color-ui-text);
+}
+
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+select optgroup {
+  background-color: #f8fafc;
+  color: #0b6685;
+  font-weight: 700;
+}
+
+select option:disabled {
+  color: #64748b;
+}
+
+html.dark select {
+  color-scheme: dark;
+  background-color: var(--color-ui-surface-dark-deep);
+  color: var(--color-ui-text-dark-strong);
+}
+
+html.dark select option {
+  background-color: var(--color-ui-surface-dark-deep);
+  color: var(--color-ui-text-dark-strong);
+}
+
+html.dark select optgroup {
+  background-color: var(--color-ui-surface-dark);
+  color: var(--color-ui-accent-cyan);
+  font-weight: 700;
+}
+
+html.dark select option:disabled {
+  color: var(--color-ui-text-subtle);
+}
+
 button,
 a {
   transition-duration: 160ms;

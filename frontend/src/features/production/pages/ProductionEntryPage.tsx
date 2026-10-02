@@ -3,10 +3,10 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
+  Circle,
   FileSpreadsheet,
   Plus,
   Save,
-  Search,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -26,6 +26,9 @@ import {
 } from '../components/ClosingBalanceYieldControl'
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { ProcessSelector } from '../components/ProcessSelector'
+import { ProductPicker } from '../components/ProductPicker'
+import { QuantityInput } from '../components/QuantityInput'
+import { useGridKeyboardNavigation } from '../hooks/useGridKeyboardNavigation'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -51,7 +54,6 @@ import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
 import { buildFreezingOriginLedger } from '../capture/freezingOriginLedger'
 import {
   CAPTURE_CATALOG_ITEMS,
-  filterCaptureCatalogItems,
   PRODUCTION_CATALOG_ITEMS,
   type ProductionCatalogItem,
 } from '../capture/productionCatalog'
@@ -119,74 +121,6 @@ interface FreezingExcelPreview
     | 'EXCEL REQUIERE REVISIÓN'
 }
 
-interface QuantityInputProps {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void
-  readOnly?: boolean
-  disabled?: boolean
-  className?: string
-}
-
-function QuantityInput({
-  label,
-  value,
-  onChange,
-  onKeyDown,
-  readOnly = false,
-  disabled = false,
-  className = '',
-}: QuantityInputProps) {
-  const clearedZeroOnFocus = useRef(false)
-
-  return (
-    <label className={`block ${className}`}>
-      {label ? (
-        <span className="mb-1.5 block text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-          {label}
-        </span>
-      ) : null}
-      <span className="relative block">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          value={value}
-          readOnly={readOnly}
-          disabled={disabled}
-          onFocus={() => {
-            if (
-              !readOnly &&
-              !disabled &&
-              value.trim() !== '' &&
-              Number(value.replace(',', '.')) === 0
-            ) {
-              clearedZeroOnFocus.current = true
-              onChange('')
-            } else {
-              clearedZeroOnFocus.current = false
-            }
-          }}
-          onBlur={() => {
-            if (clearedZeroOnFocus.current && value.trim() === '') {
-              onChange('0')
-            }
-            clearedZeroOnFocus.current = false
-          }}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={onKeyDown}
-          className="number-tabular h-10 w-full rounded-lg border border-slate-200 bg-white px-3 pr-9 text-right text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 read-only:cursor-default read-only:bg-slate-100 read-only:text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-        />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] font-bold text-slate-400">
-          kg
-        </span>
-      </span>
-    </label>
-  )
-}
-
 function createRow(productId: string, index: number): ProductionCaptureRow | null {
   const product = CAPTURE_CATALOG_ITEMS.find(
     (item) => item.productId === productId,
@@ -208,16 +142,6 @@ function createRow(productId: string, index: number): ProductionCaptureRow | nul
   }
 }
 
-function shiftDifferenceMessage(
-  label: 'Día' | 'Noche',
-  differenceKg100: ReturnType<typeof kg100>,
-) {
-  if (differenceKg100 === 0) return `Turno ${label} conciliado.`
-  if (differenceKg100 > 0) {
-    return `Faltan ${formatCentiKg(differenceKg100)} por registrar en Turno ${label}.`
-  }
-  return `Sobran ${formatCentiKg(kg100(-differenceKg100))} en el detalle del Turno ${label}.`
-}
 
 function captureQuantityKg100(value: string) {
   const quantity = Number(value.trim().replace(',', '.'))
@@ -526,12 +450,8 @@ export function ProductionEntryPage() {
   )
   const [pendingProcessChange, setPendingProcessChange] =
     useState<ProductionProcess | null>(null)
-  const [productSearch, setProductSearch] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState('')
   const manualProductSearchInputRef = useRef<HTMLInputElement>(null)
 
-  const [treatmentSearch, setTreatmentSearch] = useState('')
-  const [selectedTreatmentProductId, setSelectedTreatmentProductId] = useState('')
   const treatmentSearchInputRef = useRef<HTMLInputElement>(null)
   const [treatmentProductIds, setTreatmentProductIds] = 
     useState<Set<string>>(() => new Set() )
@@ -545,8 +465,6 @@ export function ProductionEntryPage() {
       return ids
     }, [draft.rows, treatmentProductIds])
 
-  const [tunnelSearch, setTunnelSearch] = useState('')
-  const [selectedTunnelProductId, setSelectedTunnelProductId] = useState('')
   const tunnelSearchInputRef = useRef<HTMLInputElement>(null)
   const [tunnelProductIds, setTunnelProductIds] =
   useState<Set<string>>(() => new Set())
@@ -565,8 +483,6 @@ export function ProductionEntryPage() {
 
     return ids
   }, [draft.rows, tunnelProductIds])
-  const [closingSearch, setClosingSearch] = useState('')
-  const [selectedClosingProductId, setSelectedClosingProductId] = useState('')
   const closingSearchInputRef = useRef<HTMLInputElement>(null)
   const [closingProductIds, setClosingProductIds] = useState<Set<string>>(
     () =>
@@ -576,8 +492,6 @@ export function ProductionEntryPage() {
           .map((line) => line.productId) ?? [],
       ),
   )
-  const [selectedBalanceKey, setSelectedBalanceKey] = useState('')
-  const balanceSelectRef = useRef<HTMLSelectElement>(null)
   const [isFreezingOriginsOpen, setIsFreezingOriginsOpen] = useState(false)
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false)
   const [isBulkFreezingLinkConfirmationOpen, setIsBulkFreezingLinkConfirmationOpen] = useState(false)
@@ -594,6 +508,11 @@ export function ProductionEntryPage() {
   const [excelExistingProductByRow, setExcelExistingProductByRow] = useState<Record<number, string>>({})
   const [freezingNewProductFamilyByRow, setFreezingNewProductFamilyByRow] =
     useState<Record<number, string>>({})
+  const [removedRowState, setRemovedRowState] = useState<{
+    row: ProductionCaptureDraft['rows'][number]
+    index: number
+  } | null>(null)
+  const undoTimeoutRef = useRef<number | null>(null)
   const [saveError, setSaveError] = useState('')
 
   const freezingCatalogFamilyOptions = useMemo(() => {
@@ -675,6 +594,15 @@ export function ProductionEntryPage() {
     ),
   [buildResult],
 )
+  const orderedProductIds = useMemo(
+    () => reportFamilySubtotals.flatMap((s) => s.productIds),
+    [reportFamilySubtotals],
+  )
+  const { getGridCellProps: getCaptureCellProps } = useGridKeyboardNavigation({
+    totalRows: orderedProductIds.length,
+    columns: 2,
+    gridId: 'capture-grid',
+  })
   const closureValidation = useMemo(
     () =>
       validateProductionClosure(
@@ -753,6 +681,59 @@ export function ProductionEntryPage() {
     buildResult.calculation.night.detailDifferenceKg100 === 0
   const tunnelMovementRequired =
     draft.hasTunnelProduction && buildResult.calculation.tunnel.totalKg100 === 0
+
+  const pendingClosureReasons = useMemo(() => {
+    if (canClose) return []
+    const items: string[] = []
+    if (dayHasReportData && buildResult.calculation.day.detailDifferenceKg100 !== 0) {
+      const diff = buildResult.calculation.day.detailDifferenceKg100
+      if (diff > 0) {
+        items.push(`Turno Día: faltan ${formatCentiKg(diff)}`)
+      } else {
+        items.push(`Turno Día: excede ${formatCentiKg(kg100(-diff))}`)
+      }
+    }
+    if (nightHasReportData && buildResult.calculation.night.detailDifferenceKg100 !== 0) {
+      const diff = buildResult.calculation.night.detailDifferenceKg100
+      if (diff > 0) {
+        items.push(`Turno Noche: faltan ${formatCentiKg(diff)}`)
+      } else {
+        items.push(`Turno Noche: excede ${formatCentiKg(kg100(-diff))}`)
+      }
+    }
+
+    const otherBlockers = [
+      ...closureValidation.blockers
+        .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
+        .map((blocker) => blocker.message),
+      ...diagnostics
+        .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
+        .map((diagnostic) => diagnostic.message),
+    ].filter((message, index, messages) => messages.indexOf(message) === index)
+
+    for (const blocker of otherBlockers) {
+      const lower = blocker.toLowerCase()
+      if (lower.includes('turno día') && items.some((it) => it.toLowerCase().includes('turno día'))) {
+        continue
+      }
+      if (lower.includes('turno noche') && items.some((it) => it.toLowerCase().includes('turno noche'))) {
+        continue
+      }
+      if (!items.some((it) => it.toLowerCase().includes(lower) || lower.includes(it.toLowerCase()))) {
+        items.push(blocker)
+      }
+    }
+    return items
+  }, [
+    canClose,
+    dayHasReportData,
+    nightHasReportData,
+    buildResult.calculation.day.detailDifferenceKg100,
+    buildResult.calculation.night.detailDifferenceKg100,
+    closureValidation.blockers,
+    diagnostics,
+  ])
+
   const footerStatus = canClose
   ? closureValidation.warnings.length > 0
     ? {
@@ -958,9 +939,9 @@ const freezingCurrentOriginPositions =
     )
   }
 
-  const filteredCatalogItems = useMemo(
+  const reportCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(productSearch, catalogItems)
+      catalogItems
         .filter(
           (product) =>
             !isTreatmentOnlyProduct(product) &&
@@ -979,39 +960,37 @@ const freezingCurrentOriginPositions =
       draft.rows,
       freezingAvailabilityByProduct,
       isFreezing,
-      productSearch,
     ],
   )
   const treatmentCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(treatmentSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) =>
           !effectiveTreatmentProductIds.has(product.productId),
       ),
     [
       catalogItems,
       effectiveTreatmentProductIds,
-      treatmentSearch,
     ],
   )
   const tunnelCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(tunnelSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) =>
-          !effectiveTunnelProductIds.has(product.productId),
+          !effectiveTunnelProductIds.has(product.productId) &&
+          !isTreatmentOnlyProduct(product),
       ),
     [
       catalogItems,
       effectiveTunnelProductIds,
-      tunnelSearch,
     ],
   )
   const closingCatalogItems = useMemo(
     () =>
-      filterCaptureCatalogItems(closingSearch, catalogItems).filter(
+      catalogItems.filter(
         (product) => !closingProductIds.has(product.productId),
       ),
-    [catalogItems, closingProductIds, closingSearch],
+    [catalogItems, closingProductIds],
   )
   const closingRows = useMemo(
     () =>
@@ -1036,6 +1015,21 @@ const freezingCurrentOriginPositions =
       ),
     [draft.rows, effectiveTunnelProductIds],
   )
+  const { getGridCellProps: getTreatmentCellProps } = useGridKeyboardNavigation({
+    totalRows: treatmentRows.length,
+    columns: 1,
+    gridId: 'treatment-grid',
+  })
+  const { getGridCellProps: getTunnelCellProps } = useGridKeyboardNavigation({
+    totalRows: tunnelRows.length,
+    columns: 2,
+    gridId: 'tunnel-grid',
+  })
+  const { getGridCellProps: getBalancesCellProps } = useGridKeyboardNavigation({
+    totalRows: draft.balanceUses.length,
+    columns: 2,
+    gridId: 'balances-grid',
+  })
   const availableBalances = useMemo(() => {
     const selectedKeys = new Set(
       draft.balanceUses.map(
@@ -1072,37 +1066,6 @@ const freezingCurrentOriginPositions =
     isFreezing,
     subsequentBalanceLots,
   ])
-  const availableFreezingPreviousOriginBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate >=
-                freezingAutomaticOriginStartDate &&
-              balance.originDate <
-                draft.date,
-          )
-        : [],
-    [
-      availableBalances,
-      draft.date,
-      freezingAutomaticOriginStartDate,
-      isFreezing,
-    ],
-  )
-
-const availableFreezingCurrentOriginBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate === draft.date,
-          )
-        : [],
-    [availableBalances, draft.date, isFreezing],
-  )
   const totalReportedKg100 = sumKg100([
     buildResult.calculation.day.declaredReportedKg100,
     buildResult.calculation.night.declaredReportedKg100,
@@ -1112,23 +1075,6 @@ const availableFreezingCurrentOriginBalances =
     freezingPreviousOriginPositions.map(
       (position) => position.pendingKg100,
     ),
-  )
-
-const availableFreezingHistoricalBalances =
-  useMemo(
-    () =>
-      isFreezing
-        ? availableBalances.filter(
-            (balance) =>
-              balance.originDate <
-              freezingAutomaticOriginStartDate,
-          )
-        : [],
-    [
-      availableBalances,
-      freezingAutomaticOriginStartDate,
-      isFreezing,
-    ],
   )
 
 const freezingCurrentOriginAvailableKg100 =
@@ -1482,9 +1428,6 @@ const freezingOriginLedgerSummary =
     processDraftsRef.current[process] = nextDraft
     setMode(processModesRef.current[process] ?? 'MANUAL')
     setDraft(nextDraft)
-    setProductSearch('')
-    setSelectedProductId('')
-    setSelectedBalanceKey('')
     setExcelPreview(null)
     setFreezingExcelPreview(null)
     setFileName('')
@@ -1576,17 +1519,15 @@ const freezingOriginLedgerSummary =
     setTunnelToggleError('')
   }
 
-  const addSelectedProduct = () => {
-    if (!selectedProductId) return
-    if (draft.rows.some((row) => row.product.productId === selectedProductId)) {
+  const addReportProduct = (productId: string) => {
+    if (!productId) return
+    if (draft.rows.some((row) => row.product.productId === productId)) {
       setSaveError('Ese producto ya está agregado a la jornada.')
       return
     }
-    const row = createRow(selectedProductId, draft.rows.length)
+    const row = createRow(productId, draft.rows.length)
     if (!row) return
     updateDraft('rows', [...draft.rows, row])
-    setProductSearch('')
-    setSelectedProductId('')
     setSaveError('')
     manualProductSearchInputRef.current?.focus()
   }
@@ -1610,13 +1551,10 @@ const freezingOriginLedgerSummary =
     setSaveError('')
   }
 
-  const addClosingProduct = () => {
-    if (!selectedClosingProductId) return
-    const productId = selectedClosingProductId
+  const addClosingProduct = (productId: string) => {
+    if (!productId) return
     setClosingProductIds((current) => new Set(current).add(productId))
     addMovementProduct(productId, () => {
-      setClosingSearch('')
-      setSelectedClosingProductId('')
       closingSearchInputRef.current?.focus()
     })
   }
@@ -1735,13 +1673,8 @@ const freezingOriginLedgerSummary =
   setSaveError('')
 }
 
-  const addSelectedBalance = () => {
-  const position = availableBalances.find(
-    (balance) =>
-      `${balance.originDayId}|${balance.productId}` === selectedBalanceKey,
-  )
-
-  if (!position) return
+  const addSelectedBalance = (position: (typeof availableBalances)[number]) => {
+    if (!position) return
 
   const normalizedBalanceName = normalizeProductName(position.productName)
 
@@ -1837,9 +1770,7 @@ const freezingOriginLedgerSummary =
     }
   })
 
-  setSelectedBalanceKey('')
   setSaveError('')
-  balanceSelectRef.current?.focus()
 }
 
   const autoLinkFreezingProduct = (productId: string) => {
@@ -2024,9 +1955,16 @@ const autoLinkAllFreezingProducts = () => {
   }
 
   const removeRow = (key: string) => {
-    const productId = draft.rows.find(
-      (row) => row.key === key,
-    )?.product.productId
+    if (!isEditingAllowed) return
+
+    const rowToRemove = draft.rows.find((row) => row.key === key)
+    if (!rowToRemove) return
+
+    const productId = rowToRemove.product.productId
+    const rowIndex = draft.rows.findIndex((row) => row.key === key)
+    const dayKg = Number(rowToRemove.dayReportedKg.replace(',', '.')) || 0
+    const nightKg = Number(rowToRemove.nightReportedKg.replace(',', '.')) || 0
+    const hasValues = dayKg > 0 || nightKg > 0
 
     if (productId) {
       setClosingProductIds((current) => {
@@ -2059,6 +1997,46 @@ const autoLinkAllFreezingProducts = () => {
         ),
       ),
     }))
+
+    if (hasValues) {
+      setRemovedRowState({
+        row: rowToRemove,
+        index: rowIndex,
+      })
+      if (undoTimeoutRef.current) {
+        window.clearTimeout(undoTimeoutRef.current)
+      }
+      undoTimeoutRef.current = window.setTimeout(() => {
+        setRemovedRowState(null)
+      }, 8000)
+    }
+  }
+
+  const undoRemoveRow = () => {
+    if (!removedRowState || !isEditingAllowed) return
+    const { row: restoredRow, index } = removedRowState
+
+    setDraft((current) => {
+      if (current.rows.some((r) => r.product.productId === restoredRow.product.productId)) {
+        return current
+      }
+      const newRows = [...current.rows]
+      if (index >= 0 && index <= newRows.length) {
+        newRows.splice(index, 0, restoredRow)
+      } else {
+        newRows.push(restoredRow)
+      }
+      return {
+        ...current,
+        rows: newRows,
+      }
+    })
+
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current)
+      undoTimeoutRef.current = null
+    }
+    setRemovedRowState(null)
   }
 
   const handleWorkbook = async (
@@ -3316,7 +3294,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[76rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
+                  <thead className="border-b border-slate-300 bg-slate-100 text-[0.625rem] uppercase tracking-[0.08em] text-slate-700 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3515,7 +3493,7 @@ const applyFreezingExcelPreview =
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[72rem] text-left text-xs">
-                  <thead className="bg-slate-50 text-[0.625rem] uppercase tracking-[0.08em] text-slate-500 dark:bg-ui-surface-dark dark:text-ui-text-dark-soft">
+                  <thead className="border-b border-slate-300 bg-slate-100 text-[0.625rem] uppercase tracking-[0.08em] text-slate-700 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark">
                     <tr>
                       <th className="px-4 py-2.5">Producto Excel</th>
                       <th className="px-4 py-2.5">Producto sistema</th>
@@ -3833,113 +3811,234 @@ const applyFreezingExcelPreview =
           ] as const).map(([label, shift, hasShiftData]) => (
             <article
               key={label}
-              className="rounded-xl border border-slate-200 bg-white p-4"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark dark:shadow-none"
             >
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-slate-950">Turno {label}</h3>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block size-2 rounded-full shadow-xs ${
+                      label === 'Día'
+                        ? 'bg-amber-400'
+                        : 'bg-sky-500 dark:bg-sky-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <h3 className="text-sm font-bold text-slate-950 dark:text-ui-text-dark-strong">
+                    Turno {label}
+                  </h3>
+                  <span className="text-xs font-normal text-slate-500 dark:text-ui-text-dark-soft">
+                    {label === 'Día' ? '(07:00 – 19:00)' : '(19:00 – 07:00)'}
+                  </span>
+                </div>
                 <StatusBadge
                   tone={hasShiftData && shift.detailDifferenceKg100 === 0 ? 'success' : 'warning'}
                 >
                   {hasShiftData && shift.detailDifferenceKg100 === 0 ? 'CONCILIADO' : 'PENDIENTE'}
                 </StatusBadge>
               </div>
-              <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
+              <dl className="mt-4 grid grid-cols-3 gap-3 border-y border-slate-100 py-3 text-xs dark:border-ui-line-dark">
                 <div>
-                  <dt className="text-slate-500">Reporte supervisor</dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-900">
-                    {hasShiftData ? formatCentiKg(shift.declaredReportedKg100) : '—'}
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Reporte supervisor
+                  </dt>
+                  <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
+                    {hasShiftData ? (
+                      <>
+                        <span>{formatCentiKgValue(shift.declaredReportedKg100)}</span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Productos registrados</dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-900">
-                    {hasShiftData ? formatCentiKg(shift.reportedKg100) : '—'}
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Productos registrados
+                  </dt>
+                  <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-brand-600 dark:text-cyan-400">
+                    {hasShiftData ? (
+                      <>
+                        <span>{formatCentiKgValue(shift.reportedKg100)}</span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Diferencia</dt>
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Diferencia
+                  </dt>
                   <dd
-                    className={`number-tabular mt-1 font-extrabold ${
-                      hasShiftData && shift.detailDifferenceKg100 === 0
-                        ? 'text-emerald-700'
-                        : 'text-amber-700'
+                    className={`number-tabular mt-1 text-base sm:text-lg font-extrabold ${
+                      !hasShiftData
+                        ? 'text-slate-400 dark:text-ui-text-subtle'
+                        : shift.detailDifferenceKg100 === 0
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : shift.detailDifferenceKg100 < 0
+                            ? 'text-rose-700 dark:text-rose-400'
+                            : 'text-amber-700 dark:text-amber-400'
                     }`}
                   >
-                    {hasShiftData ? formatCentiKg(shift.detailDifferenceKg100) : '—'}
+                    {hasShiftData ? (
+                      <>
+                        <span>
+                          {shift.detailDifferenceKg100 < 0
+                            ? `- ${formatCentiKgValue(-shift.detailDifferenceKg100)}`
+                            : formatCentiKgValue(shift.detailDifferenceKg100)}
+                        </span>
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">kg</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                 </div>
               </dl>
-              <p className="mt-3 text-xs font-semibold text-slate-600">
-                {hasShiftData
-                  ? shiftDifferenceMessage(label, shift.detailDifferenceKg100)
-                  : `Completa el reporte del Turno ${label}.`}
-              </p>
+              {!hasShiftData || shift.declaredReportedKg100 === 0 ? (
+                <p className="mt-3 text-xs font-semibold text-slate-500 dark:text-ui-text-dark-soft">
+                  Completa el reporte del Turno {label}.
+                </p>
+              ) : (() => {
+                const progressPercent = (shift.reportedKg100 / shift.declaredReportedKg100) * 100
+                const clampedPercent = Math.min(100, Math.max(0, progressPercent))
+                const isSquared = shift.detailDifferenceKg100 === 0
+                const isExceeded = shift.detailDifferenceKg100 < 0
+
+                const rightText = isSquared
+                  ? 'Cuadrado'
+                  : isExceeded
+                    ? `Excede ${formatCentiKg(kg100(-shift.detailDifferenceKg100))}`
+                    : `Faltan ${formatCentiKg(shift.detailDifferenceKg100)} por registrar en Turno ${label}.`
+
+                return (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                      <span className="text-slate-600 dark:text-ui-text-dark">
+                        Avance de registro: <span className="number-tabular font-bold text-slate-900 dark:text-ui-text-dark-strong">{progressPercent.toFixed(1)}%</span>
+                      </span>
+                      <span
+                        className={`number-tabular font-semibold ${
+                          isSquared
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : isExceeded
+                              ? 'text-rose-700 dark:text-rose-400'
+                              : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {rightText}
+                      </span>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-valuenow={Math.round(clampedPercent)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Avance de registro Turno ${label}`}
+                      className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-ui-surface-dark-deep"
+                    >
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isSquared
+                            ? 'bg-emerald-500'
+                            : isExceeded
+                              ? 'bg-rose-500'
+                              : 'bg-gradient-to-r from-sky-500 to-amber-500 dark:from-cyan-400 dark:to-amber-400'
+                        }`}
+                        style={{ width: `${clampedPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
             </article>
           ))}
         </div>
 
         {mode === 'MANUAL' ? (
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto
-              </span>
-              <span className="relative block">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft"
-                  aria-hidden="true"
-                />
-                <input
-                  ref={manualProductSearchInputRef}
-                  type="search"
-                  value={productSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setProductSearch(event.target.value)
-                    setSelectedProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto con movimiento
-              </span>
-              <select
-                value={selectedProductId}
-                onChange={(event) => setSelectedProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
+          <ProductPicker
+            items={reportCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+              secondaryText: isFreezing
+                ? `Disponible: ${formatCentiKg(
+                    freezingAvailabilityByProduct.get(product.productId) ??
+                      kg100(0),
+                  )}`
+                : undefined,
+            })}
+            onAdd={(product) => addReportProduct(product.productId)}
+            label="Buscar producto"
+            placeholder="Buscar producto o seleccionar del catálogo (ej.: aleta, manto o nuca)..."
+            buttonLabel="Agregar producto"
+            buttonClassName={buttonStyles('primary')}
+            scopeKey={`${selectedProcess}:REPORTS`}
+            searchInputRef={manualProductSearchInputRef}
+            extraSlot={
+              <div
+                className="hidden lg:flex items-center gap-2 shrink-0"
+                role="group"
+                aria-label="Resumen de cuadre por turno"
+                aria-live="polite"
               >
-                <option value="">
-                  {filteredCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${filteredCatalogItems.length} producto${filteredCatalogItems.length === 1 ? '' : 's'} detectado${filteredCatalogItems.length === 1 ? '' : 's'}…`}
-                </option>
-                {filteredCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                    {isFreezing
-                      ? ` · Disponible: ${formatCentiKg(
-                          freezingAvailabilityByProduct.get(product.productId) ??
-                            kg100(0),
-                        )}`
-                      : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={addSelectedProduct}
-              disabled={!selectedProductId}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar
-            </button>
-          </div>
+                {([
+                  ['Día', buildResult.calculation.day, dayHasReportData],
+                  ['Noche', buildResult.calculation.night, nightHasReportData],
+                ] as const).map(([label, shift, hasData]) => {
+                  const isReconciled =
+                    hasData && shift.detailDifferenceKg100 === 0
+                  const registeredText = formatCentiKg(shift.reportedKg100)
+                  const reportedText = hasData
+                    ? formatCentiKg(shift.declaredReportedKg100)
+                    : '—'
+                  const diffText = hasData
+                    ? formatCentiKg(shift.detailDifferenceKg100)
+                    : '—'
+
+                  return (
+                    <div
+                      key={label}
+                      data-testid={`sticky-shift-chip-${label.toLowerCase()}`}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        isReconciled
+                          ? 'border-emerald-200/90 bg-emerald-50/50 text-slate-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-ui-text-dark'
+                          : 'border-slate-300/80 bg-white text-slate-800 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark'
+                      }`}
+                      title={`Turno ${label}: Registrado ${registeredText} / Reporte ${reportedText} · Diferencia ${diffText}`}
+                    >
+                      <span
+                        className={`inline-block size-1.5 rounded-full ${
+                          isReconciled ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">{label}:</span>
+                      <span className="number-tabular">
+                        {registeredText} / {reportedText}
+                      </span>
+                      <span className="text-slate-300 dark:text-ui-text-subtle" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="text-slate-500 dark:text-ui-text-dark-soft">Dif.</span>
+                      <span
+                        className={`number-tabular font-bold ${
+                          isReconciled
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {diffText}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            }
+          />
         ) : null}
 
         {draft.rows.length === 0 ? (
@@ -3948,11 +4047,22 @@ const applyFreezingExcelPreview =
           </div>
         ) : (
           <DataTableScroll label="Captura por producto y turno">
-            <table className="erp-table w-full min-w-[76rem] border-collapse text-left">
+            <table className="erp-table w-full min-w-[76rem] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-[34%] min-w-[20rem]" />
+                <col className="w-[12%] min-w-[8rem]" />
+                <col className="w-[12%] min-w-[8rem]" />
+                <col className="w-[9%] min-w-[6.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[12%] min-w-[9.5rem]" />
+                <col className="w-[4rem]" />
+              </colgroup>
               <caption className="sr-only">Ingreso de producción por producto</caption>
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-500">
-                  <th className="sticky left-0 z-20 w-[24rem] bg-slate-50 px-4 py-2.5">Familia / producto</th>
+                <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong">
+                  <th className="sticky left-0 z-20 bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-recessed">Familia / producto</th>
                   <th className="px-2 py-2.5 text-right">Día reportado</th>
                   <th className="px-2 py-2.5 text-right">Noche reportado</th>
                   <th className="px-3 py-2.5 text-right">Total jornada</th>
@@ -3967,8 +4077,8 @@ const applyFreezingExcelPreview =
                   <th className="px-3 py-2.5 text-right">
                     {isFreezing ? 'Por vincular' : 'Kg faltantes'}
                   </th>
-                  <th className="px-3 py-2.5 text-center">Estado</th>
-                  <th className="px-3 py-2.5"><span className="sr-only">Eliminar</span></th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-center">Estado</th>
+                  <th className="px-2 py-2.5 text-center"><span className="sr-only">Eliminar</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -4006,9 +4116,14 @@ const applyFreezingExcelPreview =
 
                   return (
                   <Fragment key={subtotal.key}>
-                    <tr className="border-b border-brand-100 bg-brand-50/45">
-                      <th colSpan={9} className="sticky left-0 z-10 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-800">
-                        {subtotal.label}
+                    <tr className="border-b border-slate-200 bg-slate-100/70 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed/80">
+                      <th colSpan={9} className="sticky left-0 z-10 border-l-4 border-l-brand-600 bg-slate-100/70 px-4 py-2 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-800 dark:border-l-ui-accent-cyan dark:bg-ui-surface-dark-recessed/80 dark:text-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span>{subtotal.label}</span>
+                          <span className="inline-flex items-center rounded-full border border-brand-200/80 bg-brand-50/70 px-2 py-0.5 text-[0.625rem] font-semibold text-brand-700 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300">
+                            {subtotal.productIds.length} {subtotal.productIds.length === 1 ? 'producto' : 'productos'}
+                          </span>
+                        </div>
                       </th>
                     </tr>
                     {subtotal.productIds.map((productId) => {
@@ -4041,92 +4156,111 @@ const applyFreezingExcelPreview =
                             ...packingProductStatus(totalKg100),
                             pendingToLinkKg100: kg100(0),
                           }
+                      const rowIndex = orderedProductIds.indexOf(productId)
                       return (
-                    <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
-                      <th className="sticky left-0 z-10 bg-white px-4 py-2.5">
-                        <span className="block text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">{row.product.familyName}</span>
-                        <span className="mt-0.5 block max-w-[22rem] text-xs font-semibold leading-4 text-slate-800">{row.product.productName}</span>
+                    <tr
+                      key={row.key}
+                      className={`group border-b border-slate-100 bg-white transition-colors hover:bg-brand-50/25 focus-within:bg-brand-50/50 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:hover:bg-ui-surface-dark-hover-strong dark:focus-within:bg-ui-surface-dark-compact ${
+                        totalKg100 > 0 ? 'bg-emerald-50/15 dark:bg-ui-emerald-surface-dark/10' : ''
+                      }`}
+                    >
+                      <th
+                        className={`sticky left-0 z-10 border-l-2 px-4 py-2 transition-colors bg-white group-hover:bg-brand-50/25 group-focus-within:bg-brand-50/50 group-focus-within:border-l-brand-600 dark:bg-ui-surface-dark dark:group-hover:bg-ui-surface-dark-hover-strong dark:group-focus-within:bg-ui-surface-dark-compact dark:group-focus-within:border-l-ui-accent-cyan ${
+                          totalKg100 > 0
+                            ? 'border-l-emerald-500 dark:border-l-ui-emerald-border-dark bg-emerald-50/15 dark:bg-ui-surface-dark'
+                            : 'border-l-transparent'
+                        }`}
+                      >
+                        <span className="sr-only">{row.product.familyName}: </span>
+                        <span className="block text-xs font-semibold leading-4 text-slate-800 dark:text-ui-text-dark">{row.product.productName}</span>
                       </th>
-                      <td className="w-36 px-2 py-2">
+                      <td className="px-2 py-1.5">
                         <QuantityInput
                           label=""
                           value={inferred ? String((calculated?.day.reportedKg100 ?? 0) / 100) : row.dayReportedKg}
                           readOnly={inferred}
                           onChange={(value) => updateRow(row.key, 'dayReportedKg', value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx + 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            } else if (e.key === 'ArrowUp') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx - 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            }
-                          }}
+                          {...getCaptureCellProps(rowIndex, 0)}
                         />
                       </td>
-                      <td className="w-36 px-2 py-2">
+                      <td className="px-2 py-1.5">
                         <QuantityInput
                           label=""
                           value={inferred ? String((calculated?.night.reportedKg100 ?? 0) / 100) : row.nightReportedKg}
                           readOnly={inferred}
                           onChange={(value) => updateRow(row.key, 'nightReportedKg', value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx + 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            } else if (e.key === 'ArrowUp') {
-                              e.preventDefault()
-                              const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('table input[type="number"]'))
-                              const idx = inputs.indexOf(e.currentTarget)
-                              const targetInput = inputs[idx - 2]
-                              if (idx !== -1 && targetInput) targetInput.focus()
-                            }
-                          }}
+                          {...getCaptureCellProps(rowIndex, 1)}
                         />
                       </td>
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs font-bold text-slate-800">
-                        {formatCentiKg(totalKg100)}
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        totalKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>
+                        <span>{formatCentiKgValue(totalKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          totalKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
                       </td>
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(availableKg100)
-                          : '—'}
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(availableKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                         
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(linkedKg100)
-                          : '—'}
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(linkedKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                         
                       <td
-                        className={`number-tabular px-3 py-2.5 text-right text-xs ${
+                        className={`number-tabular px-3 py-2 text-right text-xs ${
                           isFreezing &&
                           productStatus.pendingToLinkKg100 > 0
-                            ? 'font-bold text-amber-700'
-                            : 'text-slate-400'
+                            ? 'font-bold text-amber-700 dark:text-amber-400'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
                         }`}
                       >
-                        {isFreezing
-                          ? formatCentiKg(
-                              productStatus.pendingToLinkKg100,
-                            )
-                          : '—'}
+                        {isFreezing ? (
+                          <>
+                            <span>{formatCentiKgValue(productStatus.pendingToLinkKg100)}</span>
+                            <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
-                      <td className="px-3 py-2.5 text-center align-middle">
+                      <td className="whitespace-nowrap px-3 py-2 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
-                          <StatusBadge tone={productStatus.tone}>
-                            {productStatus.label}
-                          </StatusBadge>
+                          {productStatus.label === 'SIN MOVIMIENTO' ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-ui-text-dark-soft">
+                              <Circle className="size-2 fill-slate-400 text-slate-400 dark:fill-slate-500 dark:text-ui-text-dark-soft" aria-hidden="true" />
+                              <span aria-label="Sin movimiento">Sin mov.</span>
+                            </span>
+                          ) : (
+                            <StatusBadge tone={productStatus.tone} truncateText={false}>
+                              {productStatus.label}
+                            </StatusBadge>
+                          )}
 
                           {isFreezing &&
                           productStatus.pendingToLinkKg100 > 0 &&
@@ -4145,81 +4279,172 @@ const applyFreezingExcelPreview =
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5">
-                        <button type="button" className="grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700" aria-label={`Eliminar ${row.product.productName}`} onClick={() => removeRow(row.key)}>
+                      <td className="px-2 py-1.5 text-center">
+                        <button
+                          type="button"
+                          disabled={!isEditingAllowed}
+                          className="inline-grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Quitar producto ${row.product.productName}`}
+                          onClick={() => removeRow(row.key)}
+                        >
                           <Trash2 className="size-4" aria-hidden="true" />
                         </button>
                       </td>
                     </tr>
                       )
                     })}
-                    <tr className="border-b border-slate-200 bg-slate-50/80 font-bold">
-                      <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-xs uppercase text-slate-800">
+                    <tr className="border-b border-slate-200 border-t-2 border-slate-300 bg-slate-50/90 font-bold dark:border-b-ui-line-dark dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact/80">
+                      <th className="sticky left-0 z-10 border-t-2 border-slate-300 bg-slate-50/90 px-4 py-2 text-xs uppercase text-slate-800 dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact/80 dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800">{formatCentiKg(subtotal.dayKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800">{formatCentiKg(subtotal.nightKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">{formatCentiKg(subtotal.totalKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceability.availableKg100,
-                            )
-                          : isBalanceOnly
-                            ? 'No aplica'
-                            : subtotal.preliminaryYieldPercent === null
-                              ? 'No disponible'
-                              : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.dayKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.dayKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.dayKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceability.linkedKg100,
-                            )
-                          : isBalanceOnly
-                            ? 'No aplica'
-                            : subtotal.targetPercent === null
-                              ? 'Sin objetivo'
-                              : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.nightKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.nightKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.nightKg100 > 0
+                            ? 'text-slate-600 dark:text-ui-text-dark-soft'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-700">
-                        {isFreezing
-                          ? formatCentiKg(
-                              familyTraceabilityStatus.pendingToLinkKg100,
-                            )
-                          : isBalanceOnly || subtotal.targetPercent === null
-                            ? '—'
-                            : formatCentiKg(
-                                subtotal.missingToTargetKg100,
-                              )}
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.totalKg100 > 0
+                          ? 'font-extrabold text-brand-700 dark:text-cyan-400'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>
+                        <span>{formatCentiKgValue(subtotal.totalKg100)}</span>
+                        <span className={`ml-1 text-[0.6875rem] font-medium ${
+                          subtotal.totalKg100 > 0
+                            ? 'text-brand-600/80 dark:text-cyan-400/80'
+                            : 'text-slate-400 dark:text-ui-text-subtle'
+                        }`}>
+                          kg
+                        </span>
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="number-tabular px-3 py-2 text-right text-xs">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceability.availableKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly ? (
+                          'No aplica'
+                        ) : subtotal.preliminaryYieldPercent === null ? (
+                          <span title="Rendimiento disponible al ingresar kg" aria-label="Rendimiento disponible al ingresar kg" className="text-slate-400 dark:text-ui-text-subtle">
+                            —
+                          </span>
+                        ) : (
+                          <span
+                            className={
+                              subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
+                                ? subtotal.status === 'COMPLIES'
+                                  ? 'font-bold text-emerald-700 dark:text-emerald-400'
+                                  : 'font-bold text-amber-700 dark:text-amber-400'
+                                : 'font-semibold text-slate-800 dark:text-ui-text-dark'
+                            }
+                          >
+                            {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                          </span>
+                        )}
+                      </td>
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceability.linkedKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly ? (
+                          'No aplica'
+                        ) : subtotal.totalKg100 === 0 ? (
+                          '—'
+                        ) : subtotal.targetPercent === null ? (
+                          '—'
+                        ) : (
+                          `≥ ${subtotal.targetPercent.toFixed(0)}%`
+                        )}
+                      </td>
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
+                        {isFreezing ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-ui-text-dark">
+                              {formatCentiKgValue(familyTraceabilityStatus.pendingToLinkKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-ui-text-dark-soft">kg</span>
+                          </>
+                        ) : isBalanceOnly || subtotal.targetPercent === null || subtotal.totalKg100 === 0 ? (
+                          '—'
+                        ) : (
+                          <>
+                            <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">
+                              {formatCentiKgValue(subtotal.missingToTargetKg100)}
+                            </span>
+                            <span className="ml-1 text-[0.6875rem] font-medium text-slate-600 dark:text-ui-text-dark-soft">
+                              kg
+                            </span>
+                          </>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-center">
                         <StatusBadge
                           tone={
                             isFreezing
                               ? familyTraceabilityStatus.tone
                               : isBalanceOnly
                                 ? 'neutral'
-                                : subtotal.status === 'INTEGRITY_ERROR'
-                                  ? 'danger'
-                                  : subtotal.status === 'BELOW_TARGET'
-                                    ? 'warning'
-                                    : subtotal.status === 'COMPLIES'
-                                      ? 'success'
-                                      : 'neutral'
+                                : subtotal.totalKg100 === 0
+                                  ? 'neutral'
+                                  : subtotal.status === 'INTEGRITY_ERROR'
+                                    ? 'danger'
+                                    : subtotal.status === 'BELOW_TARGET'
+                                      ? 'warning'
+                                      : subtotal.status === 'COMPLIES'
+                                        ? 'success'
+                                        : 'neutral'
                           }
+                          showIcon={
+                            isFreezing
+                              ? true
+                              : isBalanceOnly || subtotal.totalKg100 === 0 || subtotal.targetPercent === null
+                                ? false
+                                : true
+                          }
+                          truncateText={false}
                         >
                           {isFreezing
                             ? familyTraceabilityStatus.label
                             : isBalanceOnly
                               ? 'NO APLICA'
-                              : subtotal.status === 'INTEGRITY_ERROR'
-                                ? 'ERROR'
-                                : subtotal.status === 'BELOW_TARGET'
-                                  ? 'BAJO OBJETIVO'
-                                  : subtotal.status === 'COMPLIES'
-                                    ? 'CUMPLE'
-                                    : 'SIN OBJETIVO'}
+                              : subtotal.totalKg100 === 0
+                                ? 'SIN DATOS'
+                                : subtotal.status === 'INTEGRITY_ERROR'
+                                  ? 'ERROR'
+                                  : subtotal.status === 'BELOW_TARGET'
+                                    ? 'BAJO OBJETIVO'
+                                    : subtotal.status === 'COMPLIES'
+                                      ? 'CUMPLE'
+                                      : 'SIN OBJETIVO'}
                         </StatusBadge>
                       </td>
                       <td />
@@ -4259,78 +4484,30 @@ const applyFreezingExcelPreview =
             <MetricCard label="Túnel Noche" value={formatCentiKg(buildResult.calculation.tunnel.nightKg100)} />
             <MetricCard label="Total Túnel" value={formatCentiKg(buildResult.calculation.tunnel.totalKg100)} tone="brand" />
           </div>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto de Túnel
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={tunnelSearchInputRef}
-                  type="search"
-                  value={tunnelSearch}
-                  placeholder="Ej.: manto, nuca o anillas"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setTunnelSearch(event.target.value)
-                    setSelectedTunnelProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedTunnelProductId}
-                onChange={(event) => setSelectedTunnelProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {tunnelCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${tunnelCatalogItems.length} producto${
-                        tunnelCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        tunnelCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {tunnelCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedTunnelProductId}
-              onClick={() => {
-                const productId = selectedTunnelProductId
-
-                if (!productId) return
-
-                addMovementProduct(productId, () => {
-                  setTunnelProductIds((current) => {
-                    const next = new Set(current)
-                    next.add(productId)
-                    return next
-                  })
-                
-                  setTunnelSearch('')
-                  setSelectedTunnelProductId('')
-                  tunnelSearchInputRef.current?.focus()
+          <ProductPicker
+            items={tunnelCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => {
+              addMovementProduct(product.productId, () => {
+                setTunnelProductIds((current) => {
+                  const next = new Set(current)
+                  next.add(product.productId)
+                  return next
                 })
-              }}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar a Túnel
-            </button>
-          </div>
+                tunnelSearchInputRef.current?.focus()
+              })
+            }}
+            label="Buscar producto de Túnel"
+            placeholder="Ej.: manto, nuca o anillas"
+            buttonLabel="Agregar a Túnel"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:TUNNEL`}
+            searchInputRef={tunnelSearchInputRef}
+          />
 
           {tunnelRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
@@ -4338,7 +4515,7 @@ const applyFreezingExcelPreview =
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {tunnelRows.map((row) => {
+              {tunnelRows.map((row, tunnelIdx) => {
                 const tunnelTotalKg100 = sumKg100([
                   captureQuantityKg100(row.tunnelDayKg),
                   captureQuantityKg100(row.tunnelNightKg),
@@ -4362,12 +4539,14 @@ const applyFreezingExcelPreview =
                       value={row.tunnelDayKg}
                       disabled={!reportsReconciled}
                       onChange={(value) => updateRow(row.key, 'tunnelDayKg', value)}
+                      {...getTunnelCellProps(tunnelIdx, 0)}
                     />
                     <QuantityInput
                       label="Kg Noche"
                       value={row.tunnelNightKg}
                       disabled={!reportsReconciled}
                       onChange={(value) => updateRow(row.key, 'tunnelNightKg', value)}
+                      {...getTunnelCellProps(tunnelIdx, 1)}
                     />
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:min-h-10">
                       <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">Total</p>
@@ -4397,78 +4576,30 @@ const applyFreezingExcelPreview =
       >
         <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Registro de tratamiento</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto de tratamiento
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={treatmentSearchInputRef}
-                  type="search"
-                  value={treatmentSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setTreatmentSearch(event.target.value)
-                    setSelectedTreatmentProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedTreatmentProductId}
-                onChange={(event) => setSelectedTreatmentProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {treatmentCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${treatmentCatalogItems.length} producto${
-                        treatmentCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        treatmentCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {treatmentCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedTreatmentProductId}
-              onClick={() => {
-              const productId = selectedTreatmentProductId
-
-              if (!productId) return
-
-              addMovementProduct(productId, () => {
+          <ProductPicker
+            items={treatmentCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => {
+              addMovementProduct(product.productId, () => {
                 setTreatmentProductIds((current) => {
                   const next = new Set(current)
-                  next.add(productId)
+                  next.add(product.productId)
                   return next
                 })
-              
-                setTreatmentSearch('')
-                setSelectedTreatmentProductId('')
-                  treatmentSearchInputRef.current?.focus()
+                treatmentSearchInputRef.current?.focus()
               })
             }}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar tratamiento
-            </button>
-          </div>
+            label="Buscar producto de tratamiento"
+            placeholder="Ej.: aleta, manto o nuca"
+            buttonLabel="Agregar tratamiento"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:TREATMENT`}
+            searchInputRef={treatmentSearchInputRef}
+          />
 
           {treatmentRows.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">
@@ -4476,7 +4607,7 @@ const applyFreezingExcelPreview =
             </p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {treatmentRows.map((row) => (
+              {treatmentRows.map((row, treatmentIdx) => (
             <div
               key={`treatment-${row.key}`}
               className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_10rem_2.5rem] sm:items-end sm:px-5"
@@ -4501,6 +4632,7 @@ const applyFreezingExcelPreview =
                 onChange={(value) =>
                   updateRow(row.key, 'treatmentKg', value)
                 }
+                {...getTreatmentCellProps(treatmentIdx, 0)}
               />
 
               <button
@@ -5086,7 +5218,7 @@ freezingOriginLedger.length > 0 ? (
           aria-label="Saldo de Congelamiento por jornada origen"
         >
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:text-ui-text-soft">
+            <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
               <th className="px-4 py-3">
                 Jornada origen
               </th>
@@ -5216,116 +5348,41 @@ freezingOriginLedger.length > 0 ? (
 
         <fieldset disabled={!usesExternalAvailability && !reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Consumo de saldos anteriores</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[1fr_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                {isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
-              </span>
-              <select
-                ref={balanceSelectRef}
-                value={selectedBalanceKey}
-                onChange={(event) => setSelectedBalanceKey(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark"
-              >
-                <option value="">
-                  {availableBalances.length === 0
-                    ? isFreezing
-                      ? 'No hay producto envasado pendiente de congelar'
-                      : 'No hay otros saldos pendientes disponibles'
-                    : 'Seleccionar jornada origen y producto…'}
-                </option>
-                {isFreezing ? (
-                  <>
-                    {availableFreezingPreviousOriginBalances.length >
-0 ? (
-                  <optgroup
-                    label={`JORNADAS ANTERIORES CON SALDO · ${availableFreezingPreviousOriginBalances.length}`}
-                  >
-                    {availableFreezingPreviousOriginBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(balance.originDate)} ·{' '}
-                          {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(balance.pendingKg100)}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-
-                {availableFreezingCurrentOriginBalances.length >
-                0 ? (
-                  <optgroup
-                    label={`JORNADA ACTUAL DE ENVASADO · ${availableFreezingCurrentOriginBalances.length}`}
-                  >
-                    {availableFreezingCurrentOriginBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(balance.originDate)} ·{' '}
-                          {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(balance.pendingKg100)}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-                {availableFreezingHistoricalBalances.length >
-                0 ? (
-                  <optgroup
-                    label={`HISTÓRICO · VINCULACIÓN MANUAL · ${availableFreezingHistoricalBalances.length}`}
-                  >
-                    {availableFreezingHistoricalBalances.map(
-                      (balance) => (
-                        <option
-                          key={`${balance.originDayId}|${balance.productId}`}
-                          value={`${balance.originDayId}|${balance.productId}`}
-                        >
-                          {formatIsoDate(
-                            balance.originDate,
-                          )}{' '}
-                          · {balance.familyName} ·{' '}
-                          {balance.productName} ·{' '}
-                          {formatCentiKg(
-                            balance.pendingKg100,
-                          )}
-                        </option>
-                      ),
-                    )}
-                  </optgroup>
-                ) : null}
-                  </>
-                ) : (
-                  availableBalances.map((balance) => (
-                    <option
-                      key={`${balance.originDayId}|${balance.productId}`}
-                      value={`${balance.originDayId}|${balance.productId}`}
-                    >
-                      {formatIsoDate(balance.originDate)} · {balance.familyName} ·{' '}
-                      {balance.productName} ·{' '}
-                      {formatCentiKg(balance.pendingKg100)}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedBalanceKey}
-              onClick={addSelectedBalance}
-              className={buttonStyles('secondary')}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {isFreezing ? 'Vincular origen' : 'Usar saldo'}
-            </button>
-          </div>
+          <ProductPicker
+            items={availableBalances}
+            getItemId={(balance) => `${balance.originDayId}|${balance.productId}`}
+            getItemLabel={(balance) =>
+              `${formatIsoDate(balance.originDate)} · ${balance.familyName} · ${balance.productName}`
+            }
+            getItemMeta={(balance) => ({
+              group: isFreezing
+                ? balance.originDate === draft.date
+                  ? 'JORNADA ACTUAL DE ENVASADO'
+                  : balance.originDate >= freezingAutomaticOriginStartDate &&
+                      balance.originDate < draft.date
+                    ? 'JORNADAS ANTERIORES CON SALDO'
+                    : 'HISTÓRICO · VINCULACIÓN MANUAL'
+                : balance.familyName,
+              secondaryText: formatCentiKg(balance.pendingKg100),
+            })}
+            onAdd={(balance) => addSelectedBalance(balance)}
+            label={isFreezing ? 'Vincular origen de Envasado' : 'Saldo pendiente disponible'}
+            placeholder={
+              isFreezing
+                ? 'Buscar jornada origen o producto…'
+                : 'Buscar saldo pendiente…'
+            }
+            buttonLabel={isFreezing ? 'Vincular origen' : 'Usar saldo'}
+            disabled={!usesExternalAvailability && !reportsReconciled}
+            scopeKey={`${selectedProcess}:BALANCES`}
+            noResultsText={
+              availableBalances.length === 0
+                ? isFreezing
+                  ? 'No hay producto envasado pendiente de congelar'
+                  : 'No hay otros saldos pendientes disponibles'
+                : 'Sin saldos coincidentes'
+            }
+          />
 
           {draft.balanceUses.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500 dark:text-ui-text-dark-soft">
@@ -5429,7 +5486,7 @@ freezingOriginLedger.length > 0 ? (
 
               {shouldShowBalanceUseDetails ? (
                 <div className="divide-y divide-slate-100 dark:divide-ui-line-dark-grid">
-                  {draft.balanceUses.map((balance) => {
+                  {draft.balanceUses.map((balance, balanceIdx) => {
                     const position = captureBalancePosition(balance)
                     const requiresProductDistribution =
                       balance.requiresProductDistribution === true
@@ -5544,6 +5601,7 @@ freezingOriginLedger.length > 0 ? (
                             onChange={(value) =>
                               updateBalanceUse(balance.key, 'dayKg', value)
                             }
+                            {...getBalancesCellProps(balanceIdx, 0)}
                           />
 
                           <QuantityInput
@@ -5556,6 +5614,7 @@ freezingOriginLedger.length > 0 ? (
                             onChange={(value) =>
                               updateBalanceUse(balance.key, 'nightKg', value)
                             }
+                            {...getBalancesCellProps(balanceIdx, 1)}
                           />
 
                           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
@@ -5671,62 +5730,22 @@ freezingOriginLedger.length > 0 ? (
       >
         <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
           <legend className="sr-only">Saldo generado al cierre</legend>
-          <div className="sm:sticky sm:top-14 xl:top-0 z-[25] grid gap-3 border-b border-slate-200 bg-white p-4 shadow-[0_6px_12px_-8px_rgb(15_23_42/0.25)] sm:p-5 sm:py-3.5 lg:grid-cols-[minmax(13rem,0.7fr)_minmax(24rem,1.3fr)_auto] lg:items-end dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:shadow-[0_6px_12px_-8px_rgba(0,0,0,0.5)]">
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-ui-text-dark-strong">
-                Buscar producto para saldo
-              </span>
-              <span className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-ui-text-dark-soft" aria-hidden="true" />
-                <input
-                  ref={closingSearchInputRef}
-                  type="search"
-                  value={closingSearch}
-                  placeholder="Ej.: aleta, manto o nuca"
-                  autoComplete="off"
-                  onChange={(event) => {
-                    setClosingSearch(event.target.value)
-                    setSelectedClosingProductId('')
-                  }}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ui-line-dark dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark dark:placeholder:text-ui-text-dark-dim"
-                />
-              </span>
-            </label>
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-xs font-bold text-slate-700">
-                Producto exacto del catálogo
-              </span>
-              <select
-                value={selectedClosingProductId}
-                onChange={(event) => setSelectedClosingProductId(event.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-brand-400"
-              >
-                <option value="">
-                  {closingCatalogItems.length === 0
-                    ? 'Sin productos coincidentes'
-                    : `Seleccionar entre ${closingCatalogItems.length} producto${
-                        closingCatalogItems.length === 1 ? '' : 's'
-                      } detectado${
-                        closingCatalogItems.length === 1 ? '' : 's'
-                      }…`}
-                </option>
-                {closingCatalogItems.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.familyName} · {product.productName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              disabled={!selectedClosingProductId}
-              onClick={addClosingProduct}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Agregar saldo
-            </button>
-          </div>
+          <ProductPicker
+            items={closingCatalogItems}
+            getItemId={(product) => product.productId}
+            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
+            getItemMeta={(product) => ({
+              group: product.familyName,
+            })}
+            onAdd={(product) => addClosingProduct(product.productId)}
+            label="Buscar producto para saldo"
+            placeholder="Ej.: aleta, manto o nuca"
+            buttonLabel="Agregar saldo"
+            buttonClassName="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-900 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!reportsReconciled}
+            scopeKey={`${selectedProcess}:CLOSING`}
+            searchInputRef={closingSearchInputRef}
+          />
 
           <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4 lg:p-4">
             {closingRows.length === 0 ? (
@@ -5882,21 +5901,27 @@ freezingOriginLedger.length > 0 ? (
         />
       ) : null}
 
-      {!canClose && (closureValidation.blockers.length > 0 || diagnostics.length > 0) ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">Pendientes para cerrar</p>
-          <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900">
-            {[
-              ...closureValidation.blockers
-                .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
-                .map((blocker) => blocker.message),
-              ...diagnostics
-                .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
-                .map((diagnostic) => diagnostic.message),
-            ]
-              .filter((message, index, messages) => messages.indexOf(message) === index)
-              .slice(0, 12)
-              .map((message) => <li key={message}>• {message}</li>)}
+      {!canClose && (closureValidation.blockers.length > 0 || diagnostics.length > 0 || pendingClosureReasons.length > 0) ? (
+        <div
+          id="pendientes-para-cerrar"
+          tabIndex={-1}
+          className="scroll-mt-28 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 outline-none dark:border-amber-500/30 dark:bg-amber-500/10"
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-300">Pendientes para cerrar</p>
+          <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
+            {(pendingClosureReasons.length > 0
+              ? pendingClosureReasons
+              : [
+                  ...closureValidation.blockers
+                    .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
+                    .map((blocker) => blocker.message),
+                  ...diagnostics
+                    .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
+                    .map((diagnostic) => diagnostic.message),
+                ]
+                  .filter((message, index, messages) => messages.indexOf(message) === index)
+                  .slice(0, 12)
+            ).map((message) => <li key={message}>• {message}</li>)}
           </ul>
         </div>
       ) : null}
@@ -6246,12 +6271,68 @@ freezingOriginLedger.length > 0 ? (
           )
         : null}
 
+      {removedRowState ? (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-[calc(var(--entry-action-bar-height)+1.25rem)] right-4 z-40 flex max-w-md items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-xs text-white shadow-xl backdrop-blur-sm dark:border-ui-line-dark dark:bg-ui-surface-dark-deep/95 dark:text-ui-text-dark"
+        >
+          <span className="truncate">
+            Se quitó <strong className="font-bold text-white dark:text-ui-text-dark-strong">{removedRowState.row.product.productName}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={undoRemoveRow}
+            className="ml-auto shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 font-bold text-white transition hover:bg-brand-500 active:scale-95 dark:bg-ui-accent-cyan dark:text-slate-950 dark:hover:bg-cyan-300"
+          >
+            Deshacer
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (undoTimeoutRef.current) {
+                window.clearTimeout(undoTimeoutRef.current)
+              }
+              setRemovedRowState(null)
+            }}
+            className="grid size-6 place-items-center rounded text-slate-400 hover:text-white dark:hover:text-ui-text-dark-strong"
+            aria-label="Cerrar aviso"
+          >
+            ×
+          </button>
+        </aside>
+      ) : null}
+
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-ui-line-dark dark:bg-ui-surface-dark-deep xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
         <div className="mx-auto flex w-full max-w-[92.5rem] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6 xl:h-full xl:px-7 2xl:px-8">
-          <div className="flex items-center gap-2" role="status" aria-live="polite">
-            {canClose ? <CheckCircle2 className="size-5 text-emerald-600" aria-hidden="true" /> : <AlertTriangle className="size-5 text-amber-600" aria-hidden="true" />}
-            <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">{footerStatus.title}</p>
+          <div className="flex items-center gap-2.5 min-w-0" role="status" aria-live="polite">
+            {canClose ? (
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">{footerStatus.title}</p>
+                {pendingClosureReasons.length > 0 ? (
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    ({pendingClosureReasons.slice(0, 2).join(' · ')})
+                  </span>
+                ) : null}
+                {pendingClosureReasons.length > 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('pendientes-para-cerrar')
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      el?.focus()
+                    }}
+                    className="text-xs font-bold text-brand-700 underline underline-offset-2 hover:text-brand-800 dark:text-cyan-400 dark:hover:text-cyan-300"
+                  >
+                    +{pendingClosureReasons.length - 2} más · Ver pendientes
+                  </button>
+                ) : null}
+              </div>
               <p className="text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">{footerStatus.description}</p>
             </div>
           </div>

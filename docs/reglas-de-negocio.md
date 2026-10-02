@@ -32,13 +32,17 @@ Cada producto de una jornada de Envasado cerrada y cuadrada
 genera una posición trazable para Congelamiento.
 
 La disponibilidad congelable de cada producto se determina por
-la producción física realmente envasada durante la jornada:
+la producción propia envasada durante la jornada más el saldo que deja:
 
 ```text
 Producto congelable de la jornada =
-  Envasado Turno Día
-  + Envasado Turno Noche
+  Envasado propio Turno Día
+  + Envasado propio Turno Noche
   + saldo final dejado al cierre de la jornada
+
+Envasado propio del turno =
+  reporte físico del turno
+  − saldo de jornadas anteriores procesado en ese turno
 
 Diferencia no explicada =
   Envasado
@@ -46,7 +50,20 @@ Diferencia no explicada =
   − Pendiente trazable
 ```
 
-Congelamiento registra reportes físicos Día/Noche propios. El detalle de productos debe coincidir con cada reporte y cada kilo congelado debe estar vinculado a disponibilidad real. No se permite cerrar cuando el consumo supera lo disponible o cuando existe producto sin origen trazable; sí se permite conservar un borrador para investigar la incidencia.
+Regla confirmada el 23/09/2026: el saldo que deja una jornada (normalmente su
+turno Noche) pertenece a esa jornada aunque se termine de envasar en el turno Día
+siguiente. Por eso se cuenta **una sola vez**, en la jornada que lo dejó. El
+reporte físico de cada turno se sigue mostrando como dato informativo, pero la
+parte que corresponde a saldo recibido no suma a la disponibilidad de la jornada
+que lo procesa. Un domingo que solo termina saldo del sábado no genera
+disponibilidad nueva. El panel "Cuadre Envasado → Congelamiento por jornada"
+(Saldos → Congelamiento) muestra cada operando de este cálculo.
+
+Congelamiento registra reportes físicos Día/Noche propios. El detalle de productos debe coincidir con cada reporte y cada kilo congelado debe estar vinculado a disponibilidad real. Reglas de cierre de Congelamiento:
+
+- **Bloquea el cierre:** que el consumo supere lo disponible (`BALANCE_OVERUSED`), cantidades negativas o producción propia negativa, o que exista producto congelado sin **ninguna** disponibilidad trazable desde Envasado (`FREEZING_WITHOUT_AVAILABILITY`). En esos casos sí se puede conservar un borrador para investigar la incidencia.
+- **Permite cerrar con observación:** cuando existe al menos un origen trazable registrado pero queda producto congelado sin origen suficiente (`FREEZING_TRACEABILITY_DIFFERENCE`). La diferencia se conserva como observación de la jornada y sigue visible como diferencia de trazabilidad en el Dashboard y en el comparativo; no se limita ni se oculta.
+- **No exige congelar todo el Envasado el mismo día.** Un origen puede seguir pendiente durante otro turno, otro día u otra semana; FIFO consume primero el origen más antiguo y, dentro de un origen, Día antes que Noche.
 
 Congelamiento no registra nueva materia prima, Túnel, Tratamiento ni saldo productivo de Envasado. Tampoco aplica el aprovechamiento anatómico del 80%. Su referencia es el producto disponible desde Envasado.
 
@@ -115,6 +132,21 @@ Saldo final calculado =
 La diferencia compara el producto terminado esperado con el declarado. Una jornada está `CUADRADA` cuando la diferencia es cero y el detalle por productos y turnos también es consistente; de lo contrario está `NO CUADRADA`.
 
 El saldo recibido de una jornada anterior y el nuevo saldo generado por la jornada actual son conceptos distintos y no deben mezclarse.
+
+## Estado de una jornada en la interfaz
+
+Una jornada se presenta con uno de cuatro estados excluyentes (`presentation/journeyStatus.ts`):
+
+| Estado | Condición | Color |
+| --- | --- | --- |
+| CUADRADO | Cerrada, cuadrada y sin observaciones | Verde |
+| CUADRADO · OBSERVADO | Cerrada, cuadrada y con observaciones | Amarillo |
+| POR REVISAR | Borrador o cuadre todavía abierto, sin problema de integridad bloqueante | Amarillo |
+| NO CUADRADO | Cerrada y sin cuadrar, o con una validación de integridad bloqueante | Rojo |
+
+Las observaciones de una jornada son las aceptadas al cerrar (`closureObservations`) y, cuando una jornada histórica se cerró sin guardarlas, sus advertencias de validación. Estas últimas no se pierden por no haberse persistido.
+
+Rojo se reserva para inconsistencias reales o validaciones bloqueantes: un borrador no es una falla crítica por el solo hecho de no estar cerrado.
 
 ## Rendimiento
 

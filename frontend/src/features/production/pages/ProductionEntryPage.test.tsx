@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
 import { kg100 } from '../model/calculations'
+import { formatCentiKg } from '../../../utils/formatters'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -47,19 +48,17 @@ function completeShiftReport({
   fireEvent.change(screen.getByLabelText(/^Reporte Noche/), {
     target: { value: nightReport },
   })
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar producto' }), {
+  const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, {
     target: { value: productSearch },
   })
-  const productSelect = screen.getByRole('combobox', {
-    name: 'Producto con movimiento',
-  })
-  const product = within(productSelect).getAllByRole('option')[1] as HTMLOptionElement
-  fireEvent.change(productSelect, { target: { value: product.value } })
-  fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
+  const productOption = screen.getAllByRole('option')[0]!
+  fireEvent.click(productOption)
 
   const captureInputs = within(
     screen.getByRole('region', { name: 'Captura por producto y turno' }),
-  ).getAllByRole('spinbutton')
+  ).getAllByRole('textbox')
   fireEvent.change(captureInputs[0]!, { target: { value: dayReport } })
   fireEvent.change(captureInputs[1]!, { target: { value: nightReport } })
 }
@@ -68,20 +67,13 @@ function addClosingBalanceProduct(query: string) {
   const closingSection = screen
     .getByRole('heading', { name: 'Saldo generado al cierre' })
     .closest('section')!
-  fireEvent.change(
-    within(closingSection).getByRole('searchbox', {
-      name: 'Buscar producto para saldo',
-    }),
-    { target: { value: query } },
-  )
-  const productSelect = within(closingSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(closingSection).getByRole('combobox', {
+    name: 'Buscar producto para saldo',
   })
-  const product = within(productSelect).getAllByRole(
-    'option',
-  )[1] as HTMLOptionElement
-  fireEvent.change(productSelect, { target: { value: product.value } })
-  fireEvent.click(within(closingSection).getByRole('button', { name: 'Agregar saldo' }))
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
+  const productOption = within(closingSection).getAllByRole('option')[0]!
+  fireEvent.click(productOption)
 }
 
 function addTunnelProduct(query: string) {
@@ -89,40 +81,15 @@ function addTunnelProduct(query: string) {
     .getByRole('heading', { name: 'Túnel' })
     .closest('section')!
 
-  fireEvent.change(
-    within(tunnelSection).getByRole('searchbox', {
-      name: 'Buscar producto de Túnel',
-    }),
-    {
-      target: { value: query },
-    },
-  )
-
-  const productSelect = within(tunnelSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(tunnelSection).getByRole('combobox', {
+    name: 'Buscar producto de Túnel',
   })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
 
-  const productOptions = within(productSelect)
-    .getAllByRole('option')
-    .filter((option) => (option as HTMLOptionElement).value !== '')
-
+  const productOptions = within(tunnelSection).getAllByRole('option')
   expect(productOptions.length).toBeGreaterThan(0)
-
-  const product = productOptions[0] as HTMLOptionElement
-
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  expect(productSelect).toHaveValue(product.value)
-
-  const addButton = within(tunnelSection).getByRole('button', {
-    name: 'Agregar a Túnel',
-  })
-
-  expect(addButton).toBeEnabled()
-
-  fireEvent.click(addButton)
+  fireEvent.click(productOptions[0]!)
 
   return tunnelSection
 }
@@ -136,32 +103,16 @@ function addTreatmentProduct(query: string) {
 
   expect(treatmentSection).not.toBeNull()
 
-  fireEvent.change(
-    within(treatmentSection).getByRole('searchbox', {
-      name: 'Buscar producto de tratamiento',
-    }),
-    {
-      target: { value: query },
-    },
-  )
-
-  const productSelect = within(treatmentSection).getByRole('combobox', {
-    name: 'Producto exacto del catálogo',
+  const productInput = within(treatmentSection).getByRole('combobox', {
+    name: 'Buscar producto de tratamiento',
   })
+  fireEvent.focus(productInput)
+  fireEvent.change(productInput, { target: { value: query } })
 
-  const product = within(productSelect).getAllByRole(
-    'option',
-  )[1] as HTMLOptionElement
+  const productOptions = within(treatmentSection).getAllByRole('option')
+  expect(productOptions.length).toBeGreaterThan(0)
+  fireEvent.click(productOptions[0]!)
 
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  fireEvent.click(
-    within(treatmentSection).getByRole('button', {
-      name: 'Agregar tratamiento',
-    }),
-  )
   return treatmentSection
 }
 
@@ -187,21 +138,17 @@ describe('ProductionEntryPage product selector', () => {
       </ProductionDataProvider>,
     )
 
-    fireEvent.change(
-      screen.getByRole('searchbox', { name: 'Buscar producto' }),
-      { target: { value: 'aleta' } },
-    )
+    const input = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'aleta' } })
 
-    const productSelect = screen.getByRole('combobox', {
-      name: 'Producto con movimiento',
-    })
-    const options = within(productSelect).getAllByRole('option').slice(1)
+    const options = screen.getAllByRole('option')
 
     expect(options.length).toBeGreaterThan(0)
     expect(
       options.every((option) => option.textContent?.toLowerCase().includes('aleta')),
     ).toBe(true)
-    expect(within(productSelect).queryByText(/manto japonés/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/manto japonés/i)).not.toBeInTheDocument()
   })
 
   it('adapts capture to Freezing and prioritizes traceable Packing availability', () => {
@@ -295,66 +242,43 @@ expect(
     expect(screen.queryByLabelText('Existe producto para Túnel')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Balance MP Tubo' })).toBeNull()
 
-    fireEvent.change(
-      screen.getByRole('searchbox', { name: 'Buscar producto' }),
-      { target: { value: 'aleta 1000 2000' } },
-    )
-    const selector = screen.getByRole('combobox', {
-      name: 'Producto con movimiento',
-    })
-    expect(within(selector).getAllByRole('option')[1]).toHaveTextContent(
+    const input = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'aleta 1000 2000' } })
+
+    const options = screen.getAllByRole('option')
+    expect(options[0]).toHaveTextContent(
       /Disponible:/,
     )
   })
 
   it('shows the freezing traceability summary for reported product movement', () => {
-  renderNewEntry('/jornadas/nueva?process=FREEZING')
+    renderNewEntry('/jornadas/nueva?process=FREEZING')
 
-  fireEvent.change(
-    screen.getByLabelText(/^Reporte Día/),
-    {
-      target: { value: '10' },
-    },
-  )
+    fireEvent.change(
+      screen.getByLabelText(/^Reporte Día/),
+      {
+        target: { value: '10' },
+      },
+    )
 
-  fireEvent.change(
-    screen.getByRole('searchbox', {
+    const productInput = screen.getByRole('combobox', {
       name: 'Buscar producto',
-    }),
-    {
+    })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, {
       target: { value: 'aleta 1000 2000' },
-    },
-  )
+    })
 
-  const productSelect = screen.getByRole('combobox', {
-    name: 'Producto con movimiento',
-  })
-
-  const product = within(productSelect)
-    .getAllByRole('option')
-    .filter(
-      (option) =>
-        (option as HTMLOptionElement).value !== '',
-    )[0] as HTMLOptionElement
-
-  expect(product).toBeDefined()
-
-  fireEvent.change(productSelect, {
-    target: { value: product.value },
-  })
-
-  fireEvent.click(
-    screen.getByRole('button', {
-      name: 'Agregar',
-    }),
-  )
+    const productOption = screen.getAllByRole('option')[0]!
+    fireEvent.click(productOption)
 
   const captureRegion = screen.getByRole('region', {
     name: 'Captura por producto y turno',
   })
 
   const captureInputs =
-    within(captureRegion).getAllByRole('spinbutton')
+    within(captureRegion).getAllByRole('textbox')
 
   fireEvent.change(captureInputs[0]!, {
     target: { value: '10' },
@@ -452,8 +376,8 @@ describe('capture product status labels', () => {
       within(packingDialog).getByRole('button', { name: 'Cambiar proceso' }),
     )
 
-    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue(123)
-    expect(screen.getByLabelText(/^Reporte Día/)).toHaveValue(null)
+    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue('123')
+    expect(screen.getByLabelText(/^Reporte Día/)).toHaveValue('')
   })
 
   it('shows the Tube MP balance and distinguishes overall utilization', () => {
@@ -538,7 +462,7 @@ describe('capture product status labels', () => {
 
     const captureInputs = within(
       screen.getByRole('region', { name: 'Captura por producto y turno' }),
-    ).getAllByRole('spinbutton')
+    ).getAllByRole('textbox')
     fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
 
     expect(
@@ -574,7 +498,7 @@ describe('capture product status labels', () => {
 
     expect(screen.getByText('DISPONIBLE')).toBeInTheDocument()
     expect(
-      screen.getByRole('searchbox', { name: 'Buscar producto de tratamiento' }),
+      screen.getByRole('combobox', { name: 'Buscar producto de tratamiento' }),
     ).not.toBeDisabled()
   })
 
@@ -629,16 +553,16 @@ describe('capture product status labels', () => {
     addClosingBalanceProduct('recorte crudo manto')
 
     const closingInput = screen.getByLabelText(/^Saldo al cierre/)
-    expect(closingInput).toHaveValue(0)
+    expect(closingInput).toHaveValue('0')
 
     fireEvent.focus(closingInput)
-    expect(closingInput).toHaveValue(null)
+    expect(closingInput).toHaveValue('')
     fireEvent.blur(closingInput)
-    expect(closingInput).toHaveValue(0)
+    expect(closingInput).toHaveValue('0')
 
     fireEvent.change(closingInput, { target: { value: '2.5' } })
     fireEvent.focus(closingInput)
-    expect(closingInput).toHaveValue(2.5)
+    expect(closingInput).toHaveValue('2.5')
   })
 
   it('updates Tunnel Day, Night and total reactively after reports reconcile', () => {
@@ -686,7 +610,7 @@ describe('capture product status labels', () => {
     fireEvent.click(tunnelCheckbox)
 
     expect(tunnelCheckbox).toBeChecked()
-    expect(dayInput).toHaveValue(5)
+    expect(dayInput).toHaveValue('5')
     expect(
       screen.getByText(
         'Existen productos de Túnel registrados. Elimina estos movimientos antes de desactivar la opción.',
@@ -716,7 +640,7 @@ describe('capture product status labels', () => {
 
     expect(screen.getByLabelText('Existe producto para Túnel')).toBeChecked()
     const reopenedTunnel = screen.getByRole('heading', { name: 'Túnel' }).closest('section')!
-    expect(within(reopenedTunnel).getByLabelText(/^Kg Día/)).toHaveValue(5)
+    expect(within(reopenedTunnel).getByLabelText(/^Kg Día/)).toHaveValue('5')
   })
 
   it('preserves later-stage values when an earlier report becomes unbalanced', () => {
@@ -752,7 +676,7 @@ describe('capture product status labels', () => {
     screen.getByRole('region', {
       name: 'Captura por producto y turno',
     }),
-  ).getAllByRole('spinbutton')[0]!
+  ).getAllByRole('textbox')[0]!
 
   // Rompemos temporalmente el cuadre.
   fireEvent.change(reportInput, {
@@ -760,7 +684,7 @@ describe('capture product status labels', () => {
   })
 
   // El valor de Tratamiento debe conservarse.
-  expect(treatmentInput).toHaveValue(1.2)
+  expect(treatmentInput).toHaveValue('1.2')
 
   // Mientras los turnos no cuadren, Tratamiento queda bloqueado.
   expect(treatmentInput).toBeDisabled()
@@ -778,7 +702,7 @@ describe('capture product status labels', () => {
     within(treatmentSection).getByLabelText(/^Kg tratamiento/)
 
   // El valor no debe haberse perdido.
-  expect(restoredTreatmentInput).toHaveValue(1.2)
+  expect(restoredTreatmentInput).toHaveValue('1.2')
 
   // Y Tratamiento vuelve a quedar disponible.
   expect(restoredTreatmentInput).not.toBeDisabled()
@@ -863,7 +787,7 @@ describe('capture product status labels', () => {
       screen.getByRole('heading', { name: 'Esta semana es de solo lectura' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('searchbox', { name: 'Buscar producto' }),
+      screen.queryByRole('combobox', { name: 'Buscar producto' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Nueva jornada' }),
@@ -895,7 +819,7 @@ describe('capture product status labels', () => {
     )
     expect(discharge).not.toBeChecked()
     expect(screen.getByLabelText(/^Materia prima/)).toBeDisabled()
-    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue(0)
+    expect(screen.getByLabelText(/^Materia prima/)).toHaveValue('0')
     expect(screen.queryByRole('heading', { name: 'Tratamiento' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Saldo generado al cierre' })).not.toBeInTheDocument()
     expect(screen.getByText('NO APLICA')).toBeInTheDocument()
@@ -918,21 +842,14 @@ describe('capture product status labels', () => {
     const balancesSection = screen
       .getByRole('heading', { name: 'Saldos anteriores procesados' })
       .closest('section')!
-    const balanceSelect = within(balancesSection).getByRole('combobox', {
+    const balanceInput = within(balancesSection).getByRole('combobox', {
       name: 'Saldo pendiente disponible',
     })
-    const balanceOption = within(balanceSelect).getAllByRole(
+    fireEvent.focus(balanceInput)
+    const balanceOption = within(balancesSection).getAllByRole(
       'option',
-    )[1] as HTMLOptionElement
-    fireEvent.change(balanceSelect, {
-      target: { value: balanceOption.value },
-    })
-
-    fireEvent.click(
-      within(balancesSection).getByRole('button', {
-        name: 'Usar saldo',
-      }),
-    )
+    )[0]!
+    fireEvent.click(balanceOption)
 
     // El primer saldo disponible es una Aleta histórica genérica.
     // Ahora debe reclasificarse antes de consumirse.
@@ -959,8 +876,8 @@ describe('capture product status labels', () => {
     const processedNightInput =
       within(balancesSection).getByLabelText(/^Procesado Noche/)
 
-    expect(processedDayInput).toHaveValue(0)
-    expect(processedNightInput).toHaveValue(0)
+    expect(processedDayInput).toHaveValue('0')
+    expect(processedNightInput).toHaveValue('0')
 
     const processedKg = '100'
 
@@ -999,4 +916,236 @@ describe('capture product status labels', () => {
       declaredFinishedTotalKg100: 0,
     })
   })
+
+  it('supports Excel-style grid keyboard navigation between cells and products', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // Agregar un segundo producto para tener múltiples filas navegables
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'aleta' } })
+    const productOptions = screen.getAllByRole('option')
+    if (productOptions[1]) {
+      fireEvent.click(productOptions[1])
+    }
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+    const inputs = within(captureRegion).getAllByRole<HTMLInputElement>('textbox')
+    expect(inputs.length).toBeGreaterThanOrEqual(4)
+
+    inputs[0]!.focus()
+    expect(document.activeElement).toBe(inputs[0])
+
+    // Flecha derecha salta de Día a Noche en la misma fila
+    inputs[0]!.setSelectionRange(inputs[0]!.value.length, inputs[0]!.value.length)
+    fireEvent.keyDown(inputs[0]!, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(inputs[1])
+
+    // Flecha izquierda salta de Noche a Día en la misma fila
+    inputs[1]!.setSelectionRange(0, 0)
+    fireEvent.keyDown(inputs[1]!, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(inputs[0])
+
+    // Enter salta a la fila siguiente en la misma columna (Día -> Día)
+    fireEvent.keyDown(inputs[0]!, { key: 'Enter', shiftKey: false })
+    expect(document.activeElement).toBe(inputs[2])
+
+    // Shift+Enter salta a la fila anterior en la misma columna
+    fireEvent.keyDown(inputs[2]!, { key: 'Enter', shiftKey: true })
+    expect(document.activeElement).toBe(inputs[0])
+  })
+
+  it('displays neutral "SIN DATOS" badge and dashes for families without movement', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // Agregar un producto de la familia Aleta sin ingresar kg (0 kg)
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'aleta' } })
+    const productOptions = screen.getAllByRole('option')
+    if (productOptions[0]) {
+      fireEvent.click(productOptions[0])
+    }
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // La familia Aleta tiene 0 kg y debe mostrar SIN DATOS en lugar del falso positivo CUMPLE
+    expect(within(captureRegion).getByText('SIN DATOS')).toBeInTheDocument()
+  })
+
+  it('allows undoing the removal of a product with recorded values', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // El producto agregado por completeShiftReport tiene 80 kg registrados en Día
+    const deleteButton = within(captureRegion).getByRole('button', {
+      name: /Quitar producto/i,
+    })
+    fireEvent.click(deleteButton)
+
+    // El producto ya no está en la tabla
+    expect(within(captureRegion).queryByDisplayValue('80')).not.toBeInTheDocument()
+
+    // El aviso de deshacer aparece con el botón Deshacer
+    const undoButton = screen.getByRole('button', { name: 'Deshacer' })
+    expect(undoButton).toBeInTheDocument()
+
+    // Al pulsar Deshacer, el producto y sus 80 kg se restauran
+    fireEvent.click(undoButton)
+    const restoredRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+    expect(within(restoredRegion).getByDisplayValue('80')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deshacer' })).not.toBeInTheDocument()
+  })
+
+  it('displays live shift reconciliation summary chips in the sticky toolbar', () => {
+    renderNewEntry()
+    completeShiftReport({
+      rawMaterial: '100',
+      dayReport: '80',
+      nightReport: '0',
+    })
+
+    const dayChip = screen.getByTestId('sticky-shift-chip-día')
+    const nightChip = screen.getByTestId('sticky-shift-chip-noche')
+
+    expect(dayChip).toBeInTheDocument()
+    expect(nightChip).toBeInTheDocument()
+
+    // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
+    expect(dayChip).toHaveTextContent('Día:')
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)} / ${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(0))
+
+    // Modificamos el valor de día para crear una diferencia
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
+
+    // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)} / ${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(1000))
+  })
+
+  it('renders untruncated status badges and shows dash for subtotal without target', () => {
+    renderNewEntry()
+    completeShiftReport({
+      rawMaterial: '100',
+      dayReport: '80',
+      nightReport: '0',
+    })
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // The recorded product badge has full text "REGISTRADO" without truncation
+    const registeredBadge = within(captureRegion).getByText('REGISTRADO')
+    expect(registeredBadge).toBeInTheDocument()
+    expect(registeredBadge).not.toHaveClass('truncate')
+
+    // Find the subtotal row for RECORTE CRUDO (which has no target)
+    const subtotalHeader = within(captureRegion).getByText('Subtotal RECORTE CRUDO')
+    const subtotalRow = subtotalHeader.closest('tr')!
+    expect(subtotalRow).not.toBeNull()
+
+    // Subtotal status badge shows full "SIN OBJETIVO" without truncation
+    const sinObjetivoBadge = within(subtotalRow).getByText('SIN OBJETIVO')
+    expect(sinObjetivoBadge).toBeInTheDocument()
+    expect(sinObjetivoBadge).not.toHaveClass('truncate')
+
+    // The Objetivo cell in this subtotal displays "—" instead of duplicated "Sin objetivo"
+    expect(within(subtotalRow).queryByText('Sin objetivo')).not.toBeInTheDocument()
+  })
+
+  it('renders shift cards with schedule, hierarchical metrics, and accessible progress bar', () => {
+    renderNewEntry()
+
+    // Initially with empty shift reports, both prompt to complete report
+    expect(screen.getByText('(07:00 – 19:00)')).toBeInTheDocument()
+    expect(screen.getByText('(19:00 – 07:00)')).toBeInTheDocument()
+    expect(screen.getByText('Completa el reporte del Turno Día.')).toBeInTheDocument()
+
+    // Complete day report with 100 kg declared and 80 kg registered (80% progress)
+    fireEvent.change(screen.getByLabelText(/^Materia prima/), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/^Reporte Día/), { target: { value: '100' } })
+
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'recorte crudo manto' } })
+    const productOption = screen.getAllByRole('option')[0]!
+    fireEvent.click(productOption)
+
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
+
+    // Progress bar for Turno Día
+    const dayHeading = screen.getByRole('heading', { name: 'Turno Día' })
+    const dayCard = dayHeading.closest('article')!
+    expect(dayCard).not.toBeNull()
+
+    const progressBar = within(dayCard).getByRole('progressbar', {
+      name: 'Avance de registro Turno Día',
+    })
+    expect(progressBar).toBeInTheDocument()
+    expect(progressBar).toHaveAttribute('aria-valuenow', '80')
+    expect(within(dayCard).getByText(/Avance de registro:/)).toBeInTheDocument()
+    expect(within(dayCard).getByText('80.0%')).toBeInTheDocument()
+    expect(within(dayCard).getByText(/Faltan 20\.00 kg por registrar/)).toBeInTheDocument()
+
+    // Update to exact match: 100 kg registered (100% progress -> Cuadrado)
+    fireEvent.change(captureInputs[0]!, { target: { value: '100' } })
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+    expect(within(dayCard).getByText('100.0%')).toBeInTheDocument()
+    expect(within(dayCard).getByText('Cuadrado')).toBeInTheDocument()
+
+    // Update to exceeded: 110 kg registered (Excede 10.00 kg)
+    fireEvent.change(captureInputs[0]!, { target: { value: '110' } })
+    expect(within(dayCard).getByText(/Excede/)).toBeInTheDocument()
+  })
+
+  it('renders family band product counter and dimmed kg units in calculated cells', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // By default, completeShiftReport adds 1 product: 'recorte crudo manto'
+    // Family band should show "1 producto"
+    expect(screen.getByText('1 producto')).toBeInTheDocument()
+
+    // Calculated table cells contain separated value and dimmed kg unit
+    const captureRegion = screen.getByRole('region', { name: 'Captura por producto y turno' })
+    const kgUnits = within(captureRegion).getAllByText('kg')
+    expect(kgUnits.length).toBeGreaterThan(0)
+  })
+
+  it('displays concrete blocking reasons in footer and ready state when reconciled', () => {
+    renderNewEntry()
+    completeShiftReport({ dayReport: '100' })
+
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    // Register only 80 kg of 100 kg -> 20 kg difference
+    fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
+
+    // Footer shows concrete blocker reason: Turno Día: faltan 20.00 kg
+    expect(screen.getAllByText(/Turno Día: faltan 20\.00 kg/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeDisabled()
+  })
 })
+
+
