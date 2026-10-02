@@ -3891,14 +3891,14 @@ const applyFreezingExcelPreview =
           <DataTableScroll label="Captura por producto y turno">
             <table className="erp-table w-full min-w-[76rem] table-fixed border-collapse text-left">
               <colgroup>
-                <col className="w-[36%] min-w-[22rem]" />
-                <col className="w-[12%] min-w-[8.5rem]" />
-                <col className="w-[12%] min-w-[8.5rem]" />
+                <col className="w-[34%] min-w-[20rem]" />
+                <col className="w-[12%] min-w-[8rem]" />
+                <col className="w-[12%] min-w-[8rem]" />
                 <col className="w-[9%] min-w-[6.5rem]" />
                 <col className="w-[7%] min-w-[5.5rem]" />
                 <col className="w-[7%] min-w-[5.5rem]" />
                 <col className="w-[7%] min-w-[5.5rem]" />
-                <col className="w-[10%] min-w-[7.5rem]" />
+                <col className="w-[12%] min-w-[9.5rem]" />
                 <col className="w-[4rem]" />
               </colgroup>
               <caption className="sr-only">Ingreso de producción por producto</caption>
@@ -3919,7 +3919,7 @@ const applyFreezingExcelPreview =
                   <th className="px-3 py-2.5 text-right">
                     {isFreezing ? 'Por vincular' : 'Kg faltantes'}
                   </th>
-                  <th className="px-3 py-2.5 text-center">Estado</th>
+                  <th className="whitespace-nowrap px-3 py-2.5 text-center">Estado</th>
                   <th className="px-2 py-2.5 text-center"><span className="sr-only">Eliminar</span></th>
                 </tr>
               </thead>
@@ -4062,7 +4062,7 @@ const applyFreezingExcelPreview =
                             )
                           : '—'}
                       </td>
-                      <td className="px-3 py-2 text-center align-middle">
+                      <td className="whitespace-nowrap px-3 py-2 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
                           {productStatus.label === 'SIN MOVIMIENTO' ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-ui-text-dark-soft">
@@ -4070,7 +4070,7 @@ const applyFreezingExcelPreview =
                               <span aria-label="Sin movimiento">Sin mov.</span>
                             </span>
                           ) : (
-                            <StatusBadge tone={productStatus.tone}>
+                            <StatusBadge tone={productStatus.tone} truncateText={false}>
                               {productStatus.label}
                             </StatusBadge>
                           )}
@@ -4150,7 +4150,7 @@ const applyFreezingExcelPreview =
                             : subtotal.totalKg100 === 0
                               ? '—'
                               : subtotal.targetPercent === null
-                                ? 'Sin objetivo'
+                                ? '—'
                                 : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
@@ -4164,7 +4164,7 @@ const applyFreezingExcelPreview =
                                 subtotal.missingToTargetKg100,
                               )}
                       </td>
-                      <td className="px-3 py-2 text-center">
+                      <td className="whitespace-nowrap px-3 py-2 text-center">
                         <StatusBadge
                           tone={
                             isFreezing
@@ -4181,6 +4181,7 @@ const applyFreezingExcelPreview =
                                         ? 'success'
                                         : 'neutral'
                           }
+                          truncateText={false}
                         >
                           {isFreezing
                             ? familyTraceabilityStatus.label

@@ -1040,6 +1040,37 @@ describe('capture product status labels', () => {
     expect(dayChip).toHaveTextContent(formatCentiKg(1000))
     expect(dayChip).toHaveClass('border-amber-200')
   })
+
+  it('renders untruncated status badges and shows dash for subtotal without target', () => {
+    renderNewEntry()
+    completeShiftReport({
+      rawMaterial: '100',
+      dayReport: '80',
+      nightReport: '0',
+    })
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // The recorded product badge has full text "REGISTRADO" without truncation
+    const registeredBadge = within(captureRegion).getByText('REGISTRADO')
+    expect(registeredBadge).toBeInTheDocument()
+    expect(registeredBadge).not.toHaveClass('truncate')
+
+    // Find the subtotal row for RECORTE CRUDO (which has no target)
+    const subtotalHeader = within(captureRegion).getByText('Subtotal RECORTE CRUDO')
+    const subtotalRow = subtotalHeader.closest('tr')!
+    expect(subtotalRow).not.toBeNull()
+
+    // Subtotal status badge shows full "SIN OBJETIVO" without truncation
+    const sinObjetivoBadge = within(subtotalRow).getByText('SIN OBJETIVO')
+    expect(sinObjetivoBadge).toBeInTheDocument()
+    expect(sinObjetivoBadge).not.toHaveClass('truncate')
+
+    // The Objetivo cell in this subtotal displays "—" instead of duplicated "Sin objetivo"
+    expect(within(subtotalRow).queryByText('Sin objetivo')).not.toBeInTheDocument()
+  })
 })
 
 

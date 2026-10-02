@@ -34,7 +34,7 @@ const toneClasses: Record<StatusBadgeTone, string> = {
     'bg-amber-50 text-amber-900 ring-amber-600/25 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/25',
   info: 'bg-brand-50 text-brand-800 ring-brand-600/20 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/25',
   neutral:
-    'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/25',
+    'bg-slate-100 text-slate-800 ring-slate-500/25 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong dark:ring-ui-line-dark',
   orange:
     'bg-orange-50 text-orange-900 ring-orange-600/25 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-400/25',
   yellow:
