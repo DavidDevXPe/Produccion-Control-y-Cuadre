@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
 import { kg100 } from '../model/calculations'
+import { formatCentiKg } from '../../../utils/formatters'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -1007,5 +1008,38 @@ describe('capture product status labels', () => {
     expect(within(restoredRegion).getByDisplayValue('80')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deshacer' })).not.toBeInTheDocument()
   })
+
+  it('displays live shift reconciliation summary chips in the sticky toolbar', () => {
+    renderNewEntry()
+    completeShiftReport({
+      rawMaterial: '100',
+      dayReport: '80',
+      nightReport: '0',
+    })
+
+    const dayChip = screen.getByTestId('sticky-shift-chip-día')
+    const nightChip = screen.getByTestId('sticky-shift-chip-noche')
+
+    expect(dayChip).toBeInTheDocument()
+    expect(nightChip).toBeInTheDocument()
+
+    // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
+    expect(dayChip).toHaveTextContent('Día:')
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)}/${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(0))
+    expect(dayChip).toHaveClass('border-emerald-200')
+
+    // Modificamos el valor de día para crear una diferencia
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
+
+    // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)}/${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(1000))
+    expect(dayChip).toHaveClass('border-amber-200')
+  })
 })
+
 

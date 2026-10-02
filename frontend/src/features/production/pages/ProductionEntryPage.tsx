@@ -3833,6 +3833,53 @@ const applyFreezingExcelPreview =
             buttonLabel="Agregar"
             scopeKey={`${selectedProcess}:REPORTS`}
             searchInputRef={manualProductSearchInputRef}
+            extraSlot={
+              <div
+                className="hidden lg:flex items-center gap-2 shrink-0"
+                role="group"
+                aria-label="Resumen de cuadre por turno"
+              >
+                {([
+                  ['Día', buildResult.calculation.day, dayHasReportData],
+                  ['Noche', buildResult.calculation.night, nightHasReportData],
+                ] as const).map(([label, shift, hasData]) => {
+                  const isReconciled =
+                    hasData && shift.detailDifferenceKg100 === 0
+                  const registeredText = formatCentiKg(shift.reportedKg100)
+                  const reportedText = hasData
+                    ? formatCentiKg(shift.declaredReportedKg100)
+                    : '—'
+                  const diffText = hasData
+                    ? formatCentiKg(shift.detailDifferenceKg100)
+                    : '—'
+
+                  return (
+                    <div
+                      key={label}
+                      data-testid={`sticky-shift-chip-${label.toLowerCase()}`}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        isReconciled
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
+                      }`}
+                      title={`Turno ${label}: Registrado ${registeredText} / Reporte ${reportedText} · Diferencia ${diffText}`}
+                    >
+                      <span className="font-bold">{label}:</span>
+                      <span className="number-tabular">
+                        {registeredText}/{reportedText}
+                      </span>
+                      <span className="opacity-50" aria-hidden="true">
+                        ·
+                      </span>
+                      <span>Dif.</span>
+                      <span className="number-tabular font-bold">
+                        {diffText}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            }
           />
         ) : null}
 
