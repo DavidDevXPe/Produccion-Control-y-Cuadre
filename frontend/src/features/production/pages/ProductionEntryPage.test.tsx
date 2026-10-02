@@ -956,5 +956,26 @@ describe('capture product status labels', () => {
     fireEvent.keyDown(inputs[2]!, { key: 'Enter', shiftKey: true })
     expect(document.activeElement).toBe(inputs[0])
   })
+
+  it('displays neutral "SIN DATOS" badge and dashes for families without movement', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    // Agregar un producto de la familia Aleta sin ingresar kg (0 kg)
+    const productInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(productInput)
+    fireEvent.change(productInput, { target: { value: 'aleta' } })
+    const productOptions = screen.getAllByRole('option')
+    if (productOptions[0]) {
+      fireEvent.click(productOptions[0])
+    }
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // La familia Aleta tiene 0 kg y debe mostrar SIN DATOS en lugar del falso positivo CUMPLE
+    expect(within(captureRegion).getByText('SIN DATOS')).toBeInTheDocument()
+  })
 })
 

@@ -3992,16 +3992,18 @@ const applyFreezingExcelPreview =
                             )
                           : isBalanceOnly
                             ? 'No aplica'
-                            : subtotal.targetPercent === null
-                              ? 'Sin objetivo'
-                              : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
+                            : subtotal.totalKg100 === 0
+                              ? '—'
+                              : subtotal.targetPercent === null
+                                ? 'Sin objetivo'
+                                : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
                       <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800 dark:text-ui-text-dark">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceabilityStatus.pendingToLinkKg100,
                             )
-                          : isBalanceOnly || subtotal.targetPercent === null
+                          : isBalanceOnly || subtotal.targetPercent === null || subtotal.totalKg100 === 0
                             ? '—'
                             : formatCentiKg(
                                 subtotal.missingToTargetKg100,
@@ -4014,26 +4016,30 @@ const applyFreezingExcelPreview =
                               ? familyTraceabilityStatus.tone
                               : isBalanceOnly
                                 ? 'neutral'
-                                : subtotal.status === 'INTEGRITY_ERROR'
-                                  ? 'danger'
-                                  : subtotal.status === 'BELOW_TARGET'
-                                    ? 'warning'
-                                    : subtotal.status === 'COMPLIES'
-                                      ? 'success'
-                                      : 'neutral'
+                                : subtotal.totalKg100 === 0
+                                  ? 'neutral'
+                                  : subtotal.status === 'INTEGRITY_ERROR'
+                                    ? 'danger'
+                                    : subtotal.status === 'BELOW_TARGET'
+                                      ? 'warning'
+                                      : subtotal.status === 'COMPLIES'
+                                        ? 'success'
+                                        : 'neutral'
                           }
                         >
                           {isFreezing
                             ? familyTraceabilityStatus.label
                             : isBalanceOnly
                               ? 'NO APLICA'
-                              : subtotal.status === 'INTEGRITY_ERROR'
-                                ? 'ERROR'
-                                : subtotal.status === 'BELOW_TARGET'
-                                  ? 'BAJO OBJETIVO'
-                                  : subtotal.status === 'COMPLIES'
-                                    ? 'CUMPLE'
-                                    : 'SIN OBJETIVO'}
+                              : subtotal.totalKg100 === 0
+                                ? 'SIN DATOS'
+                                : subtotal.status === 'INTEGRITY_ERROR'
+                                  ? 'ERROR'
+                                  : subtotal.status === 'BELOW_TARGET'
+                                    ? 'BAJO OBJETIVO'
+                                    : subtotal.status === 'COMPLIES'
+                                      ? 'CUMPLE'
+                                      : 'SIN OBJETIVO'}
                         </StatusBadge>
                       </td>
                       <td />
