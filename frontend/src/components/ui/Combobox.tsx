@@ -33,6 +33,7 @@ export interface ComboboxProps {
   inputClassName?: string | undefined
   id?: string | undefined
   autoResetOnSelect?: boolean | undefined
+  onActiveOptionChange?: ((option: ComboboxOption | null) => void) | undefined
 }
 
 import { groupOptions, normalizeSearch } from './comboboxUtils'
@@ -42,6 +43,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
   {
     options,
     onSelect,
+    onActiveOptionChange,
     label,
     ariaLabel,
     placeholder = 'Buscar…',
@@ -105,6 +107,20 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
     for (const group of displayItems.groups) list.push(...group.items)
     return list
   }, [displayItems])
+
+  const currentActiveOption = useMemo(() => {
+    if (activeIndex >= 0 && flatSelectable[activeIndex]) {
+      return flatSelectable[activeIndex]
+    }
+    if (query.trim() && filteredOptions.length > 0) {
+      return filteredOptions[0] ?? null
+    }
+    return null
+  }, [activeIndex, filteredOptions, flatSelectable, query])
+
+  useEffect(() => {
+    onActiveOptionChange?.(currentActiveOption)
+  }, [currentActiveOption, onActiveOptionChange])
 
   const handleSelectOption = useCallback(
     (option: ComboboxOption) => {

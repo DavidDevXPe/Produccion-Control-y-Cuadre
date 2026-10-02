@@ -97,5 +97,35 @@ describe('ProductPicker component', () => {
     expect(screen.getByRole('combobox')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Agregar' })).toBeDisabled()
   })
+
+  it('keeps primary button disabled until a product is selected, and enables it when matched', () => {
+    const handleAdd = vi.fn()
+    render(
+      <ProductPicker
+        items={MOCK_ITEMS}
+        getItemId={(item) => item.id}
+        getItemLabel={(item) => item.name}
+        onAdd={handleAdd}
+        buttonLabel="Agregar producto"
+        compactButtonLabel="Agregar"
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Agregar producto' })
+    // Initially disabled because no product is selected yet
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', 'Selecciona un producto del catálogo para agregarlo')
+
+    // Type a search query: matching item enables the button
+    const input = screen.getByRole('combobox')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'manto' } })
+
+    expect(button).not.toBeDisabled()
+
+    // Clicking the enabled button adds the matched item
+    fireEvent.click(button)
+    expect(handleAdd).toHaveBeenCalledWith(MOCK_ITEMS[1])
+  })
 })
 

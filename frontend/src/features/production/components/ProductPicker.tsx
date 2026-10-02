@@ -19,6 +19,7 @@ export interface ProductPickerProps<T> {
   ariaLabel?: string | undefined
   placeholder?: string | undefined
   buttonLabel?: string | undefined
+  compactButtonLabel?: string | undefined
   buttonClassName?: string | undefined
   disabled?: boolean | undefined
   scopeKey?: string | undefined
@@ -38,6 +39,7 @@ export function ProductPicker<T>({
   ariaLabel,
   placeholder,
   buttonLabel = 'Agregar',
+  compactButtonLabel,
   buttonClassName,
   disabled = false,
   scopeKey,
@@ -90,12 +92,24 @@ export function ProductPicker<T>({
     })
   }, [items, getItemId, getItemLabel, getItemMeta])
 
+  const handleActiveOptionChange = useCallback(
+    (option: ComboboxOption | null) => {
+      if (option) {
+        const found = itemsMap.get(option.value)
+        setSelectedItem(found ?? null)
+      } else {
+        setSelectedItem(null)
+      }
+    },
+    [itemsMap],
+  )
+
   const handleSelectOption = useCallback(
     (option: ComboboxOption) => {
       const found = itemsMap.get(option.value)
       if (found) {
-        setSelectedItem(found)
         onAdd(found)
+        setSelectedItem(null)
         if (scopeKey) {
           addRecent(option.value)
         }
@@ -105,15 +119,15 @@ export function ProductPicker<T>({
   )
 
   const handleButtonClick = () => {
-    if (disabled) return
-    const target = selectedItem ?? items[0]
-    if (target) {
-      onAdd(target)
-      if (scopeKey) {
-        addRecent(getItemId(target))
-      }
+    if (disabled || !selectedItem) return
+    onAdd(selectedItem)
+    if (scopeKey) {
+      addRecent(getItemId(selectedItem))
     }
+    setSelectedItem(null)
   }
+
+  const isButtonDisabled = disabled || selectedItem === null
 
   return (
     <>
@@ -129,6 +143,7 @@ export function ProductPicker<T>({
         <Combobox
           options={options}
           onSelect={handleSelectOption}
+          onActiveOptionChange={handleActiveOptionChange}
           label={label}
           ariaLabel={ariaLabel}
           placeholder={placeholder}
@@ -144,15 +159,22 @@ export function ProductPicker<T>({
 
       <button
         type="button"
-        disabled={disabled}
+        disabled={isButtonDisabled}
         onClick={handleButtonClick}
+        title={
+          isButtonDisabled && !disabled
+            ? 'Selecciona un producto del catálogo para agregarlo'
+            : undefined
+        }
+        aria-label={buttonLabel}
         className={
           buttonClassName ??
-          buttonStyles('secondary')
+          buttonStyles('primary')
         }
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
-        {buttonLabel}
+        <span className="hidden sm:inline">{buttonLabel}</span>
+        <span className="sm:hidden">{compactButtonLabel ?? (buttonLabel.startsWith('Agregar') ? 'Agregar' : buttonLabel)}</span>
       </button>
     </div>
     </>
