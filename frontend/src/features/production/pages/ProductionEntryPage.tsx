@@ -3896,8 +3896,19 @@ const applyFreezingExcelPreview =
                           }
                       const rowIndex = orderedProductIds.indexOf(productId)
                       return (
-                    <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:hover:bg-ui-surface-dark-hover-strong">
-                      <th className="sticky left-0 z-10 bg-white px-4 py-2 dark:bg-ui-surface-dark">
+                    <tr
+                      key={row.key}
+                      className={`group border-b border-slate-100 bg-white transition-colors hover:bg-brand-50/25 focus-within:bg-brand-50/50 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark dark:hover:bg-ui-surface-dark-hover-strong dark:focus-within:bg-ui-surface-dark-compact ${
+                        totalKg100 > 0 ? 'bg-emerald-50/15 dark:bg-ui-emerald-surface-dark/10' : ''
+                      }`}
+                    >
+                      <th
+                        className={`sticky left-0 z-10 border-l-2 px-4 py-2 transition-colors bg-white group-hover:bg-brand-50/25 group-focus-within:bg-brand-50/50 group-focus-within:border-l-brand-600 dark:bg-ui-surface-dark dark:group-hover:bg-ui-surface-dark-hover-strong dark:group-focus-within:bg-ui-surface-dark-compact dark:group-focus-within:border-l-ui-accent-cyan ${
+                          totalKg100 > 0
+                            ? 'border-l-emerald-500 dark:border-l-ui-emerald-border-dark bg-emerald-50/15 dark:bg-ui-surface-dark'
+                            : 'border-l-transparent'
+                        }`}
+                      >
                         <span className="sr-only">{row.product.familyName}: </span>
                         <span className="block text-xs font-semibold leading-4 text-slate-800 dark:text-ui-text-dark">{row.product.productName}</span>
                       </th>
