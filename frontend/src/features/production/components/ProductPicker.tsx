@@ -25,7 +25,7 @@ export interface ProductPickerProps<T> {
   scopeKey?: string | undefined
   searchInputRef?: React.RefObject<HTMLInputElement | null> | undefined
   noResultsText?: string | undefined
-  extraSlot?: React.ReactNode | ((props: { isStuck: boolean }) => React.ReactNode) | undefined
+  extraSlot?: React.ReactNode | undefined
   className?: string | undefined
 }
 
@@ -128,7 +128,6 @@ export function ProductPicker<T>({
   }
 
   const isButtonDisabled = disabled || selectedItem === null
-  const renderedExtraSlot = typeof extraSlot === 'function' ? extraSlot({ isStuck }) : extraSlot
 
   return (
     <>
@@ -156,7 +155,7 @@ export function ProductPicker<T>({
         />
       </div>
 
-      {renderedExtraSlot}
+      {extraSlot}
 
       <button
         type="button"
