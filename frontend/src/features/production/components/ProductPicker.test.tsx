@@ -127,5 +127,21 @@ describe('ProductPicker component', () => {
     fireEvent.click(button)
     expect(handleAdd).toHaveBeenCalledWith(MOCK_ITEMS[1])
   })
+
+  it('passes isStuck to extraSlot function', () => {
+    render(
+      <ProductPicker
+        items={MOCK_ITEMS}
+        getItemId={(item) => item.id}
+        getItemLabel={(item) => item.name}
+        onAdd={vi.fn()}
+        extraSlot={({ isStuck }) => (
+          <div data-testid="extra-slot">{isStuck ? 'Stuck' : 'Unstuck'}</div>
+        )}
+      />,
+    )
+
+    expect(screen.getByTestId('extra-slot')).toHaveTextContent('Unstuck')
+  })
 })
 
