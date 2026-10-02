@@ -3789,11 +3789,22 @@ const applyFreezingExcelPreview =
           </div>
         ) : (
           <DataTableScroll label="Captura por producto y turno">
-            <table className="erp-table w-full min-w-[76rem] border-collapse text-left">
+            <table className="erp-table w-full min-w-[76rem] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-[36%] min-w-[22rem]" />
+                <col className="w-[12%] min-w-[8.5rem]" />
+                <col className="w-[12%] min-w-[8.5rem]" />
+                <col className="w-[9%] min-w-[6.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[7%] min-w-[5.5rem]" />
+                <col className="w-[10%] min-w-[7.5rem]" />
+                <col className="w-[4rem]" />
+              </colgroup>
               <caption className="sr-only">Ingreso de producción por producto</caption>
               <thead>
                 <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
-                  <th className="sticky left-0 z-20 w-[24rem] bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-compact">Familia / producto</th>
+                  <th className="sticky left-0 z-20 bg-slate-100 px-4 py-2.5 dark:bg-ui-surface-dark-compact">Familia / producto</th>
                   <th className="px-2 py-2.5 text-right">Día reportado</th>
                   <th className="px-2 py-2.5 text-right">Noche reportado</th>
                   <th className="px-3 py-2.5 text-right">Total jornada</th>
@@ -3809,7 +3820,7 @@ const applyFreezingExcelPreview =
                     {isFreezing ? 'Por vincular' : 'Kg faltantes'}
                   </th>
                   <th className="px-3 py-2.5 text-center">Estado</th>
-                  <th className="px-3 py-2.5"><span className="sr-only">Eliminar</span></th>
+                  <th className="px-2 py-2.5 text-center"><span className="sr-only">Eliminar</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -3885,11 +3896,11 @@ const applyFreezingExcelPreview =
                       const rowIndex = orderedProductIds.indexOf(productId)
                       return (
                     <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
-                      <th className="sticky left-0 z-10 bg-white px-4 py-2.5">
+                      <th className="sticky left-0 z-10 bg-white px-4 py-2">
                         <span className="block text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">{row.product.familyName}</span>
-                        <span className="mt-0.5 block max-w-[22rem] text-xs font-semibold leading-4 text-slate-800">{row.product.productName}</span>
+                        <span className="mt-0.5 block text-xs font-semibold leading-4 text-slate-800">{row.product.productName}</span>
                       </th>
-                      <td className="w-36 px-2 py-2">
+                      <td className="px-2 py-1.5">
                         <QuantityInput
                           label=""
                           value={inferred ? String((calculated?.day.reportedKg100 ?? 0) / 100) : row.dayReportedKg}
@@ -3898,7 +3909,7 @@ const applyFreezingExcelPreview =
                           {...getCaptureCellProps(rowIndex, 0)}
                         />
                       </td>
-                      <td className="w-36 px-2 py-2">
+                      <td className="px-2 py-1.5">
                         <QuantityInput
                           label=""
                           value={inferred ? String((calculated?.night.reportedKg100 ?? 0) / 100) : row.nightReportedKg}
@@ -3907,23 +3918,23 @@ const applyFreezingExcelPreview =
                           {...getCaptureCellProps(rowIndex, 1)}
                         />
                       </td>
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs font-bold text-slate-800">
+                      <td className="number-tabular px-3 py-2 text-right text-xs font-bold text-slate-800">
                         {formatCentiKg(totalKg100)}
                       </td>
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700">
                         {isFreezing
                           ? formatCentiKg(availableKg100)
                           : '—'}
                       </td>
                         
-                      <td className="number-tabular px-3 py-2.5 text-right text-xs text-slate-700">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700">
                         {isFreezing
                           ? formatCentiKg(linkedKg100)
                           : '—'}
                       </td>
                         
                       <td
-                        className={`number-tabular px-3 py-2.5 text-right text-xs ${
+                        className={`number-tabular px-3 py-2 text-right text-xs ${
                           isFreezing &&
                           productStatus.pendingToLinkKg100 > 0
                             ? 'font-bold text-amber-700'
@@ -3936,7 +3947,7 @@ const applyFreezingExcelPreview =
                             )
                           : '—'}
                       </td>
-                      <td className="px-3 py-2.5 text-center align-middle">
+                      <td className="px-3 py-2 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
                           <StatusBadge tone={productStatus.tone}>
                             {productStatus.label}
@@ -3959,8 +3970,8 @@ const applyFreezingExcelPreview =
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5">
-                        <button type="button" className="grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700" aria-label={`Eliminar ${row.product.productName}`} onClick={() => removeRow(row.key)}>
+                      <td className="px-2 py-1.5 text-center">
+                        <button type="button" className="inline-grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700" aria-label={`Eliminar ${row.product.productName}`} onClick={() => removeRow(row.key)}>
                           <Trash2 className="size-4" aria-hidden="true" />
                         </button>
                       </td>
@@ -3968,13 +3979,13 @@ const applyFreezingExcelPreview =
                       )
                     })}
                     <tr className="border-b border-slate-300 bg-slate-100 font-bold dark:border-ui-line-dark dark:bg-ui-surface-dark-compact">
-                      <th className="sticky left-0 z-10 bg-slate-100 px-4 py-3 text-xs uppercase text-slate-900 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
+                      <th className="sticky left-0 z-10 bg-slate-100 px-4 py-2 text-xs uppercase text-slate-900 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.dayKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.nightKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">{formatCentiKg(subtotal.totalKg100)}</td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.dayKg100)}</td>
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.nightKg100)}</td>
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">{formatCentiKg(subtotal.totalKg100)}</td>
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.availableKg100,
@@ -3985,7 +3996,7 @@ const applyFreezingExcelPreview =
                               ? 'No disponible'
                               : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800 dark:text-ui-text-dark">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.linkedKg100,
@@ -3998,7 +4009,7 @@ const applyFreezingExcelPreview =
                                 ? 'Sin objetivo'
                                 : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
-                      <td className="number-tabular px-3 py-3 text-right text-xs text-slate-800 dark:text-ui-text-dark">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceabilityStatus.pendingToLinkKg100,
@@ -4009,7 +4020,7 @@ const applyFreezingExcelPreview =
                                 subtotal.missingToTargetKg100,
                               )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-3 py-2 text-center">
                         <StatusBadge
                           tone={
                             isFreezing
