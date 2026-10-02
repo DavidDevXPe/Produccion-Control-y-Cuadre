@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
+  Circle,
   FileSpreadsheet,
   Plus,
   Save,
@@ -3953,9 +3954,16 @@ const applyFreezingExcelPreview =
                       </td>
                       <td className="px-3 py-2 text-center align-middle">
                         <div className="flex flex-col items-center gap-1.5">
-                          <StatusBadge tone={productStatus.tone}>
-                            {productStatus.label}
-                          </StatusBadge>
+                          {productStatus.label === 'SIN MOVIMIENTO' ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-ui-text-dark-soft">
+                              <Circle className="size-2 fill-slate-400 text-slate-400 dark:fill-slate-500 dark:text-ui-text-dark-soft" aria-hidden="true" />
+                              <span aria-label="Sin movimiento">Sin mov.</span>
+                            </span>
+                          ) : (
+                            <StatusBadge tone={productStatus.tone}>
+                              {productStatus.label}
+                            </StatusBadge>
+                          )}
 
                           {isFreezing &&
                           productStatus.pendingToLinkKg100 > 0 &&
