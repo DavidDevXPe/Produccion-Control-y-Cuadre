@@ -3978,67 +3978,65 @@ const applyFreezingExcelPreview =
             buttonClassName={buttonStyles('primary')}
             scopeKey={`${selectedProcess}:REPORTS`}
             searchInputRef={manualProductSearchInputRef}
-            extraSlot={({ isStuck }) =>
-              isStuck ? (
-                <div
-                  className="hidden xl:flex items-center gap-2 shrink-0 max-w-full overflow-hidden"
-                  role="group"
-                  aria-label="Resumen de cuadre por turno"
-                  aria-live="polite"
-                >
-                  {([
-                    ['Día', buildResult.calculation.day, dayHasReportData],
-                    ['Noche', buildResult.calculation.night, nightHasReportData],
-                  ] as const).map(([label, shift, hasData]) => {
-                    const isReconciled =
-                      hasData && shift.detailDifferenceKg100 === 0
-                    const registeredText = formatCentiKg(shift.reportedKg100)
-                    const reportedText = hasData
-                      ? formatCentiKg(shift.declaredReportedKg100)
-                      : '—'
-                    const diffText = hasData
-                      ? formatCentiKg(shift.detailDifferenceKg100)
-                      : '—'
+            extraSlot={
+              <div
+                className="hidden lg:flex items-center gap-2 shrink-0"
+                role="group"
+                aria-label="Resumen de cuadre por turno"
+                aria-live="polite"
+              >
+                {([
+                  ['Día', buildResult.calculation.day, dayHasReportData],
+                  ['Noche', buildResult.calculation.night, nightHasReportData],
+                ] as const).map(([label, shift, hasData]) => {
+                  const isReconciled =
+                    hasData && shift.detailDifferenceKg100 === 0
+                  const registeredText = formatCentiKg(shift.reportedKg100)
+                  const reportedText = hasData
+                    ? formatCentiKg(shift.declaredReportedKg100)
+                    : '—'
+                  const diffText = hasData
+                    ? formatCentiKg(shift.detailDifferenceKg100)
+                    : '—'
 
-                    return (
-                      <div
-                        key={label}
-                        data-testid={`sticky-shift-chip-${label.toLowerCase()}`}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                          isReconciled
-                            ? 'border-emerald-200/90 bg-emerald-50/50 text-slate-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-ui-text-dark'
-                            : 'border-slate-300/80 bg-white text-slate-800 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark'
+                  return (
+                    <div
+                      key={label}
+                      data-testid={`sticky-shift-chip-${label.toLowerCase()}`}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        isReconciled
+                          ? 'border-emerald-200/90 bg-emerald-50/50 text-slate-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-ui-text-dark'
+                          : 'border-slate-300/80 bg-white text-slate-800 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark'
+                      }`}
+                      title={`Turno ${label}: Registrado ${registeredText} / Reporte ${reportedText} · Diferencia ${diffText}`}
+                    >
+                      <span
+                        className={`inline-block size-1.5 rounded-full ${
+                          isReconciled ? 'bg-emerald-500' : 'bg-amber-500'
                         }`}
-                        title={`Turno ${label}: Registrado ${registeredText} / Reporte ${reportedText} · Diferencia ${diffText}`}
+                        aria-hidden="true"
+                      />
+                      <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">{label}:</span>
+                      <span className="number-tabular">
+                        {registeredText} / {reportedText}
+                      </span>
+                      <span className="text-slate-300 dark:text-ui-text-subtle" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="text-slate-500 dark:text-ui-text-dark-soft">Dif.</span>
+                      <span
+                        className={`number-tabular font-bold ${
+                          isReconciled
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-amber-700 dark:text-amber-400'
+                        }`}
                       >
-                        <span
-                          className={`inline-block size-1.5 rounded-full ${
-                            isReconciled ? 'bg-emerald-500' : 'bg-amber-500'
-                          }`}
-                          aria-hidden="true"
-                        />
-                        <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">{label}:</span>
-                        <span className="number-tabular">
-                          {registeredText} / {reportedText}
-                        </span>
-                        <span className="text-slate-300 dark:text-ui-text-subtle" aria-hidden="true">
-                          ·
-                        </span>
-                        <span className="text-slate-500 dark:text-ui-text-dark-soft">Dif.</span>
-                        <span
-                          className={`number-tabular font-bold ${
-                            isReconciled
-                              ? 'text-emerald-700 dark:text-emerald-400'
-                              : 'text-amber-700 dark:text-amber-400'
-                          }`}
-                        >
-                          {diffText}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : null
+                        {diffText}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             }
           />
         ) : null}

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -1010,65 +1010,33 @@ describe('capture product status labels', () => {
   })
 
   it('displays live shift reconciliation summary chips in the sticky toolbar', () => {
-    const observerCallbacks: IntersectionObserverCallback[] = []
-    const OriginalIntersectionObserver = window.IntersectionObserver
-    window.IntersectionObserver = class {
-      constructor(callback: IntersectionObserverCallback) {
-        observerCallbacks.push(callback)
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-      readonly root: Element | null = null
-      readonly rootMargin: string = ''
-      readonly thresholds: ReadonlyArray<number> = []
-      takeRecords() {
-        return []
-      }
-    } as unknown as typeof window.IntersectionObserver
+    renderNewEntry()
+    completeShiftReport({
+      rawMaterial: '100',
+      dayReport: '80',
+      nightReport: '0',
+    })
 
-    try {
-      renderNewEntry()
-      completeShiftReport({
-        rawMaterial: '100',
-        dayReport: '80',
-        nightReport: '0',
-      })
+    const dayChip = screen.getByTestId('sticky-shift-chip-día')
+    const nightChip = screen.getByTestId('sticky-shift-chip-noche')
 
-      // En la vista normal (isStuck = false), no se muestran los chips para no duplicar info con las tarjetas superiores
-      expect(screen.queryByTestId('sticky-shift-chip-día')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('sticky-shift-chip-noche')).not.toBeInTheDocument()
+    expect(dayChip).toBeInTheDocument()
+    expect(nightChip).toBeInTheDocument()
 
-      // Simulamos que la barra entra en modo sticky (isStuck = true)
-      act(() => {
-        observerCallbacks.forEach((cb) =>
-          cb([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver),
-        )
-      })
+    // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
+    expect(dayChip).toHaveTextContent('Día:')
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)} / ${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(0))
 
-      const dayChip = screen.getByTestId('sticky-shift-chip-día')
-      const nightChip = screen.getByTestId('sticky-shift-chip-noche')
+    // Modificamos el valor de día para crear una diferencia
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
 
-      expect(dayChip).toBeInTheDocument()
-      expect(nightChip).toBeInTheDocument()
-
-      // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
-      expect(dayChip).toHaveTextContent('Día:')
-      expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)} / ${formatCentiKg(8000)}`)
-      expect(dayChip).toHaveTextContent(formatCentiKg(0))
-
-      // Modificamos el valor de día para crear una diferencia
-      const captureInputs = within(
-        screen.getByRole('region', { name: 'Captura por producto y turno' }),
-      ).getAllByRole('textbox')
-      fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
-
-      // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
-      expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)} / ${formatCentiKg(8000)}`)
-      expect(dayChip).toHaveTextContent(formatCentiKg(1000))
-    } finally {
-      window.IntersectionObserver = OriginalIntersectionObserver
-    }
+    // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)} / ${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(formatCentiKg(1000))
   })
 
   it('renders untruncated status badges and shows dash for subtotal without target', () => {
