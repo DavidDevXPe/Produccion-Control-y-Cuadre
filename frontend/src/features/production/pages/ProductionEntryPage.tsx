@@ -3829,8 +3829,9 @@ const applyFreezingExcelPreview =
             })}
             onAdd={(product) => addReportProduct(product.productId)}
             label="Buscar producto"
-            placeholder="Ej.: aleta, manto o nuca"
-            buttonLabel="Agregar"
+            placeholder="Buscar producto o seleccionar del catálogo (ej.: aleta, manto o nuca)..."
+            buttonLabel="Agregar producto"
+            buttonClassName={buttonStyles('primary')}
             scopeKey={`${selectedProcess}:REPORTS`}
             searchInputRef={manualProductSearchInputRef}
             extraSlot={
@@ -3859,20 +3860,32 @@ const applyFreezingExcelPreview =
                       data-testid={`sticky-shift-chip-${label.toLowerCase()}`}
                       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
                         isReconciled
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
+                          ? 'border-emerald-200/90 bg-emerald-50/50 text-slate-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-ui-text-dark'
+                          : 'border-slate-300/80 bg-white text-slate-800 shadow-2xs dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark'
                       }`}
                       title={`Turno ${label}: Registrado ${registeredText} / Reporte ${reportedText} · Diferencia ${diffText}`}
                     >
-                      <span className="font-bold">{label}:</span>
+                      <span
+                        className={`inline-block size-1.5 rounded-full ${
+                          isReconciled ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="font-bold text-slate-900 dark:text-ui-text-dark-strong">{label}:</span>
                       <span className="number-tabular">
-                        {registeredText}/{reportedText}
+                        {registeredText} / {reportedText}
                       </span>
-                      <span className="opacity-50" aria-hidden="true">
+                      <span className="text-slate-300 dark:text-ui-text-subtle" aria-hidden="true">
                         ·
                       </span>
-                      <span>Dif.</span>
-                      <span className="number-tabular font-bold">
+                      <span className="text-slate-500 dark:text-ui-text-dark-soft">Dif.</span>
+                      <span
+                        className={`number-tabular font-bold ${
+                          isReconciled
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
                         {diffText}
                       </span>
                     </div>
@@ -3958,9 +3971,14 @@ const applyFreezingExcelPreview =
 
                   return (
                   <Fragment key={subtotal.key}>
-                    <tr className="border-b border-brand-200 bg-brand-50/70 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-compact">
-                      <th colSpan={9} className="sticky left-0 z-10 border-l-4 border-l-brand-600 bg-brand-50/70 px-4 py-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-brand-900 dark:border-l-ui-accent-cyan dark:bg-ui-surface-dark-compact dark:text-ui-accent-cyan">
-                        {subtotal.label}
+                    <tr className="border-b border-slate-200 bg-slate-100/70 dark:border-ui-line-dark dark:bg-ui-surface-dark-recessed/80">
+                      <th colSpan={9} className="sticky left-0 z-10 border-l-4 border-l-brand-600 bg-slate-100/70 px-4 py-2 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-slate-800 dark:border-l-ui-accent-cyan dark:bg-ui-surface-dark-recessed/80 dark:text-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span>{subtotal.label}</span>
+                          <span className="inline-flex items-center rounded-full border border-brand-200/80 bg-brand-50/70 px-2 py-0.5 text-[0.625rem] font-semibold text-brand-700 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300">
+                            {subtotal.productIds.length} {subtotal.productIds.length === 1 ? 'producto' : 'productos'}
+                          </span>
+                        </div>
                       </th>
                     </tr>
                     {subtotal.productIds.map((productId) => {
@@ -4106,8 +4124,8 @@ const applyFreezingExcelPreview =
                     </tr>
                       )
                     })}
-                    <tr className="border-b border-slate-300 border-t-2 border-slate-300 bg-slate-100 font-bold dark:border-b-ui-line-dark dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact">
-                      <th className="sticky left-0 z-10 border-t-2 border-slate-300 bg-slate-100 px-4 py-2 text-xs uppercase text-slate-900 dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
+                    <tr className="border-b border-slate-200 border-t-2 border-slate-300 bg-slate-50/90 font-bold dark:border-b-ui-line-dark dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact/80">
+                      <th className="sticky left-0 z-10 border-t-2 border-slate-300 bg-slate-50/90 px-4 py-2 text-xs uppercase text-slate-800 dark:border-t dark:border-t-ui-line-dark dark:bg-ui-surface-dark-compact/80 dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
                       <td className={`number-tabular px-3 py-2 text-right text-xs ${
@@ -4122,10 +4140,10 @@ const applyFreezingExcelPreview =
                       }`}>{formatCentiKg(subtotal.nightKg100)}</td>
                       <td className={`number-tabular px-3 py-2 text-right text-xs ${
                         subtotal.totalKg100 > 0
-                          ? 'font-bold text-slate-950 dark:text-ui-text-dark-strong'
+                          ? 'font-extrabold text-brand-700 dark:text-cyan-400'
                           : 'font-normal text-slate-400 dark:text-ui-text-subtle'
                       }`}>{formatCentiKg(subtotal.totalKg100)}</td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">
+                      <td className="number-tabular px-3 py-2 text-right text-xs">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.availableKg100,
@@ -4138,9 +4156,21 @@ const applyFreezingExcelPreview =
                                   —
                                 </span>
                               )
-                              : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                              : (
+                                <span
+                                  className={
+                                    subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
+                                      ? subtotal.status === 'COMPLIES'
+                                        ? 'font-bold text-emerald-700 dark:text-emerald-400'
+                                        : 'font-bold text-amber-700 dark:text-amber-400'
+                                      : 'font-semibold text-slate-800 dark:text-ui-text-dark'
+                                  }
+                                >
+                                  {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+                                </span>
+                              )}
                       </td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceability.linkedKg100,
@@ -4153,7 +4183,7 @@ const applyFreezingExcelPreview =
                                 ? '—'
                                 : `≥ ${subtotal.targetPercent.toFixed(0)}%`}
                       </td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
+                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-ui-text-dark-soft">
                         {isFreezing
                           ? formatCentiKg(
                               familyTraceabilityStatus.pendingToLinkKg100,
@@ -4180,6 +4210,13 @@ const applyFreezingExcelPreview =
                                       : subtotal.status === 'COMPLIES'
                                         ? 'success'
                                         : 'neutral'
+                          }
+                          showIcon={
+                            isFreezing
+                              ? true
+                              : isBalanceOnly || subtotal.totalKg100 === 0 || subtotal.targetPercent === null
+                                ? false
+                                : true
                           }
                           truncateText={false}
                         >

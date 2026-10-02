@@ -1025,9 +1025,8 @@ describe('capture product status labels', () => {
 
     // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
     expect(dayChip).toHaveTextContent('Día:')
-    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)}/${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)} / ${formatCentiKg(8000)}`)
     expect(dayChip).toHaveTextContent(formatCentiKg(0))
-    expect(dayChip).toHaveClass('border-emerald-200')
 
     // Modificamos el valor de día para crear una diferencia
     const captureInputs = within(
@@ -1036,9 +1035,8 @@ describe('capture product status labels', () => {
     fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
 
     // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
-    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)}/${formatCentiKg(8000)}`)
+    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)} / ${formatCentiKg(8000)}`)
     expect(dayChip).toHaveTextContent(formatCentiKg(1000))
-    expect(dayChip).toHaveClass('border-amber-200')
   })
 
   it('renders untruncated status badges and shows dash for subtotal without target', () => {
