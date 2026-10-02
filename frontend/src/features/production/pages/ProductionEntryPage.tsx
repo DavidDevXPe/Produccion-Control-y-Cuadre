@@ -3983,6 +3983,7 @@ const applyFreezingExcelPreview =
                 className="hidden lg:flex items-center gap-2 shrink-0"
                 role="group"
                 aria-label="Resumen de cuadre por turno"
+                aria-live="polite"
               >
                 {([
                   ['Día', buildResult.calculation.day, dayHasReportData],
