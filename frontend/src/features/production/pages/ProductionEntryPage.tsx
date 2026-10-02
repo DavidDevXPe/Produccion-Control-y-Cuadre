@@ -3897,8 +3897,8 @@ const applyFreezingExcelPreview =
                       return (
                     <tr key={row.key} className="border-b border-slate-100 bg-white hover:bg-brand-50/25">
                       <th className="sticky left-0 z-10 bg-white px-4 py-2">
-                        <span className="block text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">{row.product.familyName}</span>
-                        <span className="mt-0.5 block text-xs font-semibold leading-4 text-slate-800">{row.product.productName}</span>
+                        <span className="sr-only">{row.product.familyName}: </span>
+                        <span className="block text-xs font-semibold leading-4 text-slate-800 dark:text-ui-text-dark">{row.product.productName}</span>
                       </th>
                       <td className="px-2 py-1.5">
                         <QuantityInput
@@ -3918,7 +3918,11 @@ const applyFreezingExcelPreview =
                           {...getCaptureCellProps(rowIndex, 1)}
                         />
                       </td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs font-bold text-slate-800">
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        totalKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>
                         {formatCentiKg(totalKg100)}
                       </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700">
@@ -3982,9 +3986,21 @@ const applyFreezingExcelPreview =
                       <th className="sticky left-0 z-10 bg-slate-100 px-4 py-2 text-xs uppercase text-slate-900 dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
                         Subtotal {subtotal.label}
                       </th>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.dayKg100)}</td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-900 dark:text-ui-text-dark">{formatCentiKg(subtotal.nightKg100)}</td>
-                      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">{formatCentiKg(subtotal.totalKg100)}</td>
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.dayKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>{formatCentiKg(subtotal.dayKg100)}</td>
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.nightKg100 > 0
+                          ? 'font-bold text-slate-900 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>{formatCentiKg(subtotal.nightKg100)}</td>
+                      <td className={`number-tabular px-3 py-2 text-right text-xs ${
+                        subtotal.totalKg100 > 0
+                          ? 'font-bold text-slate-950 dark:text-ui-text-dark-strong'
+                          : 'font-normal text-slate-400 dark:text-ui-text-subtle'
+                      }`}>{formatCentiKg(subtotal.totalKg100)}</td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-950 dark:text-ui-text-dark-strong">
                         {isFreezing
                           ? formatCentiKg(
@@ -3993,7 +4009,11 @@ const applyFreezingExcelPreview =
                           : isBalanceOnly
                             ? 'No aplica'
                             : subtotal.preliminaryYieldPercent === null
-                              ? 'No disponible'
+                              ? (
+                                <span title="Rendimiento disponible al ingresar kg" aria-label="Rendimiento disponible al ingresar kg" className="text-slate-400 dark:text-ui-text-subtle">
+                                  —
+                                </span>
+                              )
                               : `${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
                       </td>
                       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-800 dark:text-ui-text-dark">
