@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { sanitizeQuantityValue } from './quantityInputUtils'
+import { useRef, useState } from 'react'
+import { formatQuantityWithThousands, sanitizeQuantityValue } from './quantityInputUtils'
 
 export interface QuantityInputProps {
   label: string
@@ -35,9 +35,12 @@ export function QuantityInput({
   'data-testid': testId,
   ...rest
 }: QuantityInputProps) {
+  const [isFocused, setIsFocused] = useState(false)
   const clearedZeroOnFocus = useRef(false)
 
   const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true)
+    const target = event.currentTarget
     if (!readOnly && !disabled) {
       if (
         value.trim() !== '' &&
@@ -49,7 +52,10 @@ export function QuantityInput({
         clearedZeroOnFocus.current = false
       }
       // Selecciona todo el contenido al recibir foco para sobrescritura inmediata
-      event.currentTarget.select()
+      target.select()
+      requestAnimationFrame(() => {
+        target.select()
+      })
     } else {
       clearedZeroOnFocus.current = false
     }
@@ -57,6 +63,7 @@ export function QuantityInput({
   }
 
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(false)
     if (clearedZeroOnFocus.current && value.trim() === '') {
       onChange('0')
     }
@@ -76,6 +83,9 @@ export function QuantityInput({
     event.currentTarget.blur()
   }
 
+  const displayValue =
+    !readOnly && !disabled && isFocused ? value : formatQuantityWithThousands(value)
+
   return (
     <label className={`block ${className}`}>
       {label ? (
@@ -88,7 +98,7 @@ export function QuantityInput({
           type="text"
           inputMode="decimal"
           autoComplete="off"
-          value={value}
+          value={displayValue}
           readOnly={readOnly}
           disabled={disabled}
           name={name}
