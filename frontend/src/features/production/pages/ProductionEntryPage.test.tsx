@@ -977,5 +977,35 @@ describe('capture product status labels', () => {
     // La familia Aleta tiene 0 kg y debe mostrar SIN DATOS en lugar del falso positivo CUMPLE
     expect(within(captureRegion).getByText('SIN DATOS')).toBeInTheDocument()
   })
+
+  it('allows undoing the removal of a product with recorded values', () => {
+    renderNewEntry()
+    completeShiftReport()
+
+    const captureRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+
+    // El producto agregado por completeShiftReport tiene 80 kg registrados en Día
+    const deleteButton = within(captureRegion).getByRole('button', {
+      name: /Quitar producto/i,
+    })
+    fireEvent.click(deleteButton)
+
+    // El producto ya no está en la tabla
+    expect(within(captureRegion).queryByDisplayValue('80')).not.toBeInTheDocument()
+
+    // El aviso de deshacer aparece con el botón Deshacer
+    const undoButton = screen.getByRole('button', { name: 'Deshacer' })
+    expect(undoButton).toBeInTheDocument()
+
+    // Al pulsar Deshacer, el producto y sus 80 kg se restauran
+    fireEvent.click(undoButton)
+    const restoredRegion = screen.getByRole('region', {
+      name: 'Captura por producto y turno',
+    })
+    expect(within(restoredRegion).getByDisplayValue('80')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deshacer' })).not.toBeInTheDocument()
+  })
 })
 

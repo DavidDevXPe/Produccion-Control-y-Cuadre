@@ -518,6 +518,11 @@ export function ProductionEntryPage() {
   const [excelExistingProductByRow, setExcelExistingProductByRow] = useState<Record<number, string>>({})
   const [freezingNewProductFamilyByRow, setFreezingNewProductFamilyByRow] =
     useState<Record<number, string>>({})
+  const [removedRowState, setRemovedRowState] = useState<{
+    row: ProductionCaptureDraft['rows'][number]
+    index: number
+  } | null>(null)
+  const undoTimeoutRef = useRef<number | null>(null)
   const [saveError, setSaveError] = useState('')
 
   const freezingCatalogFamilyOptions = useMemo(() => {
@@ -1907,9 +1912,16 @@ const autoLinkAllFreezingProducts = () => {
   }
 
   const removeRow = (key: string) => {
-    const productId = draft.rows.find(
-      (row) => row.key === key,
-    )?.product.productId
+    if (!isEditingAllowed) return
+
+    const rowToRemove = draft.rows.find((row) => row.key === key)
+    if (!rowToRemove) return
+
+    const productId = rowToRemove.product.productId
+    const rowIndex = draft.rows.findIndex((row) => row.key === key)
+    const dayKg = Number(rowToRemove.dayReportedKg.replace(',', '.')) || 0
+    const nightKg = Number(rowToRemove.nightReportedKg.replace(',', '.')) || 0
+    const hasValues = dayKg > 0 || nightKg > 0
 
     if (productId) {
       setClosingProductIds((current) => {
@@ -1942,6 +1954,46 @@ const autoLinkAllFreezingProducts = () => {
         ),
       ),
     }))
+
+    if (hasValues) {
+      setRemovedRowState({
+        row: rowToRemove,
+        index: rowIndex,
+      })
+      if (undoTimeoutRef.current) {
+        window.clearTimeout(undoTimeoutRef.current)
+      }
+      undoTimeoutRef.current = window.setTimeout(() => {
+        setRemovedRowState(null)
+      }, 8000)
+    }
+  }
+
+  const undoRemoveRow = () => {
+    if (!removedRowState || !isEditingAllowed) return
+    const { row: restoredRow, index } = removedRowState
+
+    setDraft((current) => {
+      if (current.rows.some((r) => r.product.productId === restoredRow.product.productId)) {
+        return current
+      }
+      const newRows = [...current.rows]
+      if (index >= 0 && index <= newRows.length) {
+        newRows.splice(index, 0, restoredRow)
+      } else {
+        newRows.push(restoredRow)
+      }
+      return {
+        ...current,
+        rows: newRows,
+      }
+    })
+
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current)
+      undoTimeoutRef.current = null
+    }
+    setRemovedRowState(null)
   }
 
   const handleWorkbook = async (
@@ -3994,7 +4046,13 @@ const applyFreezingExcelPreview =
                         </div>
                       </td>
                       <td className="px-2 py-1.5 text-center">
-                        <button type="button" className="inline-grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700" aria-label={`Eliminar ${row.product.productName}`} onClick={() => removeRow(row.key)}>
+                        <button
+                          type="button"
+                          disabled={!isEditingAllowed}
+                          className="inline-grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Quitar producto ${row.product.productName}`}
+                          onClick={() => removeRow(row.key)}
+                        >
                           <Trash2 className="size-4" aria-hidden="true" />
                         </button>
                       </td>
@@ -5909,6 +5967,38 @@ freezingOriginLedger.length > 0 ? (
             document.body,
           )
         : null}
+
+      {removedRowState ? (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-[calc(var(--entry-action-bar-height)+1.25rem)] right-4 z-40 flex max-w-md items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-xs text-white shadow-xl backdrop-blur-sm dark:border-ui-line-dark dark:bg-ui-surface-dark-deep/95 dark:text-ui-text-dark"
+        >
+          <span className="truncate">
+            Se quitó <strong className="font-bold text-white dark:text-ui-text-dark-strong">{removedRowState.row.product.productName}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={undoRemoveRow}
+            className="ml-auto shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 font-bold text-white transition hover:bg-brand-500 active:scale-95 dark:bg-ui-accent-cyan dark:text-slate-950 dark:hover:bg-cyan-300"
+          >
+            Deshacer
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (undoTimeoutRef.current) {
+                window.clearTimeout(undoTimeoutRef.current)
+              }
+              setRemovedRowState(null)
+            }}
+            className="grid size-6 place-items-center rounded text-slate-400 hover:text-white dark:hover:text-ui-text-dark-strong"
+            aria-label="Cerrar aviso"
+          >
+            ×
+          </button>
+        </aside>
+      ) : null}
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-ui-line-dark dark:bg-ui-surface-dark-deep xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
         <div className="mx-auto flex w-full max-w-[92.5rem] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6 xl:h-full xl:px-7 2xl:px-8">
