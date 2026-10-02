@@ -681,6 +681,59 @@ export function ProductionEntryPage() {
     buildResult.calculation.night.detailDifferenceKg100 === 0
   const tunnelMovementRequired =
     draft.hasTunnelProduction && buildResult.calculation.tunnel.totalKg100 === 0
+
+  const pendingClosureReasons = useMemo(() => {
+    if (canClose) return []
+    const items: string[] = []
+    if (dayHasReportData && buildResult.calculation.day.detailDifferenceKg100 !== 0) {
+      const diff = buildResult.calculation.day.detailDifferenceKg100
+      if (diff > 0) {
+        items.push(`Turno Día: faltan ${formatCentiKg(diff)}`)
+      } else {
+        items.push(`Turno Día: excede ${formatCentiKg(kg100(-diff))}`)
+      }
+    }
+    if (nightHasReportData && buildResult.calculation.night.detailDifferenceKg100 !== 0) {
+      const diff = buildResult.calculation.night.detailDifferenceKg100
+      if (diff > 0) {
+        items.push(`Turno Noche: faltan ${formatCentiKg(diff)}`)
+      } else {
+        items.push(`Turno Noche: excede ${formatCentiKg(kg100(-diff))}`)
+      }
+    }
+
+    const otherBlockers = [
+      ...closureValidation.blockers
+        .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
+        .map((blocker) => blocker.message),
+      ...diagnostics
+        .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
+        .map((diagnostic) => diagnostic.message),
+    ].filter((message, index, messages) => messages.indexOf(message) === index)
+
+    for (const blocker of otherBlockers) {
+      const lower = blocker.toLowerCase()
+      if (lower.includes('turno día') && items.some((it) => it.toLowerCase().includes('turno día'))) {
+        continue
+      }
+      if (lower.includes('turno noche') && items.some((it) => it.toLowerCase().includes('turno noche'))) {
+        continue
+      }
+      if (!items.some((it) => it.toLowerCase().includes(lower) || lower.includes(it.toLowerCase()))) {
+        items.push(blocker)
+      }
+    }
+    return items
+  }, [
+    canClose,
+    dayHasReportData,
+    nightHasReportData,
+    buildResult.calculation.day.detailDifferenceKg100,
+    buildResult.calculation.night.detailDifferenceKg100,
+    closureValidation.blockers,
+    diagnostics,
+  ])
+
   const footerStatus = canClose
   ? closureValidation.warnings.length > 0
     ? {
@@ -5847,21 +5900,27 @@ freezingOriginLedger.length > 0 ? (
         />
       ) : null}
 
-      {!canClose && (closureValidation.blockers.length > 0 || diagnostics.length > 0) ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900">Pendientes para cerrar</p>
-          <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900">
-            {[
-              ...closureValidation.blockers
-                .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
-                .map((blocker) => blocker.message),
-              ...diagnostics
-                .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
-                .map((diagnostic) => diagnostic.message),
-            ]
-              .filter((message, index, messages) => messages.indexOf(message) === index)
-              .slice(0, 12)
-              .map((message) => <li key={message}>• {message}</li>)}
+      {!canClose && (closureValidation.blockers.length > 0 || diagnostics.length > 0 || pendingClosureReasons.length > 0) ? (
+        <div
+          id="pendientes-para-cerrar"
+          tabIndex={-1}
+          className="scroll-mt-28 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 outline-none dark:border-amber-500/30 dark:bg-amber-500/10"
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-300">Pendientes para cerrar</p>
+          <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
+            {(pendingClosureReasons.length > 0
+              ? pendingClosureReasons
+              : [
+                  ...closureValidation.blockers
+                    .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
+                    .map((blocker) => blocker.message),
+                  ...diagnostics
+                    .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
+                    .map((diagnostic) => diagnostic.message),
+                ]
+                  .filter((message, index, messages) => messages.indexOf(message) === index)
+                  .slice(0, 12)
+            ).map((message) => <li key={message}>• {message}</li>)}
           </ul>
         </div>
       ) : null}
@@ -6245,10 +6304,34 @@ freezingOriginLedger.length > 0 ? (
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 py-3 shadow-[0_-8px_30px_rgb(15_23_42/0.08)] backdrop-blur dark:border-ui-line-dark dark:bg-ui-surface-dark-deep xl:left-64 xl:h-[var(--sidebar-footer-height)] xl:py-0">
         <div className="mx-auto flex w-full max-w-[92.5rem] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6 xl:h-full xl:px-7 2xl:px-8">
-          <div className="flex items-center gap-2" role="status" aria-live="polite">
-            {canClose ? <CheckCircle2 className="size-5 text-emerald-600" aria-hidden="true" /> : <AlertTriangle className="size-5 text-amber-600" aria-hidden="true" />}
-            <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">{footerStatus.title}</p>
+          <div className="flex items-center gap-2.5 min-w-0" role="status" aria-live="polite">
+            {canClose ? (
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">{footerStatus.title}</p>
+                {pendingClosureReasons.length > 0 ? (
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    ({pendingClosureReasons.slice(0, 2).join(' · ')})
+                  </span>
+                ) : null}
+                {pendingClosureReasons.length > 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('pendientes-para-cerrar')
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      el?.focus()
+                    }}
+                    className="text-xs font-bold text-brand-700 underline underline-offset-2 hover:text-brand-800 dark:text-cyan-400 dark:hover:text-cyan-300"
+                  >
+                    +{pendingClosureReasons.length - 2} más · Ver pendientes
+                  </button>
+                ) : null}
+              </div>
               <p className="text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">{footerStatus.description}</p>
             </div>
           </div>

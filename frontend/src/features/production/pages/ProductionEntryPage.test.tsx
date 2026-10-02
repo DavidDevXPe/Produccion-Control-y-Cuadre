@@ -1131,6 +1131,21 @@ describe('capture product status labels', () => {
     const kgUnits = within(captureRegion).getAllByText('kg')
     expect(kgUnits.length).toBeGreaterThan(0)
   })
+
+  it('displays concrete blocking reasons in footer and ready state when reconciled', () => {
+    renderNewEntry()
+    completeShiftReport({ dayReport: '100' })
+
+    const captureInputs = within(
+      screen.getByRole('region', { name: 'Captura por producto y turno' }),
+    ).getAllByRole('textbox')
+    // Register only 80 kg of 100 kg -> 20 kg difference
+    fireEvent.change(captureInputs[0]!, { target: { value: '80' } })
+
+    // Footer shows concrete blocker reason: Turno Día: faltan 20.00 kg
+    expect(screen.getAllByText(/Turno Día: faltan 20\.00 kg/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeDisabled()
+  })
 })
 
 
