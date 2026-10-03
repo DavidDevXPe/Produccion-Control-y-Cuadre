@@ -9,3 +9,10 @@ Thumbs.db
 
 # Fuentes operativas locales: nunca publicar datos de los Excel de producción
 PARTE_DE_PRODUCCION_*.xlsx
+
+# Configuración y plugins de agentes locales
+.agents/
+.claude/
+**/agent/
+skills-lock.json
+

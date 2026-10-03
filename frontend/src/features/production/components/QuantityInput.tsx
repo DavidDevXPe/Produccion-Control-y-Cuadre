@@ -111,9 +111,9 @@ export function QuantityInput({
           onChange={handleChange}
           onWheel={handleWheel}
           onKeyDown={onKeyDown}
-          className="number-tabular h-10 w-full rounded-lg border border-slate-400 bg-white px-3 pr-9 text-right text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 read-only:cursor-default read-only:bg-slate-100 read-only:text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:text-ui-text-dark-strong dark:read-only:bg-ui-surface-dark-compact dark:read-only:text-ui-text-dark-soft dark:disabled:bg-ui-surface-dark-recessed dark:disabled:text-ui-text-subtle"
+          className="number-tabular h-10 w-full rounded-lg border border-slate-400 bg-white px-3 pr-9 text-right text-sm font-semibold text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 read-only:cursor-default read-only:bg-slate-100 read-only:text-slate-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-200 dark:bg-slate-50 dark:text-white dark:focus:border-brand-500 dark:focus:ring-brand-500/20 dark:read-only:bg-slate-100 dark:read-only:text-slate-400 dark:disabled:bg-slate-100/50 dark:disabled:text-slate-500"
         />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] font-bold text-slate-600 dark:text-ui-text-dark-soft">
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.6875rem] font-bold text-slate-600 dark:text-slate-400">
           kg
         </span>
       </span>

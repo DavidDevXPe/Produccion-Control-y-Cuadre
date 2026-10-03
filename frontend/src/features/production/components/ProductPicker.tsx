@@ -10,7 +10,7 @@ export interface ProductPickerMeta {
 }
 
 export interface ProductPickerProps<T> {
-  items: T[]
+  items: readonly T[]
   getItemId: (item: T) => string
   getItemLabel: (item: T) => string
   getItemMeta?: ((item: T) => ProductPickerMeta) | undefined
@@ -159,6 +159,7 @@ export function ProductPicker<T>({
 
       <button
         type="button"
+        aria-label={buttonLabel}
         disabled={isButtonDisabled}
         onClick={handleButtonClick}
         title={
@@ -166,7 +167,6 @@ export function ProductPicker<T>({
             ? 'Selecciona un producto del catálogo para agregarlo'
             : undefined
         }
-        aria-label={buttonLabel}
         className={
           buttonClassName ??
           buttonStyles('primary')

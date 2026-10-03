@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BrandLogo } from '../components/ui/BrandLogo'
 import { UserIdentity } from '../components/ui/UserIdentity'
 import { WeekSelector } from '../components/ui/WeekSelector'
 import { localUser } from '../config/localUser'
@@ -28,8 +29,6 @@ import {
   getLimaShiftLabel,
 } from '../utils/operationalContext'
 import { TRABUNDA_STORAGE_KEYS } from '../storage/trabundaStorage'
-
-const brandLogoUrl = `${import.meta.env.BASE_URL}brand/trabunda-logo-white.png`
 
 const limaWeekdayFormatter = new Intl.DateTimeFormat('es-PE', {
   weekday: 'long',
@@ -129,17 +128,14 @@ interface SidebarContentProps {
 function SidebarContent({ onNavigate }: SidebarContentProps) {
   return (
     <div data-theme-sidebar className="flex h-full flex-col bg-brand-950 text-white dark:bg-ui-surface-dark-canvas dark:text-ui-text-dark">
-      <div className="h-[5.5rem] border-b border-white/10 px-4 py-2.5">
-        <div data-theme-static="light" className="flex h-12 items-center justify-center overflow-hidden rounded-lg bg-white px-2">
-          <img
-            src={brandLogoUrl}
-            alt="Trabunda Procesos Marinos"
-            className="h-auto w-[12.75rem] max-w-none"
-          />
-        </div>
-        <p className="mt-1 text-center text-[0.5625rem] font-semibold uppercase tracking-[0.13em] text-slate-500 dark:text-ui-text-subtle">
-          Producción · Control y cuadre
-        </p>
+      <div className="flex h-16 items-center justify-center border-b border-white/10 px-4">
+        <NavLink
+          to="/"
+          className="flex w-full items-center justify-center transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded-lg"
+          aria-label="Ir al inicio"
+        >
+          <BrandLogo tone="dark" variant="seamless" />
+        </NavLink>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-5">
@@ -398,13 +394,9 @@ export function AdminLayout() {
           >
             <Menu className="size-5" aria-hidden="true" />
           </button>
-          <div data-theme-static="light" className="flex h-10 w-28 shrink-0 items-center justify-center overflow-hidden bg-white">
-            <img
-              src={brandLogoUrl}
-              alt="Trabunda Procesos Marinos"
-              className="h-auto w-28 max-w-none"
-            />
-          </div>
+          <NavLink to="/" aria-label="Ir al inicio" className="flex items-center">
+            <BrandLogo tone="auto" variant="seamless" />
+          </NavLink>
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <p className="hidden min-w-0 truncate text-sm font-bold text-slate-900 sm:block">

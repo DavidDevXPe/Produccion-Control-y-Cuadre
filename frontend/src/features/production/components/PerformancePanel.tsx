@@ -57,13 +57,13 @@ export function PerformancePanel({
       </div>
 
       <div className="mt-5">
-        <div className="relative h-2.5 overflow-visible rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className="relative h-2.5 overflow-visible rounded-full bg-slate-100 dark:bg-slate-50">
           <div
             className={`h-full rounded-full ${yieldStyles.barClass}`}
             style={{ width: `${clampedPercentage}%` }}
           />
           <span
-            className="absolute -top-1 h-4.5 w-0.5 bg-slate-700 dark:bg-slate-200"
+            className="absolute -top-1 h-4.5 w-0.5 bg-slate-700 dark:bg-white"
             style={{ left: `${performance.referencePercent}%` }}
             aria-hidden="true"
           />

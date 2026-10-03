@@ -166,6 +166,11 @@ html.dark {
   --color-rose-800: #f08080;
   --color-rose-900: #f7bcbc;
   --color-rose-950: #fadddd;
+  --color-violet-50: #1e1b4b;
+  --color-violet-200: #4c1d95;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #8b5cf6;
+  --color-violet-700: #a78bfa;
   --shadow-panel: 0 1px 1px rgb(0 0 0 / 0.1);
   --color-sticky-divider: #244052;
   --color-family-divider: #1c526c;
@@ -543,8 +548,17 @@ summary:focus-visible,
   border-color: rgb(244 63 94 / 0.45);
 }
 
+.kpi-card--neutral {
+  border-color: rgb(148 163 184 / 0.45);
+}
+
 .kpi-card--violet {
   border-color: rgb(139 92 246 / 0.45);
+}
+
+html.dark .kpi-card--neutral {
+  border-color: #244052;
+  background: linear-gradient(160deg, rgb(36 64 82 / 0.35), #0a1c31 60%);
 }
 
 html.dark .kpi-card--brand {

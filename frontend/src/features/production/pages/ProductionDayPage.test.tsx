@@ -287,7 +287,8 @@ describe('Freezing production day page', () => {
       screen.getByRole('heading', { name: 'Detalle FIFO por origen' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Aprovechamiento general' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Exportar Excel' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Exportar PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar Excel' })).toBeDisabled()
     window.localStorage.clear()
   })
 })

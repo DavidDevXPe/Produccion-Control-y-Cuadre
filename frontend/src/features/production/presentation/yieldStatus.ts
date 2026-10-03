@@ -130,9 +130,9 @@ export const yieldVisualStyles = {
   neutral: {
     metricTone: "neutral",
     badgeTone: "neutral",
-    textClass: "text-slate-600 dark:text-slate-300",
+    textClass: "text-slate-600 dark:text-ui-text-dark",
     barClass: "bg-slate-400",
     panelClass:
-      "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100",
+      "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-ui-text-dark-strong",
   },
 } as const;

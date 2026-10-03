@@ -77,11 +77,11 @@ export function SegmentedTabs<T extends string>({
 
   return (
     <div>
-      <p className="mb-1.5 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-slate-600">
+      <p className="mb-1.5 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-slate-600 dark:text-ui-text-dark-muted">
         {caption}
       </p>
       <div
-        className="inline-flex max-w-full rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+        className="inline-flex max-w-full rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-ui-line-dark dark:bg-ui-surface-dark-compact"
         role="tablist"
         aria-label={label}
         onKeyDown={handleKeyDown}
@@ -107,7 +107,7 @@ export function SegmentedTabs<T extends string>({
               className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 selected
                   ? (option.selectedClassName ?? defaultSelectedClassName)
-                  : 'text-slate-600 hover:bg-slate-50'
+                  : 'text-slate-600 hover:bg-slate-50 dark:text-ui-text-dark-muted dark:hover:bg-ui-surface-dark-hover dark:hover:text-ui-text-dark'
               }`}
             >
               {option.icon}

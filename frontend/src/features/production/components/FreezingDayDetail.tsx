@@ -3,8 +3,11 @@ import {
   ArrowLeft,
   Boxes,
   CheckCircle2,
+  Download,
+  LoaderCircle,
   Moon,
   Pencil,
+  Printer,
   Scale,
   Snowflake,
   Sun,
@@ -28,7 +31,11 @@ interface FreezingDayDetailProps {
   allProductionDays: readonly ProductionDay[]
   canEdit: boolean
   canClose: boolean
+  canExport?: boolean
+  exportState?: 'IDLE' | 'EXPORTING' | 'SUCCESS' | 'ERROR'
   onClose: () => void
+  onExportPdf?: () => void
+  onExportExcel?: () => void
 }
 
 export function FreezingDayDetail({
@@ -36,7 +43,11 @@ export function FreezingDayDetail({
   allProductionDays,
   canEdit,
   canClose,
+  canExport = false,
+  exportState = 'IDLE',
   onClose,
+  onExportPdf,
+  onExportExcel,
 }: FreezingDayDetailProps) {
   const operationalState = getProductionDayOperationalState(productionDay)
   const calculation = operationalState.calculation
@@ -152,9 +163,58 @@ export function FreezingDayDetail({
                 </button>
               </>
             ) : null}
+            {onExportPdf ? (
+              <button
+                type="button"
+                onClick={onExportPdf}
+                className={`no-print ${buttonStyles('secondary', 'sm')}`}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Exportar PDF
+              </button>
+            ) : null}
+            {onExportExcel ? (
+              <button
+                type="button"
+                className={`no-print ${buttonStyles('secondary', 'sm')}`}
+                disabled={!canExport || exportState === 'EXPORTING'}
+                onClick={onExportExcel}
+                title={
+                  canExport
+                    ? 'Descargar jornada cerrada en formato Excel'
+                    : 'Disponible únicamente para jornadas cerradas y cuadradas'
+                }
+              >
+                {exportState === 'EXPORTING' ? (
+                  <LoaderCircle
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Download className="size-4" aria-hidden="true" />
+                )}
+                {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
+              </button>
+            ) : null}
           </div>
         }
       />
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {exportState === 'SUCCESS'
+          ? 'El archivo Excel de la jornada se descargó correctamente.'
+          : exportState === 'ERROR'
+            ? 'No se pudo generar el archivo Excel. Inténtalo nuevamente.'
+            : ''}
+      </p>
+      {exportState === 'ERROR' ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-200"
+        >
+          No se pudo generar el archivo Excel. Verifica los datos e inténtalo nuevamente.
+        </div>
+      ) : null}
 
       {hasClosureWarnings ? (
         <SectionCard
