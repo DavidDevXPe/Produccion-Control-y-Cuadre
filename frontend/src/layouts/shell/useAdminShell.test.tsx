@@ -73,4 +73,31 @@ describe('useAdminShell', () => {
 
     expect(result.current.isMenuOpen).toBe(false)
   })
+
+  it('tracks offline and online transitions with reconnection flag', () => {
+    const { result } = renderHook(() => useAdminShell(), {
+      wrapper: ({ children }) => (
+        <ProductionDataProvider>
+          <MemoryRouter initialEntries={['/']}>{children}</MemoryRouter>
+        </ProductionDataProvider>
+      ),
+    })
+
+    expect(result.current.isOffline).toBe(!navigator.onLine)
+    expect(result.current.showReconnected).toBe(false)
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'))
+    })
+
+    expect(result.current.isOffline).toBe(true)
+    expect(result.current.showReconnected).toBe(false)
+
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+
+    expect(result.current.isOffline).toBe(false)
+    expect(result.current.showReconnected).toBe(true)
+  })
 })

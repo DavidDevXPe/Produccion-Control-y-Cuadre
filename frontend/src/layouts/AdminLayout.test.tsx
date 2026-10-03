@@ -47,4 +47,34 @@ describe('AdminLayout theme preference', () => {
       expect(window.localStorage.getItem('trabunda-color-theme')).toBe('dark')
     })
   })
+
+  it('displays offline banner and reconnected banner during connectivity transitions', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route index element={<div>Contenido</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/Modo Sin Conexión/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Conexión restablecida/)).not.toBeInTheDocument()
+
+    fireEvent(window, new Event('offline'))
+
+    expect(
+      screen.getByText(/Modo Sin Conexión \(PWA activo\)/),
+    ).toBeInTheDocument()
+
+    fireEvent(window, new Event('online'))
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Modo Sin Conexión/)).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/Conexión restablecida: trabajando en línea con almacenamiento sincronizado\./),
+      ).toBeInTheDocument()
+    })
+  })
 })

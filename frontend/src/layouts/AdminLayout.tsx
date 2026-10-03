@@ -1,4 +1,4 @@
-import { WifiOff } from 'lucide-react'
+import { Wifi, WifiOff } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { AdminHeader } from './shell/AdminHeader'
 import { AdminMobileDrawer } from './shell/AdminMobileDrawer'
@@ -14,6 +14,7 @@ export function AdminLayout() {
     colorTheme,
     toggleColorTheme,
     isOffline,
+    showReconnected,
     closeButtonRef,
     mobileNavigationRef,
     isDashboard,
@@ -83,10 +84,25 @@ export function AdminLayout() {
         />
 
         {isOffline ? (
-          <div className="relative z-20 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:text-amber-200">
+          <div
+            role="status"
+            aria-live="polite"
+            className="relative z-20 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:text-amber-200"
+          >
             <WifiOff className="size-4 shrink-0" aria-hidden="true" />
             <span>
               Modo Sin Conexión (PWA activo): Los datos se guardan localmente en el navegador.
+            </span>
+          </div>
+        ) : showReconnected ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="relative z-20 flex items-center justify-center gap-2 border-b border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-center text-xs font-semibold text-emerald-800 dark:text-emerald-200"
+          >
+            <Wifi className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <span>
+              Conexión restablecida: trabajando en línea con almacenamiento sincronizado.
             </span>
           </div>
         ) : null}

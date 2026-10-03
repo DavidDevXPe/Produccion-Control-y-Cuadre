@@ -23,6 +23,8 @@ export function useAdminShell() {
   const [colorTheme, setColorTheme] = useState<ColorTheme>(getInitialColorTheme)
   const [currentTime, setCurrentTime] = useState(() => new Date())
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
+  const [showReconnected, setShowReconnected] = useState(false)
+  const wasOfflineRef = useRef(!navigator.onLine)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const mobileNavigationRef = useRef<HTMLElement>(null)
   const location = useLocation()
@@ -84,8 +86,23 @@ export function useAdminShell() {
   }, [])
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
+    let timerId: number | undefined
+
+    const handleOnline = () => {
+      setIsOffline(false)
+      if (wasOfflineRef.current) {
+        setShowReconnected(true)
+        if (timerId) window.clearTimeout(timerId)
+        timerId = window.setTimeout(() => setShowReconnected(false), 4500)
+      }
+      wasOfflineRef.current = false
+    }
+
+    const handleOffline = () => {
+      setIsOffline(true)
+      wasOfflineRef.current = true
+      setShowReconnected(false)
+    }
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
@@ -93,6 +110,7 @@ export function useAdminShell() {
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      if (timerId) window.clearTimeout(timerId)
     }
   }, [])
 
@@ -167,6 +185,7 @@ export function useAdminShell() {
     colorTheme,
     toggleColorTheme,
     isOffline,
+    showReconnected,
     closeButtonRef,
     mobileNavigationRef,
     isDashboard,
