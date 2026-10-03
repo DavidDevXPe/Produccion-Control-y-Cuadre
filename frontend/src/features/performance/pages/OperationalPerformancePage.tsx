@@ -7,9 +7,15 @@ import {
   SegmentedTabs,
   type SegmentedTabOption,
 } from '../../../components/ui/SegmentedTabs'
+import { lazy, Suspense } from 'react'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
-import { PerformanceCharts } from '../components/PerformanceCharts'
+
+const PerformanceCharts = lazy(() =>
+  import('../components/PerformanceCharts').then((module) => ({
+    default: module.PerformanceCharts,
+  })),
+)
 import { PerformanceShiftCard } from '../components/PerformanceShiftCard'
 import { ProcessPerformanceSummaryCard } from '../components/ProcessPerformanceSummaryCard'
 import { ShiftComparisonTable } from '../components/ShiftComparisonTable'
@@ -143,7 +149,9 @@ export function OperationalPerformancePage() {
               </SectionCard>
             ))}
             <ShiftComparisonTable process={view} records={weekRecords} />
-            <PerformanceCharts records={weekRecords.filter((record) => record.process === view)} />
+            <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-ui-surface-dark-soft" />}>
+              <PerformanceCharts records={weekRecords.filter((record) => record.process === view)} />
+            </Suspense>
           </>
         )}
       </div>
