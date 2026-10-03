@@ -6,7 +6,6 @@ import { exportPageToPdf } from "../../../utils/pdfExport";
 import { getProductionProcess } from "../../production/model/productionProcess";
 import type { ProductionProcess } from "../../production/model/types";
 import { useProductionData } from "../../production/state/ProductionDataContext";
-import { exportPerformanceWorkbook } from "../export/performanceWorkbook";
 import { usePerformanceRecords } from "./usePerformanceRecords";
 import {
   aggregatePerformanceRecords,
@@ -96,7 +95,10 @@ export function useOperationalPerformanceData() {
     setSearchParams({ view: nextView }, { replace: true });
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const { exportPerformanceWorkbook } = await import(
+      "../export/performanceWorkbook"
+    );
     exportPerformanceWorkbook(activeWeekNumber, weekRecords);
   };
 

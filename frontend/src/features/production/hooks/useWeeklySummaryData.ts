@@ -5,7 +5,6 @@ import { exportPageToPdf } from '../../../utils/pdfExport'
 import { formatCentiKg } from '../../../utils/formatters'
 import type { ProductionView } from '../components/ProcessSelector'
 import type { WeeklyProductGroupRow } from '../components/WeeklyProductSummary'
-import { exportWeeklySummaryWorkbook } from '../export/weeklySummaryWorkbook'
 import { calculateWeeklySummary, kg100, sumKg100 } from '../model/calculations'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { isProductionProcess } from '../model/productionProcess'
@@ -255,8 +254,11 @@ export function useWeeklySummaryData() {
   const isNucaSemilimpiaReferenceApplicable = summary?.nucaSemilimpia.applicable ?? false
   const isNucaBikiniReferenceApplicable = summary?.nucaBikini.applicable ?? false
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!summary) return
+    const { exportWeeklySummaryWorkbook } = await import(
+      '../export/weeklySummaryWorkbook'
+    )
     exportWeeklySummaryWorkbook({
       weekNumber: activeWeek.number,
       period: activeWeek.period,
