@@ -7,6 +7,32 @@ export default defineConfig({
   base: "/Produccion-Control-y-Cuadre/",
   build: {
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/exceljs')) {
+            return 'exceljs'
+          }
+          if (
+            id.includes('node_modules/recharts') ||
+            id.includes('node_modules/d3-') ||
+            id.includes('node_modules/victory-vendor')
+          ) {
+            return 'charts'
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide'
+          }
+          if (
+            id.includes('node_modules/react') ||
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router')
+          ) {
+            return 'vendor-react'
+          }
+        },
+      },
+    },
   },
   plugins: [
     react(),
