@@ -1,16 +1,12 @@
 import { useMemo, useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
 import {
   buildFreezingExcelPreview,
-  isTreatmentOnlyProduct,
   type FreezingExcelPreview,
 } from '../capture/freezingExcelPreview'
 import type { ParsedPackingReportImport } from '../capture/parseProductionWorkbook'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
-import type {
-  ProductionCaptureDraft,
-  ProductionCaptureRow,
-} from '../capture/productionCapture'
+import type { ProductionCaptureDraft } from '../capture/productionCapture'
 import {
   addActiveProduct,
   addAliasToActiveProduct,
@@ -19,6 +15,15 @@ import {
 } from '../capture/productCatalogRepository'
 import { normalizeProductName } from '../capture/productNormalizer'
 import { formatCentiKg } from '../../../utils/formatters'
+import {
+  buildUpdatedFreezingDraft,
+  getFreezingCatalogFamilyOptions,
+} from './excelImportFreezingHelpers'
+import {
+  getUnresolvedFreezingRows,
+  getUnresolvedPackingRows,
+  updatePackingPreviewWithProduct,
+} from './excelImportPackingHelpers'
 
 export interface UseProductionExcelImportOptions {
   readonly draft: ProductionCaptureDraft
@@ -53,46 +58,10 @@ export function useProductionExcelImport({
   const [freezingNewProductFamilyByRow, setFreezingNewProductFamilyByRow] =
     useState<Record<number, string>>({})
 
-  const freezingCatalogFamilyOptions = useMemo(() => {
-    const families = new Map<
-      string,
-      Pick<
-        ProductionCatalogItem,
-        'familyId' | 'familyName' | 'summaryGroupId'
-      >
-    >()
-
-    for (const product of catalogItems) {
-      if (
-        product.active === false ||
-        isTreatmentOnlyProduct(product)
-      ) {
-        continue
-      }
-
-      if (!families.has(product.familyId)) {
-        families.set(product.familyId, {
-          familyId: product.familyId,
-          familyName: product.familyName,
-          summaryGroupId: product.summaryGroupId,
-        })
-      }
-    }
-
-    // NUCA BIKINI puede aparecer en reportes de Congelamiento aunque
-    // todavía no exista como producto activo en el catálogo semilla.
-    if (!families.has('nuca-bikini')) {
-      families.set('nuca-bikini', {
-        familyId: 'nuca-bikini',
-        familyName: 'NUCA BIKINI',
-        summaryGroupId: 'NUCA_BIKINI',
-      })
-    }
-
-    return Array.from(families.values()).sort((first, second) =>
-      first.familyName.localeCompare(second.familyName, 'es-PE'),
-    )
-  }, [catalogItems])
+  const freezingCatalogFamilyOptions = useMemo(
+    () => getFreezingCatalogFamilyOptions(catalogItems),
+    [catalogItems],
+  )
 
   const handleWorkbook = async (
     event: ChangeEvent<HTMLInputElement>,
@@ -174,19 +143,10 @@ export function useProductionExcelImport({
     setSaveError('')
   }
 
-  const unresolvedExcelRows =
-    excelPreview?.rows.filter(
-      (row) =>
-        row.totalKg > 0 &&
-        (row.status === 'NUEVO PRODUCTO' ||
-          row.status === 'REQUIERE REVISIÓN' ||
-          row.status === 'FECHA REQUIERE REVISIÓN'),
-    ) ?? []
+  const unresolvedExcelRows = getUnresolvedPackingRows(excelPreview)
 
   const unresolvedFreezingExcelRows =
-    freezingExcelPreview?.rows.filter(
-      (row) => row.totalKg > 0 && row.status === 'REQUIERE REVISIÓN',
-    ) ?? []
+    getUnresolvedFreezingRows(freezingExcelPreview)
 
   const canConfirmExcelImport = isFreezing
     ? Boolean(
@@ -206,55 +166,17 @@ export function useProductionExcelImport({
     status: 'COINCIDENCIA EXACTA' | 'ALIAS CONOCIDO',
     matchReason?: string,
   ) => {
-    setExcelPreview((current) => {
-      if (!current) return current
-      const rows = current.rows.map((row) =>
-        row.rowNumber === rowNumber
-          ? {
-              ...row,
-              product,
-              status,
-              matchKind:
-                status === 'ALIAS CONOCIDO'
-                  ? ('ALIAS' as const)
-                  : ('EXACT' as const),
-              matchReason,
-            }
-          : row,
-      )
-      const newRows = rows.filter((row) => row.status === 'NUEVO PRODUCTO').length
-      const normalizedRows = rows.filter(
-        (row) => row.status === 'COINCIDENCIA NORMALIZADA',
-      ).length
-      const aliasRows = rows.filter(
-        (row) => row.status === 'ALIAS CONOCIDO',
-      ).length
-      const reviewRows =
-        rows.filter(
-          (row) =>
-            row.totalKg > 0 &&
-            (row.status === 'NUEVO PRODUCTO' ||
-              row.status === 'REQUIERE REVISIÓN' ||
-              row.status === 'FECHA REQUIERE REVISIÓN'),
-        ).length + current.ignoredRows.length
-
-      return {
-        ...current,
-        rows,
-        newRows,
-        normalizedRows,
-        aliasRows,
-        reviewRows,
-        recognizedRows:
-          rows.length -
-          newRows -
-          rows.filter((row) => row.status === 'FECHA REQUIERE REVISIÓN').length,
-        status:
-          reviewRows === 0 && current.warnings.length === 0
-            ? 'EXCEL RECONCILIADO'
-            : 'EXCEL REQUIERE REVISIÓN',
-      }
-    })
+    setExcelPreview((current) =>
+      current
+        ? updatePackingPreviewWithProduct(
+            current,
+            rowNumber,
+            product,
+            status,
+            matchReason,
+          )
+        : null,
+    )
   }
 
   const addExcelRowToCatalog = (rowNumber: number) => {
@@ -503,101 +425,9 @@ export function useProductionExcelImport({
       return
     }
 
-    const totalsByProduct = new Map<
-      string,
-      {
-        product: ProductionCatalogItem
-        totalKg: number
-      }
-    >()
-
-    for (const row of freezingExcelPreview.rows) {
-      if (!row.product || row.totalKg <= 0) {
-        continue
-      }
-
-      const existing = totalsByProduct.get(row.product.productId)
-
-      totalsByProduct.set(row.product.productId, {
-        product: row.product,
-        totalKg: (existing?.totalKg ?? 0) + row.totalKg,
-      })
-    }
-
-    setDraft((current) => {
-      const importedShift = freezingExcelPreview.shift
-
-      const nextRows = current.rows.map((row) => {
-        const imported = totalsByProduct.get(row.product.productId)
-
-        return {
-          ...row,
-          ...(importedShift === 'DAY'
-            ? {
-                dayReportedKg: imported ? String(imported.totalKg) : '0',
-              }
-            : {
-                nightReportedKg: imported ? String(imported.totalKg) : '0',
-              }),
-        }
-      })
-
-      for (const [productId, imported] of totalsByProduct) {
-        const exists = nextRows.some(
-          (row) => row.product.productId === productId,
-        )
-
-        if (exists) {
-          continue
-        }
-
-        const row: ProductionCaptureRow = {
-          key: `excel-freezing-${productId}-${Date.now()}-${nextRows.length}`,
-          product: imported.product,
-          dayReportedKg:
-            importedShift === 'DAY' ? String(imported.totalKg) : '0',
-          dayPreviousBalanceKg: '0',
-          nightReportedKg:
-            importedShift === 'NIGHT' ? String(imported.totalKg) : '0',
-          nightPreviousBalanceKg: '0',
-          tunnelDayKg: '0',
-          tunnelNightKg: '0',
-          treatmentKg: '0',
-          closingBalanceKg: '0',
-          finishedKg: '',
-        }
-
-        nextRows.push(row)
-      }
-
-      const nextBalanceUses = current.balanceUses.map((balance) =>
-        importedShift === 'DAY'
-          ? {
-              ...balance,
-              dayKg: '0',
-            }
-          : {
-              ...balance,
-              nightKg: '0',
-            },
-      )
-
-      return {
-        ...current,
-        source: 'EXCEL',
-        sourceSheet: freezingExcelPreview.sheetName,
-        shiftAllocationMode: 'EXPLICIT',
-        rows: nextRows,
-        balanceUses: nextBalanceUses,
-        ...(importedShift === 'DAY'
-          ? {
-              declaredDayTotalKg: String(freezingExcelPreview.totalKg),
-            }
-          : {
-              declaredNightTotalKg: String(freezingExcelPreview.totalKg),
-            }),
-      }
-    })
+    setDraft((current) =>
+      buildUpdatedFreezingDraft(current, freezingExcelPreview),
+    )
 
     setExcelImportMessage(
       `Turno ${
