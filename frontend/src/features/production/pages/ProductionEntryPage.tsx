@@ -1,11 +1,5 @@
-import { buttonStyles } from '../../../components/ui/buttonStyles'
-import { SectionCard } from '../../../components/ui/SectionCard'
-import { StatusBadge } from '../../../components/ui/StatusBadge'
-import { formatCentiKg } from '../../../utils/formatters'
 import { FamilyYieldPanel } from '../components/FamilyYieldPanel'
-import { ProductPicker } from '../components/ProductPicker'
 import { ProductionBalancesSection } from '../components/ProductionBalancesSection'
-import { ProductionCaptureTable } from '../components/ProductionCaptureTable'
 import { ProductionClosingSection } from '../components/ProductionClosingSection'
 import { ProductionEntryActionBar } from '../components/ProductionEntryActionBar'
 import { ProductionEntryHeader } from '../components/ProductionEntryHeader'
@@ -15,12 +9,11 @@ import { ProductionEntryReadOnlyWarning } from '../components/ProductionEntryRea
 import { ProductionExcelImportSection } from '../components/ProductionExcelImportSection'
 import { ProductionFinishedProductSection } from '../components/ProductionFinishedProductSection'
 import { ProductionGeneralDataSection } from '../components/ProductionGeneralDataSection'
-import { ProductionShiftCards } from '../components/ProductionShiftCards'
+import { ProductionReportsSection } from '../components/ProductionReportsSection'
 import { ProductionTreatmentSection } from '../components/ProductionTreatmentSection'
 import { ProductionTunnelSection } from '../components/ProductionTunnelSection'
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { useProductionEntryData } from '../hooks/useProductionEntryData'
-import { kg100 } from '../model/calculations'
 
 export function ProductionEntryPage() {
   const {
@@ -125,72 +118,28 @@ export function ProductionEntryPage() {
         onUpdateTunnelCondition={sectionProducts.updateTunnelCondition}
       />
 
-      <SectionCard
-        allowStickyContent
-        title="Reportes Día / Noche"
-        description={
-          draft.shiftAllocationMode === 'EXPLICIT'
-            ? 'Registra los productos informados por los supervisores y concilia cada turno.'
-            : 'Día y Noche se distribuyen desde los totales del Excel y conservan su trazabilidad.'
-        }
-        action={
-          <StatusBadge tone={draft.shiftAllocationMode === 'EXPLICIT' ? 'info' : 'warning'}>
-            {draft.shiftAllocationMode === 'EXPLICIT' ? 'TURNOS EXPLÍCITOS' : 'REPARTO CONCILIADO'}
-          </StatusBadge>
-        }
-      >
-        <ProductionShiftCards
-          dayShift={buildResult.calculation.day}
-          nightShift={buildResult.calculation.night}
-          dayHasReportData={calculations.dayHasReportData}
-          nightHasReportData={calculations.nightHasReportData}
-        />
-
-        {mode === 'MANUAL' ? (
-          <ProductPicker
-            items={calculations.reportCatalogItems}
-            getItemId={(product) => product.productId}
-            getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
-            getItemMeta={(product) => ({
-              group: product.familyName,
-              secondaryText: isFreezing
-                ? `Disponible: ${formatCentiKg(
-                    calculations.freezingAvailabilityByProduct.get(product.productId) ??
-                      kg100(0),
-                  )}`
-                : undefined,
-            })}
-            onAdd={(product) => draftActions.addReportProduct(product.productId)}
-            label="Buscar producto"
-            placeholder="Buscar producto o seleccionar del catálogo (ej.: aleta, manto o nuca)..."
-            buttonLabel="Agregar producto"
-            buttonClassName={buttonStyles('primary')}
-            scopeKey={`${selectedProcess}:REPORTS`}
-            searchInputRef={manualProductSearchInputRef}
-          />
-        ) : null}
-
-        {draft.rows.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-slate-500">
-            Carga una captura de producción para construir la lista de productos de esta jornada.
-          </div>
-        ) : (
-          <ProductionCaptureTable
-            draft={draft}
-            calculation={buildResult.calculation}
-            reportFamilySubtotals={calculations.reportFamilySubtotals}
-            orderedProductIds={calculations.orderedProductIds}
-            isFreezing={isFreezing}
-            isBalanceOnly={isBalanceOnly}
-            isEditingAllowed={isEditingAllowed}
-            getFreezingPotentialAvailabilityKg100={calculations.getFreezingPotentialAvailabilityKg100}
-            autoLinkFreezingProduct={draftActions.autoLinkFreezingProduct}
-            updateRow={draftActions.updateRow}
-            removeRow={draftActions.removeRow}
-            getCaptureCellProps={calculations.getCaptureCellProps}
-          />
-        )}
-      </SectionCard>
+      <ProductionReportsSection
+        draft={draft}
+        calculation={buildResult.calculation}
+        reportCatalogItems={calculations.reportCatalogItems}
+        freezingAvailabilityByProduct={calculations.freezingAvailabilityByProduct}
+        reportFamilySubtotals={calculations.reportFamilySubtotals}
+        orderedProductIds={calculations.orderedProductIds}
+        dayHasReportData={calculations.dayHasReportData}
+        nightHasReportData={calculations.nightHasReportData}
+        isFreezing={isFreezing}
+        isBalanceOnly={isBalanceOnly}
+        isEditingAllowed={isEditingAllowed}
+        mode={mode}
+        selectedProcess={selectedProcess}
+        searchInputRef={manualProductSearchInputRef}
+        getFreezingPotentialAvailabilityKg100={calculations.getFreezingPotentialAvailabilityKg100}
+        autoLinkFreezingProduct={draftActions.autoLinkFreezingProduct}
+        onAddReportProduct={draftActions.addReportProduct}
+        onUpdateRow={draftActions.updateRow}
+        onRemoveRow={draftActions.removeRow}
+        getCaptureCellProps={calculations.getCaptureCellProps}
+      />
 
       <ProductionTunnelSection
         enabled={!usesExternalAvailability && draft.hasTunnelProduction}
