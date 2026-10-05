@@ -133,7 +133,7 @@ export function ProductPicker<T>({
     <>
       <div ref={sentinelRef} className="pointer-events-none -mt-px h-px w-full" aria-hidden="true" />
       <div
-        className={`sm:sticky sm:top-14 xl:top-0 z-[25] flex flex-col gap-3 border-b border-slate-300 bg-slate-50/95 p-4 transition-[box-shadow,background-color] sm:flex-row sm:items-center sm:p-5 sm:py-3.5 dark:border-ui-line-dark-soft dark:bg-ui-surface-dark-recessed/95 ${
+        className={`sm:sticky sm:top-14 xl:top-0 z-[25] flex flex-col gap-3 border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm p-4 transition-[box-shadow,background-color] sm:flex-row sm:items-center sm:p-5 sm:py-3.5 dark:border-slate-200 dark:bg-ui-picker-bg/95 ${
           isStuck
             ? 'shadow-[0_6px_14px_-4px_rgb(15_23_42/0.18)] dark:shadow-[0_8px_18px_-4px_rgba(0,0,0,0.6)]'
             : 'shadow-none'

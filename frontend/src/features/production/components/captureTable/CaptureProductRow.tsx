@@ -65,19 +65,14 @@ export function CaptureProductRow({
   return (
     <tr
       key={row.key}
-      className={`group border-b border-slate-100 bg-white transition-colors hover:bg-brand-50/25 focus-within:bg-brand-50/50 dark:border-ui-line-dark-grid dark:bg-transparent dark:hover:bg-ui-surface-dark-compact/70 dark:focus-within:bg-ui-surface-dark-compact/80 ${
-        totalKg100 > 0 ? 'bg-emerald-50/15 dark:bg-emerald-950/20' : ''
-      }`}
+      className="group border-b border-slate-100 bg-white transition-colors hover:bg-slate-50/80 focus-within:bg-slate-50/80 last:border-b-0 dark:border-slate-200 dark:bg-transparent dark:hover:bg-slate-50/50 dark:focus-within:bg-slate-50/50"
     >
       <th
-        className={`sticky left-0 z-10 border-l-2 border-r border-slate-200 px-4 py-2 transition-colors bg-white group-hover:bg-brand-50/25 group-focus-within:bg-brand-50/50 group-focus-within:border-l-brand-600 dark:border-r-ui-line-navy dark:bg-ui-surface-dark-canvas dark:group-hover:bg-ui-surface-dark-compact dark:group-focus-within:bg-ui-surface-dark-compact dark:group-focus-within:border-l-brand-500 ${
-          totalKg100 > 0
-            ? 'border-l-emerald-500 dark:border-l-emerald-500 bg-emerald-50/15 dark:bg-emerald-950/30'
-            : 'border-l-transparent'
-        }`}
+        scope="row"
+        className="sticky left-0 z-10 border-r border-slate-200 bg-white px-4 py-2 text-left transition-colors group-hover:bg-slate-50/80 group-focus-within:bg-slate-50/80 dark:border-r-slate-200 dark:bg-slate-50 dark:group-hover:bg-slate-100/60 dark:group-focus-within:bg-slate-100/60 sm:px-5"
       >
         <span className="sr-only">{row.product.familyName}: </span>
-        <span className="block text-xs font-semibold leading-relaxed text-slate-800 dark:text-ui-text-dark">
+        <span className="block text-xs font-semibold leading-relaxed text-slate-900 dark:text-white">
           {row.product.productName}
         </span>
       </th>
@@ -202,12 +197,13 @@ export function CaptureProductRow({
           ) : null}
         </div>
       </td>
-      <td className="px-2 py-1.5 text-center">
+      <td className="w-12 px-2 py-1.5 text-center align-middle">
         <button
           type="button"
           disabled={!isEditingAllowed}
-          className="inline-grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={`Quitar producto ${row.product.productName}`}
+          title={`Quitar ${row.product.productName}`}
           onClick={() => removeRow(row.key)}
         >
           <Trash2 className="size-4" aria-hidden="true" />

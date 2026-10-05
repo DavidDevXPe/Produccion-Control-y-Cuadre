@@ -1,5 +1,5 @@
-import { FileSpreadsheet, ShieldCheck } from 'lucide-react'
-import { ActionLink } from '../../../components/ui/ActionLink'
+import { ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export interface ProductionDaysAuditBannerProps {
   isWeekFullySquared: boolean
@@ -13,24 +13,24 @@ export function ProductionDaysAuditBanner({
   registeredDaysCount,
 }: ProductionDaysAuditBannerProps) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4.5 shadow-panel">
+    <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4.5 shadow-panel dark:border-ui-audit-banner-border dark:bg-ui-audit-banner-bg">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3.5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700">
-            <ShieldCheck className="size-5" aria-hidden="true" />
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 dark:border-ui-audit-shield-border dark:bg-ui-audit-shield-bg dark:text-ui-audit-shield-text">
+            <ShieldCheck className="size-5 dark:fill-current/15" aria-hidden="true" />
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-900">
-                Balance y Auditoría de Semana
+              <h2 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-900 dark:text-white">
+                BALANCE Y AUDITORÍA DE SEMANA
               </h2>
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.6875rem] font-bold ${
                   isWeekFullySquared
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/60 dark:text-emerald-400'
                     : balancedCount > 0
-                      ? 'border-sky-200 bg-sky-50 text-sky-700'
-                      : 'border-amber-200 bg-amber-50 text-amber-700'
+                      ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/40 dark:bg-sky-950/60 dark:text-sky-400'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-950/60 dark:text-amber-400'
                 }`}
               >
                 {isWeekFullySquared
@@ -38,7 +38,7 @@ export function ProductionDaysAuditBanner({
                   : `${balancedCount} de ${registeredDaysCount} Cuadradas`}
               </span>
             </div>
-            <p className="mt-1 text-xs leading-5 text-slate-500 max-w-2xl">
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-audit-desc-text max-w-2xl">
               {isWeekFullySquared
                 ? 'Todas las jornadas cerradas coinciden con el pesaje de báscula de muelle y reporte de supervisores de turno.'
                 : 'Conciliación operativa en tiempo real de turnos, pesajes de balanza y verificación de cierres de lote.'}
@@ -46,10 +46,12 @@ export function ProductionDaysAuditBanner({
           </div>
         </div>
         <div className="flex shrink-0 items-center sm:self-center">
-          <ActionLink to="/resumen" variant="secondary" size="sm">
-            <FileSpreadsheet className="size-4" aria-hidden="true" />
+          <Link
+            to="/resumen"
+            className="text-xs font-semibold text-sky-600 transition-colors hover:text-sky-700 hover:underline dark:text-ui-audit-link-text dark:hover:text-ui-audit-link-hover"
+          >
             Descargar informe de cuadre
-          </ActionLink>
+          </Link>
         </div>
       </div>
     </div>

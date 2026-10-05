@@ -67,6 +67,17 @@
   --color-ui-text-dark-strong: #f3f8fb;
   --color-ui-surface-subtle: #f8fbfc;
 
+  /* Audit banner and picker surface tokens */
+  --color-ui-audit-banner-bg: #071b2e;
+  --color-ui-audit-banner-border: #143550;
+  --color-ui-audit-shield-bg: #08263f;
+  --color-ui-audit-shield-border: #13496f;
+  --color-ui-audit-shield-text: #00c2ff;
+  --color-ui-audit-desc-text: #8ba7be;
+  --color-ui-audit-link-text: #00c2ff;
+  --color-ui-audit-link-hover: #38d4ff;
+  --color-ui-picker-bg: #071b2e;
+
   /* Badge and status dark mode tokens */
   --color-ui-emerald-surface-dark: #06351f;
   --color-ui-emerald-border-dark: #1b7b4f;

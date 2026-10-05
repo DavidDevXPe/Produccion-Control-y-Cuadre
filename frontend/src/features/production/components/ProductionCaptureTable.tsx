@@ -47,7 +47,7 @@ export function ProductionCaptureTable({
   getCaptureCellProps,
 }: ProductionCaptureTableProps) {
   return (
-    <DataTableScroll label="Captura por producto y turno">
+    <DataTableScroll label="Captura por producto y turno" showEdgeIndicators={false} className="data-scroll-clean-edge">
       <table className="erp-table w-full min-w-[70rem] table-fixed border-collapse text-left">
         <CaptureTableHeader isFreezing={isFreezing} />
         <tbody>
