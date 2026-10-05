@@ -1,4 +1,4 @@
-import type { WeekSelectorOption } from './WeekSelector'
+import type { WeekSelectorOption } from './weekSelector/weekSelectorTypes'
 
 export const WEEK_SELECTOR_SEARCH_THRESHOLD = 12
 
