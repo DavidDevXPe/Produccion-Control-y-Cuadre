@@ -39,3 +39,4 @@ export function statusMeta(status: FamilyYieldStatus | 'UNAVAILABLE') {
       return { label: 'SIN DATOS', tone: 'neutral' as const }
   }
 }
+
