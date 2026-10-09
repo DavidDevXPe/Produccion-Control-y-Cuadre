@@ -29,8 +29,6 @@ describe('ProductionGeneralDataSection', () => {
       isSunday: false,
       isFreezing: false,
       isBalanceOnly: false,
-      editingDate: undefined,
-      existingDayDate: undefined,
       activeWeekStartDate: '2026-09-14',
       activeWeekEndDate: '2026-09-20',
       usesExternalAvailability: false,
@@ -153,24 +151,26 @@ describe('ProductionGeneralDataSection', () => {
       expect(screen.getByText(/10[.,]000[.,]00 kg/i)).toBeInTheDocument()
     })
 
-    it('disables date input when editing existing day date', () => {
+    it('allows editing date within active week bounds', () => {
       const draft = createEmptyCaptureDraft('2026-09-16', 'PACKING')
+      const onUpdateDate = vi.fn()
       render(
         <GeneralInputsGrid
           draft={draft}
           isFreezing={false}
-          editingDate="2026-09-16"
-          existingDayDate="2026-09-16"
           activeWeekStartDate="2026-09-14"
           activeWeekEndDate="2026-09-20"
           usesExternalAvailability={false}
           totalReportedKg100={0}
-          onUpdateDate={vi.fn()}
+          onUpdateDate={onUpdateDate}
           onUpdateDraft={vi.fn()}
         />,
       )
 
-      expect(screen.getByDisplayValue('2026-09-16')).toBeDisabled()
+      const input = screen.getByDisplayValue('2026-09-16')
+      expect(input).toBeEnabled()
+      expect(input).toHaveAttribute('min', '2026-09-14')
+      expect(input).toHaveAttribute('max', '2026-09-20')
     })
 
     it('hides raw material and labels total as Total congelado in FREEZING', () => {

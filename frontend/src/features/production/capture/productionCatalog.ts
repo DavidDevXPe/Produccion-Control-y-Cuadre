@@ -64,7 +64,7 @@ const catalogByProductId = new Map<string, ProductionCatalogItem>()
 for (const day of WEEK_36_2026_PRODUCTION_DAYS) {
   for (const line of day.lines) {
     if (catalogByProductId.has(line.productId)) continue
-    const anillaYieldClass = getAnillaYieldClass(line.productId)
+    const anillaYieldClass = getAnillaYieldClass(line.productId, line.productName)
     const processOrigin = getProcessOrigin(line.productId)
     catalogByProductId.set(line.productId, {
       familyId: line.familyId,
@@ -80,7 +80,7 @@ for (const day of WEEK_36_2026_PRODUCTION_DAYS) {
 
 for (const item of extraCatalogItems) {
   if (!catalogByProductId.has(item.productId)) {
-    const anillaYieldClass = getAnillaYieldClass(item.productId)
+    const anillaYieldClass = getAnillaYieldClass(item.productId, item.productName)
     const processOrigin = getProcessOrigin(item.productId)
     catalogByProductId.set(item.productId, {
       ...item,

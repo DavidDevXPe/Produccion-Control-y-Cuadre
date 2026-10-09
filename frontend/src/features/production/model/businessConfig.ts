@@ -23,7 +23,9 @@ const ANILLA_YIELD_CLASS_BY_PRODUCT_ID: Readonly<
   'anillas-espana-segunda-mixta': 'GENERAL',
   'anillas-espana-cm-2da-mixta': 'GENERAL',
   'anillas-espana-p-sm-sp-st-mixta': 'GENERAL',
+  'anillas-espana-p-sm-cp-st-mixta': 'GENERAL',
   'anillas-espana-p-cm-sp-st-mixta': 'GENERAL',
+  'anillas-espana-p-cm-cp-st-mixta': 'GENERAL',
   'anillas-iqf-tratamiento-usa-sm-cp-st': 'GENERAL',
   'anillas-block-tratamiento-usa-sm-cp-st': 'USA',
   'anillas-block-tratamiento-usa-cm-sp-st': 'USA',
@@ -45,8 +47,31 @@ const ANILLAS_PROCESS_ORIGIN_PRODUCT_IDS = new Set([
 
 export function getAnillaYieldClass(
   productId: string,
+  productName?: string,
 ): AnillaYieldClass | null {
-  return ANILLA_YIELD_CLASS_BY_PRODUCT_ID[productId] ?? null
+  if (ANILLA_YIELD_CLASS_BY_PRODUCT_ID[productId]) {
+    return ANILLA_YIELD_CLASS_BY_PRODUCT_ID[productId]
+  }
+  if (
+    productId.includes('without-class') ||
+    productId.includes('unclassified') ||
+    productId.includes('sin-clase')
+  ) {
+    return null
+  }
+  const target = `${productId} ${productName ?? ''}`.toUpperCase()
+  if (target.includes('POLAR')) return 'POLAR'
+  if (target.includes('USA')) return 'USA'
+  if (
+    target.includes('ESPANA') ||
+    target.includes('ESPAÑA') ||
+    target.includes('2DA') ||
+    target.includes('SEGUNDA') ||
+    target.includes('GENERAL')
+  ) {
+    return 'GENERAL'
+  }
+  return null
 }
 
 export function getProcessOrigin(productId: string): ProcessOrigin | null {

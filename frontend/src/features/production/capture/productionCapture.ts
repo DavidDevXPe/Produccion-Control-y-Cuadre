@@ -7,7 +7,9 @@ import {
   sumKg100,
   toKilograms,
 } from "../model/calculations";
-import { calculateFreezingAvailability } from "../model/freezing";
+import {
+  calculateStageAvailability,
+} from "../model/freezing";
 import { normalizeBalanceLots } from "../model/balanceLotNormalization";
 import { productIdsEquivalent } from "../model/productIdentity";
 import { calculateProductionBusinessSummary } from "../model/businessRules";
@@ -25,7 +27,10 @@ import type {
   ProductionDayStatus,
   ShiftCode,
 } from "../model/types";
-import { getProductionProcess } from "../model/productionProcess";
+import {
+  getProductionProcess,
+  hasPreviousProcess,
+} from "../model/productionProcess";
 import { isSundayIsoDate } from "../model/productionDayMode";
 import {
   PRODUCTION_CATALOG_ITEMS,
@@ -107,7 +112,10 @@ export function hasSufficientCaptureData(
   draft: ProductionCaptureDraft,
 ): boolean {
   const hasRequiredTotals = [
-    ...(draft.operationMode === "BALANCE_ONLY" || draft.process === "FREEZING"
+    ...(draft.operationMode === "BALANCE_ONLY" ||
+    draft.process === "FREEZING" ||
+    draft.process === "VIDEOJET" ||
+    draft.process === "PALLETIZING"
       ? []
       : [draft.rawMaterialKg]),
     draft.declaredDayTotalKg,
@@ -219,8 +227,8 @@ function buildReceivedBalanceLots(
   errors: string[],
 ): readonly BalanceLot[] {
   const positions = (
-    process === "FREEZING"
-      ? calculateFreezingAvailability(previousDays)
+    hasPreviousProcess(process)
+      ? calculateStageAvailability(process, previousDays)
       : calculateOutstandingBalances(previousDays, subsequentLots)
   ).filter((position) => position.pendingKg100 > 0);
 
@@ -306,7 +314,7 @@ export function createEmptyCaptureDraft(
     shiftAllocationMode: "EXPLICIT",
     operationMode,
     rawMaterialKg:
-      operationMode === "BALANCE_ONLY" || process === "FREEZING" ? "0" : "",
+      operationMode === "BALANCE_ONLY" || process !== "PACKING" ? "0" : "",
     declaredDayTotalKg: "",
     declaredNightTotalKg: "",
     declaredFinishedTotalKg: "",
@@ -459,8 +467,8 @@ export function buildProductionDayFromCapture(
       ? "BALANCE_ONLY"
       : "NORMAL";
   const isBalanceOnly = operationMode === "BALANCE_ONLY";
-  const isFreezing = draft.process === "FREEZING";
-  const usesExternalAvailability = isBalanceOnly || isFreezing;
+  const usesExternalAvailability =
+    isBalanceOnly || draft.process !== "PACKING";
   const keepsImportedFinishedTotals =
     draft.finishedTotalMode === "IMPORTED_DECLARED" &&
     !usesExternalAvailability;
@@ -498,11 +506,15 @@ export function buildProductionDayFromCapture(
   const dayId =
     draft.process === "PACKING"
       ? `production-day-${draft.date}`
-      : `production-day-freezing-${draft.date}`;
+      : draft.process === "FREEZING"
+      ? `production-day-freezing-${draft.date}`
+      : draft.process === "VIDEOJET"
+      ? `production-day-videojet-${draft.date}`
+      : `production-day-palletizing-${draft.date}`;
   const previousDays = allProductionDays.filter((day) =>
-    draft.process === "FREEZING"
-      ? day.date <= draft.date
-      : day.date < draft.date,
+    draft.process === "PACKING"
+      ? day.date < draft.date
+      : day.date <= draft.date,
   );
   const receivedBalanceLots = buildReceivedBalanceLots(
     dayId,

@@ -444,4 +444,9 @@ export const fallbackValue: ProductionDataValue = {
       "ProductionDataProvider is required to save production days.",
     );
   },
+  deleteProductionDay: () => {
+    throw new Error(
+      "ProductionDataProvider is required to delete production days.",
+    );
+  },
 };

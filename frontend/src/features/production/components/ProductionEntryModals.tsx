@@ -3,6 +3,7 @@ import { CloseConfirmationDialog } from './CloseConfirmationDialog'
 import { ProcessChangeDialog } from './ProcessChangeDialog'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
 import type { Kg100, ProductionProcess } from '../model/types'
+import { productionProcessLabels } from '../model/productionProcess'
 import type { CaptureBuildResult, ProductionCaptureDraft } from '../capture/productionCapture'
 import type { ProductionBusinessSummary, ProductionClosureValidation } from '../model/businessRules'
 
@@ -53,6 +54,25 @@ export function ProductionEntryModals({
   onUndoRemoveRow,
   onDismissUndoToast,
 }: ProductionEntryModalsProps) {
+  const isDownstream = isFreezing || draft.process !== 'PACKING'
+  const prevProcessName =
+    draft.process === 'FREEZING'
+      ? 'Envasado'
+      : draft.process === 'VIDEOJET'
+        ? 'Congelamiento'
+        : draft.process === 'PALLETIZING'
+          ? 'Videojet'
+          : 'Envasado'
+
+  const currentProcessName =
+    draft.process === 'FREEZING'
+      ? 'Congelado'
+      : draft.process === 'VIDEOJET'
+        ? 'Videojet'
+        : draft.process === 'PALLETIZING'
+          ? 'Paletizado'
+          : 'Procesado'
+
   return (
     <>
       <ProcessChangeDialog
@@ -65,6 +85,8 @@ export function ProductionEntryModals({
       <BulkFreezingLinkDialog
         isOpen={isBulkFreezingLinkConfirmationOpen}
         pendingLinkCount={freezingPendingLinkCount}
+        originProcessName={prevProcessName}
+        currentProcessName={productionProcessLabels[draft.process]}
         onCancel={onCancelBulkFreezingLink}
         onConfirm={onConfirmBulkFreezingLink}
       />
@@ -72,12 +94,12 @@ export function ProductionEntryModals({
       <CloseConfirmationDialog
         isOpen={isCloseConfirmationOpen}
         summaryItems={
-          isFreezing
+          isDownstream
             ? [
                 ['Fecha', formatIsoDate(draft.date)],
-                ['Congelado Día', formatCentiKg(buildResult.calculation.day.declaredReportedKg100)],
-                ['Congelado Noche', formatCentiKg(buildResult.calculation.night.declaredReportedKg100)],
-                ['Total congelado', formatCentiKg(totalReportedKg100)],
+                [`${currentProcessName} Día`, formatCentiKg(buildResult.calculation.day.declaredReportedKg100)],
+                [`${currentProcessName} Noche`, formatCentiKg(buildResult.calculation.night.declaredReportedKg100)],
+                [`Total ${currentProcessName.toLowerCase()}`, formatCentiKg(totalReportedKg100)],
                 ['Con origen identificado', formatCentiKg(freezingLinkedThisDayKg100)],
                 ['Sin origen suficiente', formatCentiKg(freezingBalanceExplanation.untracedFrozenKg100)],
               ]

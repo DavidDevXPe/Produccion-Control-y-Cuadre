@@ -29,7 +29,10 @@ interface UseProductionPersistenceParams {
   subsequentBalanceLots: readonly BalanceLot[]
   upsertProductionDay: (
     day: ProductionDay,
-    options?: { allowReplace?: boolean },
+    options?: {
+      allowReplace?: boolean | undefined
+      previousDate?: string | undefined
+    },
   ) => void
   navigate: (to: string) => void
   setSaveError: (error: string) => void
@@ -124,6 +127,7 @@ export function useProductionPersistence({
 
       upsertProductionDay(productionDayToSave, {
         allowReplace: Boolean(editingDate),
+        previousDate: editingDate,
       })
       setIsCloseConfirmationOpen(false)
       navigate(

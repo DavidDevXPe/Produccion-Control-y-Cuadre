@@ -145,12 +145,12 @@ describe('ProductionBalancesSection', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Origen y consumo de saldos de Envasado',
+        name: 'Saldos pendientes de congelar',
       }),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        /Revisa de qué jornada de Envasado proviene cada saldo/i,
+        /Registra los saldos de Envasado de jornadas anteriores que se congelan en esta jornada/i,
       ),
     ).toBeInTheDocument()
 

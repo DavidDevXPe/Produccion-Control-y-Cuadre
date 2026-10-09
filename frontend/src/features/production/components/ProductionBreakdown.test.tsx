@@ -14,7 +14,33 @@ describe('ProductionBreakdown', () => {
       name: 'Producción por familia, turno y concepto de cuadre',
     })
     expect(within(region).queryByText('Túnel')).not.toBeInTheDocument()
+    expect(within(region).getByRole('table')).toHaveClass('min-w-[56rem]')
+    expect(within(region).queryByText('Propio')).not.toBeInTheDocument()
+    expect(within(region).queryByText('Saldo ant.')).not.toBeInTheDocument()
+  })
+
+  it('renders Saldo ant. columns when previous balances are processed, without Propio', () => {
+    const calculation = calculateProductionDay(WEDNESDAY_PRODUCTION_DAY)
+    const productsWithBalance = calculation.products.map((product, index) =>
+      index === 0
+        ? {
+            ...product,
+            day: {
+              ...product.day,
+              previousBalanceProcessedKg100: kg(500),
+            },
+          }
+        : product,
+    )
+
+    render(<ProductionBreakdown products={productsWithBalance} />)
+
+    const region = screen.getByRole('region', {
+      name: 'Producción por familia, turno y concepto de cuadre',
+    })
     expect(within(region).getByRole('table')).toHaveClass('min-w-[86rem]')
+    expect(within(region).getAllByText('Saldo ant.').length).toBeGreaterThan(0)
+    expect(within(region).queryByText('Propio')).not.toBeInTheDocument()
   })
 
   it('shows Tunnel columns when applicable and renders zero movements as an em dash', () => {

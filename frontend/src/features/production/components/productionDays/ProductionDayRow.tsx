@@ -1,4 +1,5 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { ActionLink } from '../../../../components/ui/ActionLink'
 import { StatusBadge } from '../../../../components/ui/StatusBadge'
 import {
@@ -9,8 +10,10 @@ import {
 } from '../../../../utils/formatters'
 import type { RegisteredProductionDayItem } from '../../hooks/useProductionDaysData'
 import { isBalanceOnlyProductionDay } from '../../model/productionDayMode'
+import { productionProcessLabels } from '../../model/productionProcess'
 import type { ProductionProcess } from '../../model/types'
 import { getYieldStatus, yieldVisualStyles } from '../../presentation/yieldStatus'
+import { ProductionDayDeleteDialog } from '../ProductionDayDeleteDialog'
 
 function QuantityValue({ value }: { value: number }) {
   return (
@@ -29,6 +32,7 @@ export interface ProductionDayRowProps {
   readonly isFreezing: boolean
   readonly latestDayDate: string | undefined
   readonly selectedProcess: ProductionProcess
+  readonly onDeleteDay?: ((date: string) => void) | undefined
 }
 
 export function ProductionDayRow({
@@ -39,7 +43,9 @@ export function ProductionDayRow({
   isFreezing,
   latestDayDate,
   selectedProcess,
+  onDeleteDay,
 }: ProductionDayRowProps) {
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const { day, calculation, operationalState, journey } = item
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
@@ -181,7 +187,7 @@ export function ProductionDayRow({
         )}
       </td>
       <td className="px-3 py-3 text-center align-middle">
-        <div className="flex w-full items-center justify-center">
+        <div className="flex w-full items-center justify-center gap-1.5">
           <ActionLink
             to={`${
               isClosed || activeWeekReadOnly || isReadyToClose
@@ -198,7 +204,28 @@ export function ProductionDayRow({
                 : 'Seguir cuadrando'}
             <ArrowRight className="size-4" aria-hidden="true" />
           </ActionLink>
+          {!isClosed && !activeWeekReadOnly && onDeleteDay ? (
+            <button
+              type="button"
+              onClick={() => setIsDeleteOpen(true)}
+              className="inline-flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              title={`Eliminar jornada del ${formatIsoDateCompact(day.date)}`}
+              aria-label={`Eliminar jornada del ${formatIsoDateCompact(day.date)}`}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
+        <ProductionDayDeleteDialog
+          isOpen={isDeleteOpen}
+          date={day.date}
+          processLabel={productionProcessLabels[selectedProcess]}
+          onClose={() => setIsDeleteOpen(false)}
+          onConfirm={() => {
+            setIsDeleteOpen(false)
+            onDeleteDay?.(day.date)
+          }}
+        />
       </td>
     </tr>
   )

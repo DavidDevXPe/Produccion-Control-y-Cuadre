@@ -72,6 +72,10 @@ export interface ProductionDataValue {
   isUserManagedDay: (date: string, process?: ProductionProcess) => boolean;
   upsertProductionDay: (
     productionDay: ProductionDay,
-    options?: { allowReplace?: boolean },
+    options?: {
+      allowReplace?: boolean | undefined;
+      previousDate?: string | undefined;
+    },
   ) => void;
+  deleteProductionDay: (date: string, process?: ProductionProcess) => void;
 }

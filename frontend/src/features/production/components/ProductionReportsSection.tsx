@@ -95,12 +95,13 @@ export function ProductionReportsSection({
           getItemLabel={(product) => `${product.familyName} · ${product.productName}`}
           getItemMeta={(product) => ({
             group: product.familyName,
-            secondaryText: isFreezing
-              ? `Disponible: ${formatCentiKg(
-                  freezingAvailabilityByProduct.get(product.productId) ??
-                    kg100(0),
-                )}`
-              : undefined,
+            secondaryText:
+              selectedProcess !== 'PACKING'
+                ? `Disponible: ${formatCentiKg(
+                    freezingAvailabilityByProduct.get(product.productId) ??
+                      kg100(0),
+                  )}`
+                : undefined,
           })}
           onAdd={(product) => onAddReportProduct(product.productId)}
           label="Buscar producto"

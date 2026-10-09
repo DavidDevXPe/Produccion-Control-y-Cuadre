@@ -47,5 +47,19 @@ describe('useProductionNavigation', () => {
     expect(onProcessChangeReset).toHaveBeenCalled()
     expect(setSaveError).toHaveBeenCalledWith('')
   })
+
+  it('preserves current draft date when switching process within the active week', () => {
+    const { result } = renderHook(() => useProductionNavigation(), { wrapper })
+
+    const initialDate = result.current.draft.date
+    expect(initialDate).toBeTruthy()
+
+    act(() => {
+      result.current.applyProcessChange('FREEZING')
+    })
+
+    expect(result.current.selectedProcess).toBe('FREEZING')
+    expect(result.current.draft.date).toBe(initialDate)
+  })
 })
 

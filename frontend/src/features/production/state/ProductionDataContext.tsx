@@ -184,9 +184,45 @@ export function ProductionDataProvider({ children }: ProductionDataProviderProps
     setStoredWeekClosures(next)
   }, [activeProcess, getWeekState, storedWeekClosures, userDays])
 
+  const deleteProductionDay = useCallback((
+    date: string,
+    process: ProductionProcess = activeProcess,
+  ) => {
+    const dayKey = productionDayKey(date, process)
+    if (PERMANENT_DAY_KEYS.has(dayKey)) {
+      throw new Error(
+        'Esta jornada forma parte del historial permanente y no puede eliminarse.',
+      )
+    }
+
+    const existingDay = userDays.find(
+      (day) =>
+        productionDayKey(day.date, getProductionProcess(day)) === dayKey,
+    )
+    if (existingDay?.status === 'CLOSED') {
+      throw new Error('Una jornada cerrada no puede eliminarse.')
+    }
+
+    const next = userDays.filter(
+      (day) =>
+        productionDayKey(day.date, getProductionProcess(day)) !== dayKey,
+    )
+
+    try {
+      window.localStorage.setItem(DAYS_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      throw new Error('El navegador no permitió actualizar el almacenamiento local.')
+    }
+
+    setUserDays(next)
+  }, [activeProcess, userDays])
+
   const upsertProductionDay = useCallback((
     productionDay: ProductionDay,
-    options: { allowReplace?: boolean } = {},
+    options: {
+      allowReplace?: boolean | undefined
+      previousDate?: string | undefined
+    } = {},
   ) => {
     const process = getProductionProcess(productionDay)
     const dayKey = productionDayKey(productionDay.date, process)
@@ -213,17 +249,23 @@ export function ProductionDataProvider({ children }: ProductionDataProviderProps
     if (existingDay?.status === 'CLOSED') {
       throw new Error('Una jornada cerrada es de solo lectura y no puede modificarse.')
     }
-    if (existingDay && !options.allowReplace) {
+    const isChangingDate =
+      Boolean(options.previousDate) && options.previousDate !== productionDay.date
+    if (existingDay && !options.allowReplace && !isChangingDate) {
       throw new Error(
         'Ya existe una jornada para esta fecha. Abre la jornada existente para continuar.',
       )
     }
 
+    const previousDayKey = isChangingDate
+      ? productionDayKey(options.previousDate!, process)
+      : null
+
     const next = sortDays([
-      ...userDays.filter(
-        (day) =>
-          productionDayKey(day.date, getProductionProcess(day)) !== dayKey,
-      ),
+      ...userDays.filter((day) => {
+        const currentKey = productionDayKey(day.date, getProductionProcess(day))
+        return currentKey !== dayKey && (!previousDayKey || currentKey !== previousDayKey)
+      }),
       { ...productionDay, process },
     ])
 
@@ -317,12 +359,14 @@ export function ProductionDataProvider({ children }: ProductionDataProviderProps
             day.date === date && getProductionProcess(day) === process,
         ),
       upsertProductionDay,
+      deleteProductionDay,
     }
   }, [
     activeWeekNumber,
     activeProcess,
     closeWeekManually,
     currentWeekNumber,
+    deleteProductionDay,
     getWeekState,
     getWeekView,
     setActiveProcess,

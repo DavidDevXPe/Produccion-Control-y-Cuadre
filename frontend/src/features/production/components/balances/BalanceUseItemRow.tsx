@@ -12,6 +12,7 @@ export interface BalanceUseItemRowProps {
   readonly balance: ProductionCaptureBalanceUse
   readonly balanceIdx: number
   readonly isFreezing: boolean
+  readonly prevProcessName?: string
   readonly catalogItems: readonly ProductionCatalogItem[]
   readonly balanceShiftDiagnostics: readonly BalanceShiftDiagnostic[]
   readonly onRemoveBalanceUse: (key: string) => void
@@ -36,6 +37,7 @@ export function BalanceUseItemRow({
   balance,
   balanceIdx,
   isFreezing,
+  prevProcessName,
   catalogItems,
   balanceShiftDiagnostics,
   onRemoveBalanceUse,
@@ -58,7 +60,7 @@ export function BalanceUseItemRow({
             {balance.familyName} · {balance.productName}
           </p>
           <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">
-            {isFreezing ? 'Origen Envasado' : 'Origen'}:{' '}
+            {isFreezing ? `Origen ${prevProcessName ?? 'Envasado'}` : 'Origen'}:{' '}
             {balance.originDate
               ? formatIsoDate(balance.originDate)
               : balance.originDayId}{' '}
@@ -133,14 +135,14 @@ export function BalanceUseItemRow({
         </div>
 
         <QuantityInput
-          label={isFreezing ? 'Utilizado Turno Día' : 'Procesado Día'}
+          label={isFreezing ? 'Congelado Turno Día' : 'Procesado Día'}
           value={balance.dayKg}
           onChange={(value) => onUpdateBalanceUse(balance.key, 'dayKg', value)}
           {...getBalancesCellProps(balanceIdx, 0)}
         />
 
         <QuantityInput
-          label={isFreezing ? 'Utilizado Turno Noche' : 'Procesado Noche'}
+          label={isFreezing ? 'Congelado Turno Noche' : 'Procesado Noche'}
           value={balance.nightKg}
           onChange={(value) =>
             onUpdateBalanceUse(balance.key, 'nightKg', value)
@@ -150,7 +152,7 @@ export function BalanceUseItemRow({
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
           <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-            {isFreezing ? 'Total utilizado' : 'Total procesado'}
+            {isFreezing ? 'Total congelado' : 'Total procesado'}
           </p>
           <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
             {formatCentiKg(position.processedKg100)}

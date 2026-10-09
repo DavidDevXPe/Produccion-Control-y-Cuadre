@@ -44,6 +44,7 @@ export function ProductionDaysPage() {
     setIsWeekCloseOpen,
     weekCloseError,
     confirmWeekClosure,
+    handleDeleteDay,
     handleSelectProcess,
     handleExportCsv,
   } = useProductionDaysData()
@@ -145,6 +146,7 @@ export function ProductionDaysPage() {
         freezingLinkedKg100={freezingLinkedKg100}
         freezingDifferenceKg100={freezingDifferenceKg100}
         balancedCount={balancedCount}
+        onDeleteDay={handleDeleteDay}
       />
 
       <ProductionDaysCloseWeekModal

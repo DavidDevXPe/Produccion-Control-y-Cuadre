@@ -41,6 +41,16 @@ export function ProductionBreakdown({ products }: ProductionBreakdownProps) {
       product.tunnel.DAY.reportedKg100 !== 0 ||
       product.tunnel.NIGHT.reportedKg100 !== 0,
   )
+  const hasPreviousBalances = products.some(
+    (product) =>
+      product.day.previousBalanceProcessedKg100 !== 0 ||
+      product.night.previousBalanceProcessedKg100 !== 0,
+  )
+  const hasAdjustments = products.some(
+    (product) =>
+      product.day.adjustmentKg100 !== 0 ||
+      product.night.adjustmentKg100 !== 0,
+  )
   const normalizedQuery = query.trim().toLocaleLowerCase('es')
 
   const filteredGroups = useMemo(
@@ -100,13 +110,21 @@ export function ProductionBreakdown({ products }: ProductionBreakdownProps) {
       >
         <table
           className={`erp-table w-full border-collapse text-left ${
-            showTunnel ? 'min-w-[100rem]' : 'min-w-[86rem]'
+            showTunnel
+              ? 'min-w-[100rem]'
+              : hasPreviousBalances
+                ? 'min-w-[86rem]'
+                : 'min-w-[56rem]'
           }`}
         >
           <caption className="sr-only">
             Producción de la jornada agrupada por familia y producto
           </caption>
-          <ProductionBreakdownTableHeader showTunnel={showTunnel} />
+          <ProductionBreakdownTableHeader
+            showTunnel={showTunnel}
+            hasPreviousBalances={hasPreviousBalances}
+            hasAdjustments={hasAdjustments}
+          />
 
           {filteredGroups.map((group) => {
             const isExpanded =
@@ -121,6 +139,8 @@ export function ProductionBreakdown({ products }: ProductionBreakdownProps) {
                   group={group}
                   isExpanded={isExpanded}
                   showTunnel={showTunnel}
+                  hasPreviousBalances={hasPreviousBalances}
+                  hasAdjustments={hasAdjustments}
                   onToggleFamily={toggleFamily}
                 />
                 {isExpanded
@@ -129,6 +149,8 @@ export function ProductionBreakdown({ products }: ProductionBreakdownProps) {
                         key={product.productId}
                         product={product}
                         showTunnel={showTunnel}
+                        hasPreviousBalances={hasPreviousBalances}
+                        hasAdjustments={hasAdjustments}
                       />
                     ))
                   : null}

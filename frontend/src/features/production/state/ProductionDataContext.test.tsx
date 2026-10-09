@@ -547,4 +547,63 @@ describe('ProductionDataProvider stored data safety', () => {
 
     expect(window.localStorage.getItem(quarantineKey)).toBeNull()
   })
+
+  it('deletes an unclosed user-managed day and moves day when date changes', () => {
+    function DeleteMoveProbe() {
+      const { allProductionDays, deleteProductionDay, upsertProductionDay } =
+        useProductionData()
+      return (
+        <div>
+          <span data-testid="probe-dates">
+            {allProductionDays.map((d) => d.date).join(',')}
+          </span>
+          <button
+            type="button"
+            data-testid="btn-save-original"
+            onClick={() => upsertProductionDay(editableDay)}
+          >
+            Save Original
+          </button>
+          <button
+            type="button"
+            data-testid="btn-move-day"
+            onClick={() =>
+              upsertProductionDay(
+                { ...editableDay, date: '2026-09-09', id: 'production-day-2026-09-09' },
+                { previousDate: '2026-09-08' },
+              )
+            }
+          >
+            Move to 09
+          </button>
+          <button
+            type="button"
+            data-testid="btn-delete"
+            onClick={() => deleteProductionDay('2026-09-09', 'PACKING')}
+          >
+            Delete 09
+          </button>
+        </div>
+      )
+    }
+
+    render(
+      <ProductionDataProvider>
+        <DeleteMoveProbe />
+      </ProductionDataProvider>,
+    )
+
+    // Save original (2026-09-08)
+    fireEvent.click(screen.getByTestId('btn-save-original'))
+    expect(screen.getByTestId('probe-dates').textContent).toContain('2026-09-08')
+
+    // Move to 2026-09-09
+    fireEvent.click(screen.getByTestId('btn-move-day'))
+    expect(screen.getByTestId('probe-dates').textContent).toContain('2026-09-09')
+    expect(screen.getByTestId('probe-dates').textContent).not.toContain('2026-09-08')
+
+    // Delete 2026-09-09
+    fireEvent.click(screen.getByTestId('btn-delete'))
+    expect(screen.getByTestId('probe-dates').textContent).not.toContain('2026-09-09')
+  })
 })

@@ -10,8 +10,6 @@ export interface ProductionGeneralDataSectionProps {
   readonly isSunday: boolean
   readonly isFreezing: boolean
   readonly isBalanceOnly: boolean
-  readonly editingDate?: string | undefined
-  readonly existingDayDate?: string | undefined
   readonly activeWeekStartDate: string
   readonly activeWeekEndDate: string
   readonly usesExternalAvailability: boolean
@@ -33,8 +31,6 @@ export function ProductionGeneralDataSection({
   isSunday,
   isFreezing,
   isBalanceOnly,
-  editingDate,
-  existingDayDate,
   activeWeekStartDate,
   activeWeekEndDate,
   usesExternalAvailability,
@@ -68,8 +64,6 @@ export function ProductionGeneralDataSection({
         <GeneralInputsGrid
           draft={draft}
           isFreezing={isFreezing}
-          editingDate={editingDate}
-          existingDayDate={existingDayDate}
           activeWeekStartDate={activeWeekStartDate}
           activeWeekEndDate={activeWeekEndDate}
           usesExternalAvailability={usesExternalAvailability}

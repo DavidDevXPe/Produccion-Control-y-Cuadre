@@ -160,12 +160,14 @@ describe('ProductionEntryPage product selector', () => {
     )
     expect(screen.queryByLabelText(/^MP descarga/)).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Origen y consumo de saldos de Envasado' }),
+      screen.getByRole('heading', {
+        name: /Saldos pendientes de congelar|Origen y consumo de saldos de Envasado/,
+      }),
     ).toBeInTheDocument()
 
     const freezingAvailabilitySection = screen
       .getByRole('heading', {
-        name: 'Origen y consumo de saldos de Envasado',
+        name: /Saldos pendientes de congelar|Origen y consumo de saldos de Envasado/,
       })
       .closest('section')!
     
@@ -331,10 +333,25 @@ describe('capture product status labels', () => {
       label: 'SIN MOVIMIENTO',
     })
     expect(
+      freezingTraceabilityStatus(kg100(1_000), kg100(1_000), kg100(1_000)),
+    ).toMatchObject({
+      tone: 'success',
+      label: 'CUADRADO',
+      differenceKg100: kg100(0),
+    })
+    expect(
+      freezingTraceabilityStatus(kg100(1_900), kg100(2_470), kg100(1_900)),
+    ).toMatchObject({
+      tone: 'info',
+      label: 'EXCEDENTE',
+      differenceKg100: kg100(570),
+    })
+    expect(
       freezingTraceabilityStatus(kg100(1_000), kg100(0), kg100(0)),
     ).toMatchObject({
       tone: 'danger',
-      label: 'SIN ORIGEN TRAZABLE',
+      label: 'DESCUADRE',
+      differenceKg100: kg100(-1_000),
     })
   })
 })

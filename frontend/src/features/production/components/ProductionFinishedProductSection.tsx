@@ -2,7 +2,8 @@ import { MetricCard } from '../../../components/ui/MetricCard'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { formatCentiKg } from '../../../utils/formatters'
 import type { ProductionBusinessSummary } from '../model/businessRules'
-import type { Kg100, ProductionDayCalculation } from '../model/types'
+import type { Kg100, ProductionDayCalculation, ProductionProcess } from '../model/types'
+import { productionProcessLabels } from '../model/productionProcess'
 
 export interface ProductionFinishedProductSectionProps {
   readonly isFreezing: boolean
@@ -12,6 +13,7 @@ export interface ProductionFinishedProductSectionProps {
   readonly totalReportedKg100: Kg100
   readonly calculation: ProductionDayCalculation
   readonly businessSummary: ProductionBusinessSummary
+  readonly process?: ProductionProcess
 }
 
 export function ProductionFinishedProductSection({
@@ -22,14 +24,39 @@ export function ProductionFinishedProductSection({
   totalReportedKg100,
   calculation,
   businessSummary,
+  process,
 }: ProductionFinishedProductSectionProps) {
+  const currentProcessName =
+    process ? productionProcessLabels[process] : isFreezing ? 'Congelamiento' : null
+  const prevProcessName =
+    process === 'FREEZING'
+      ? 'Envasado'
+      : process === 'VIDEOJET'
+        ? 'Congelamiento'
+        : process === 'PALLETIZING'
+          ? 'Videojet'
+          : 'Envasado'
+
+  const physicalReportLabel =
+    process === 'FREEZING'
+      ? 'Congelado físicamente'
+      : process === 'VIDEOJET'
+        ? 'Rotulado físicamente'
+        : process === 'PALLETIZING'
+          ? 'Paletizado físicamente'
+          : isFreezing
+            ? 'Congelado físicamente'
+            : 'Procesado físicamente'
+
+  const isDownstream = isFreezing || (process !== undefined && process !== 'PACKING')
+
   return (
     <>
       <SectionCard
         title="Producto terminado calculado"
         description={
-          isFreezing
-            ? 'Distingue la ejecución física de Congelamiento de la producción atribuida a su jornada de Envasado.'
+          currentProcessName && currentProcessName !== 'Envasado'
+            ? `Distingue la ejecución física de ${currentProcessName} de la disponibilidad atribuida a su jornada de ${prevProcessName}.`
             : isBalanceOnly
             ? 'Distingue el procesamiento físico del domingo de la producción propia atribuible a nueva materia prima.'
             : 'Desglose operativo derivado del estado actual; ningún valor es editable.'
@@ -38,11 +65,11 @@ export function ProductionFinishedProductSection({
         {usesExternalAvailability ? (
           <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-5">
             <MetricCard
-              label={isFreezing ? 'Congelado físicamente' : 'Procesado físicamente'}
+              label={physicalReportLabel}
               value={formatCentiKg(totalReportedKg100)}
               tone="brand"
             />
-            {isFreezing ? (
+            {isDownstream ? (
               <MetricCard
                 label="Sin origen vinculado"
                 value={formatCentiKg(calculation.ownTurnProductionKg100)}
@@ -59,7 +86,7 @@ export function ProductionFinishedProductSection({
               />
             )}
             <MetricCard
-              label={isFreezing ? 'Disponible no utilizado' : 'Saldo anterior pendiente'}
+              label={isDownstream ? 'Disponible no utilizado' : 'Saldo anterior pendiente'}
               value={formatCentiKg(calculation.pendingPreviousBalanceKg100)}
             />
           </div>

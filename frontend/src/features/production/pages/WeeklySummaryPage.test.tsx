@@ -169,10 +169,11 @@ describe('weekly summary page', () => {
       </ProductionDataProvider>,
     )
     expect(
-      screen.getByRole('heading', { name: 'Envasado vs Congelamiento' }),
+      screen.getByText('Flujo de Cuadre Integral entre Procesos (Semanal)'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Comparativo por familia' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Comparativo por producto' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Descargar informe de cuadre (.xlsx)' }),
+    ).toBeInTheDocument()
   })
 
   it('shows the same journey status as Dashboard and Jornadas for every registered day', () => {
@@ -204,6 +205,24 @@ describe('weekly summary page', () => {
     expect(
       screen.getByRole('tab', { name: 'Envasado' }),
     ).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('renders Palletizing reconciliation view when Paletizado tab is selected', () => {
+    render(
+      <MemoryRouter initialEntries={['/resumen?view=PALLETIZING']}>
+        <WeeklySummaryPage />
+      </MemoryRouter>,
+    )
+
+    expect(
+      screen.getByRole('tab', { name: 'Paletizado' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByText('Conciliación de Paletizado y Saldos de Cámara'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Descargar informe de cuadre (.xlsx)' }),
+    ).toBeInTheDocument()
   })
 })
 

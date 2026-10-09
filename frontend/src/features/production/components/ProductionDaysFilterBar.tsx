@@ -13,7 +13,7 @@ export interface ProductionDaysFilterBarProps {
   onSelectedDateChange: (date: string) => void
   minDate: string
   maxDate: string
-  onSelectProcess: (process: 'PACKING' | 'FREEZING') => void
+  onSelectProcess: (process: ProductionProcess) => void
   onExportCsv: () => void
   registeredDaysCount: number
 }
@@ -34,11 +34,7 @@ export function ProductionDaysFilterBar({
     <div className="space-y-4">
       <ProcessSelector
         value={selectedProcess}
-        onChange={(process) => {
-          if (process !== 'COMPARISON') {
-            onSelectProcess(process)
-          }
-        }}
+        onChange={onSelectProcess}
       />
 
       {/* Filter bar exactly matching BalancesPage */}

@@ -58,6 +58,10 @@ const seedNames = [
     "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM SP ST MIXTA 100% P.N.",
     "ANILLAS",
   ],
+  [
+    "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P SM CP ST MIXTA 100% P.N.",
+    "ANILLAS",
+  ],
   ["ANILLAS CRUDAS CONG. BLOCK C/TTO USA SM CP ST", "ANILLAS"],
   ["ANILLAS CRUDAS CONG. BLOCK C/TTO USA CM SP ST", "ANILLAS"],
   ["ANILLAS CRUDAS CONG. BLOCK C/TTO USA SM SP ST", "ANILLAS"],
@@ -116,6 +120,7 @@ const seedIds = [
   "anillas-espana-segunda-mixta",
   "anillas-espana-cm-2da-mixta",
   "anillas-espana-p-cm-sp-st-mixta",
+  "anillas-espana-p-sm-cp-st-mixta",
   "anillas-block-tratamiento-usa-sm-cp-st",
   "anillas-block-tratamiento-usa-cm-sp-st",
   "anillas-block-tratamiento-usa-sm-sp-st",

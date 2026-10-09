@@ -5,11 +5,22 @@ import type { FreezingOriginLedgerRow } from '../../capture/freezingOriginLedger
 
 export interface FreezingOriginLedgerTableProps {
   readonly freezingOriginLedger: readonly FreezingOriginLedgerRow[]
+  readonly prevProcessName?: string
+  readonly currentProcessName?: string
 }
 
 export function FreezingOriginLedgerTable({
   freezingOriginLedger,
+  prevProcessName = 'Envasado',
+  currentProcessName = 'Congelamiento',
 }: FreezingOriginLedgerTableProps) {
+  const currentPastAction =
+    currentProcessName === 'Videojet'
+      ? 'rotulado'
+      : currentProcessName === 'Paletizado'
+        ? 'paletizado'
+        : 'congelado'
+
   const freezingOriginLedgerSummary = useMemo(() => {
     const pendingOrigins = freezingOriginLedger.filter(
       (row) => row.pendingKg100 > 0,
@@ -29,6 +40,21 @@ export function FreezingOriginLedgerTable({
     }
   }, [freezingOriginLedger])
 
+  const generatedHeader =
+    currentProcessName === 'Congelamiento'
+      ? 'Generado para congelar'
+      : `Generado en ${prevProcessName}`
+
+  const accumulatedHeader =
+    currentProcessName === 'Congelamiento'
+      ? 'Congelado acumulado'
+      : `${currentProcessName} acumulado`
+
+  const currentShiftHeader =
+    currentProcessName === 'Congelamiento'
+      ? 'Congelado en esta jornada'
+      : `${currentProcessName} en esta jornada`
+
   if (freezingOriginLedger.length === 0) {
     return null
   }
@@ -36,7 +62,7 @@ export function FreezingOriginLedgerTable({
   return (
     <div
       role="region"
-      aria-label="Cuenta corriente por jornada origen de Envasado"
+      aria-label={`Cuenta corriente por jornada origen de ${prevProcessName}`}
       className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
     >
       <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-ui-line-dark-grid">
@@ -46,8 +72,8 @@ export function FreezingOriginLedgerTable({
               Cuenta corriente por jornada origen
             </p>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
-              Cada jornada de Envasado conserva sus kilos pendientes hasta que
-              todo el producto generado quede congelado al 100%.
+              Cada jornada de {prevProcessName} conserva sus kilos pendientes hasta que
+              todo el producto generado quede {currentPastAction} al 100%.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -70,17 +96,15 @@ export function FreezingOriginLedgerTable({
         <div className="overflow-x-auto">
           <table
             className="w-full min-w-[70rem] border-collapse text-left"
-            aria-label="Saldo de Congelamiento por jornada origen"
+            aria-label={`Saldo de ${currentProcessName} por jornada origen`}
           >
             <thead>
               <tr className="border-b-2 border-slate-300 bg-slate-100 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-800 dark:border-ui-line-dark dark:bg-ui-surface-dark-compact dark:text-ui-text-dark-strong">
                 <th className="px-4 py-3">Jornada origen</th>
                 <th className="px-3 py-3 text-center">Productos</th>
-                <th className="px-3 py-3 text-right">Generado para congelar</th>
-                <th className="px-3 py-3 text-right">Congelado acumulado</th>
-                <th className="px-3 py-3 text-right">
-                  Congelado en esta jornada
-                </th>
+                <th className="px-3 py-3 text-right">{generatedHeader}</th>
+                <th className="px-3 py-3 text-right">{accumulatedHeader}</th>
+                <th className="px-3 py-3 text-right">{currentShiftHeader}</th>
                 <th className="px-3 py-3 text-right">Pendiente</th>
                 <th className="px-3 py-3 text-right">Avance</th>
                 <th className="px-4 py-3 text-center">Estado</th>
@@ -97,7 +121,7 @@ export function FreezingOriginLedgerTable({
                       {formatIsoDate(row.originDate)}
                     </p>
                     <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-slate-400 dark:text-ui-text-soft">
-                      Envasado
+                      {prevProcessName}
                     </p>
                   </th>
                   <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-slate-700 dark:text-ui-text-dark-pale">
@@ -141,7 +165,7 @@ export function FreezingOriginLedgerTable({
                       {row.status === 'EXCESS'
                         ? 'REVISAR EXCESO'
                         : row.status === 'COMPLETE'
-                          ? 'CONGELADO 100%'
+                          ? `${currentPastAction.toUpperCase()} 100%`
                           : 'PENDIENTE'}
                     </StatusBadge>
                   </td>

@@ -12,6 +12,7 @@ interface BuildFreezingFifoAllocationArgs {
     ProductionCatalogItem,
     "productId" | "productName" | "familyId" | "familyName"
   >;
+  targetDate?: string;
   reportedDayKg100: Kg100;
   reportedNightKg100: Kg100;
   positions: readonly FreezingAvailabilityPosition[];
@@ -56,6 +57,7 @@ function matchesTargetProduct(
 
 export function buildFreezingFifoAllocation({
   targetProduct,
+  targetDate,
   reportedDayKg100,
   reportedNightKg100,
   positions,
@@ -96,14 +98,44 @@ export function buildFreezingFifoAllocation({
     Math.max(reportedNightKg100 - alreadyLinkedNightKg100, 0),
   );
 
-  let remainingDayKg100 = initialRemainingDayKg100;
-  let remainingNightKg100 = initialRemainingNightKg100;
+  const sameDayCoverKg100 = targetDate
+    ? kg100(
+        positions
+          .filter(
+            (pos) =>
+              pos.originDate === targetDate &&
+              matchesTargetProduct(pos, targetProduct),
+          )
+          .reduce((sum, pos) => sum + pos.pendingKg100, 0),
+      )
+    : kg100(0);
+
+  const dayCoveredBySameDayKg100 = kg100(
+    Math.min(initialRemainingDayKg100, sameDayCoverKg100),
+  );
+  const remainingSameDayKg100 = kg100(
+    sameDayCoverKg100 - dayCoveredBySameDayKg100,
+  );
+  const nightCoveredBySameDayKg100 = kg100(
+    Math.min(initialRemainingNightKg100, remainingSameDayKg100),
+  );
+
+  let remainingDayKg100 = kg100(
+    initialRemainingDayKg100 - dayCoveredBySameDayKg100,
+  );
+  let remainingNightKg100 = kg100(
+    initialRemainingNightKg100 - nightCoveredBySameDayKg100,
+  );
 
   const updatedExistingUses = new Map<string, ProductionCaptureBalanceUse>();
   const newUses: ProductionCaptureBalanceUse[] = [];
 
   const matchingPositions = [...positions]
-    .filter((position) => matchesTargetProduct(position, targetProduct))
+    .filter(
+      (position) =>
+        matchesTargetProduct(position, targetProduct) &&
+        (!targetDate || position.originDate < targetDate),
+    )
     .sort((first, second) => {
       const dateComparison = first.originDate.localeCompare(second.originDate);
 

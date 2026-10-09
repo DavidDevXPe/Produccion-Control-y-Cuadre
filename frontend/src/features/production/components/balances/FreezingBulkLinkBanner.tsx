@@ -1,11 +1,13 @@
 export interface FreezingBulkLinkBannerProps {
   freezingPendingLinkCount: number
   onOpenBulkFreezingLink: () => void
+  prevProcessName?: string
 }
 
 export function FreezingBulkLinkBanner({
   freezingPendingLinkCount,
   onOpenBulkFreezingLink,
+  prevProcessName = 'Envasado',
 }: FreezingBulkLinkBannerProps) {
   if (freezingPendingLinkCount <= 0) return null
 
@@ -22,7 +24,7 @@ export function FreezingBulkLinkBanner({
               ? 'producto tiene'
               : 'productos tienen'}{' '}
             kilos pendientes de vincular. El sistema consumirá primero las
-            jornadas de Envasado abiertas más antiguas para cada producto.
+            jornadas de {prevProcessName} abiertas más antiguas para cada producto.
           </p>
         </div>
         <button

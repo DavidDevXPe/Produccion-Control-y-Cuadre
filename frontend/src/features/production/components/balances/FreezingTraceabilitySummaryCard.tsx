@@ -4,10 +4,14 @@ import type { FreezingTraceabilitySummary } from './balanceTypes'
 
 export interface FreezingTraceabilitySummaryCardProps {
   readonly summary: FreezingTraceabilitySummary
+  readonly prevProcessName?: string
+  readonly currentProcessName?: string
 }
 
 export function FreezingTraceabilitySummaryCard({
   summary,
+  prevProcessName = 'Envasado',
+  currentProcessName = 'Congelamiento',
 }: FreezingTraceabilitySummaryCardProps) {
   if (summary.totalProducts <= 0) {
     return null
@@ -51,7 +55,7 @@ export function FreezingTraceabilitySummaryCard({
   return (
     <div
       role="region"
-      aria-label="Resumen de trazabilidad de Congelamiento"
+      aria-label={`Resumen de trazabilidad de ${currentProcessName}`}
       className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
     >
       <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/60">
@@ -61,7 +65,7 @@ export function FreezingTraceabilitySummaryCard({
               Resumen de trazabilidad
             </p>
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-text-soft">
-              Estado de los productos reportados en Congelamiento frente a su origen trazable de Envasado.
+              Estado de los productos reportados en {currentProcessName} frente a su origen trazable de {prevProcessName}.
             </p>
           </div>
           <StatusBadge tone={overview.tone}>{overview.label}</StatusBadge>
@@ -112,7 +116,7 @@ export function FreezingTraceabilitySummaryCard({
                 Cobertura vinculada
               </p>
               <p className="mt-0.5 text-[0.6875rem] text-slate-500 dark:text-ui-text-soft">
-                Kg reportados que ya cuentan con origen de Envasado identificado.
+                Kg reportados que ya cuentan con origen de {prevProcessName} identificado.
               </p>
             </div>
             <span className="number-tabular shrink-0 text-lg font-extrabold text-slate-900 dark:text-ui-text-dark-strong">

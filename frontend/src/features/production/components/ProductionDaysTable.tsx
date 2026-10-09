@@ -23,6 +23,7 @@ export interface ProductionDaysTableProps {
   freezingLinkedKg100: ReturnType<typeof kg100>
   freezingDifferenceKg100: ReturnType<typeof kg100>
   balancedCount: number
+  onDeleteDay?: (date: string) => void
 }
 
 export function ProductionDaysTable({
@@ -37,6 +38,7 @@ export function ProductionDaysTable({
   freezingLinkedKg100,
   freezingDifferenceKg100,
   balancedCount,
+  onDeleteDay,
 }: ProductionDaysTableProps) {
   return (
     <SectionCard
@@ -81,6 +83,7 @@ export function ProductionDaysTable({
                   isFreezing={isFreezing}
                   latestDayDate={latestDay?.date}
                   selectedProcess={selectedProcess}
+                  onDeleteDay={onDeleteDay}
                 />
               ))}
             </tbody>

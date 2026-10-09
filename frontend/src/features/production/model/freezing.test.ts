@@ -14,6 +14,7 @@ import { calculateOutstandingBalances, kg, kg100 } from "./calculations";
 import {
   calculateFreezingAvailability,
   calculateFreezingComparison,
+  calculateStageAvailability,
 } from "./freezing";
 import { getProductionProcess } from "./productionProcess";
 import type { ProductionDay } from "./types";
@@ -677,5 +678,62 @@ describe("Packing to Freezing lifecycle", () => {
     expect(
       calculateOutstandingBalances([packing, freezing.productionDay]),
     ).toContainEqual(expect.objectContaining({ pendingKg100: kg(10_000) }));
+  });
+
+  it("calculates Videojet availability consuming from Freezing predecessor", () => {
+    const packing = packingDay("2026-09-07", 100_000);
+    const freezing = freezingDay("2026-09-08", 40_000, packing);
+
+    const videojetPositions = calculateStageAvailability(
+      "VIDEOJET",
+      [packing, freezing.productionDay],
+      "2026-09-08",
+    );
+
+    expect(videojetPositions).toHaveLength(1);
+    expect(videojetPositions[0]?.originDayId).toBe(freezing.productionDay.id);
+    expect(videojetPositions[0]?.pendingKg100).toBe(kg(40_000));
+  });
+
+  it("calculates Palletizing availability consuming from Videojet predecessor", () => {
+    const packing = packingDay("2026-09-07", 100_000);
+    const freezing = freezingDay("2026-09-08", 40_000, packing);
+
+    const videojetDraft: ProductionCaptureDraft = {
+      ...createEmptyCaptureDraft("2026-09-08", "VIDEOJET"),
+      declaredDayTotalKg: "25000",
+      declaredNightTotalKg: "0",
+      rows: [freezingRow(25_000)],
+      balanceUses: [
+        {
+          key: `${freezing.productionDay.id}-${product.productId}`,
+          originDayId: freezing.productionDay.id,
+          originDate: freezing.productionDay.date,
+          familyId: product.familyId,
+          familyName: product.familyName,
+          productId: product.productId,
+          productName: product.productName,
+          availableKg100: kg(40_000),
+          dayKg: "25000",
+          nightKg: "0",
+        },
+      ],
+    };
+    const videojetDay = buildProductionDayFromCapture(
+      videojetDraft,
+      [packing, freezing.productionDay],
+      [],
+      "CLOSED",
+    );
+
+    const palletizingPositions = calculateStageAvailability(
+      "PALLETIZING",
+      [packing, freezing.productionDay, videojetDay.productionDay],
+      "2026-09-08",
+    );
+
+    expect(palletizingPositions).toHaveLength(1);
+    expect(palletizingPositions[0]?.originDayId).toBe(videojetDay.productionDay.id);
+    expect(palletizingPositions[0]?.pendingKg100).toBe(kg(25_000));
   });
 });

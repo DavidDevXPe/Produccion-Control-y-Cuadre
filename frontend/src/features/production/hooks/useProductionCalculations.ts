@@ -24,7 +24,9 @@ import {
   sumKg100,
 } from '../model/calculations'
 import {
+  getPreviousProcess,
   getProductionProcess,
+  hasPreviousProcess,
   isPackingProductionDay,
   productionDayKey,
 } from '../model/productionProcess'
@@ -102,9 +104,14 @@ export function useProductionCalculations({
         {
           requiredDataComplete: hasSufficientData,
           inputErrors: buildResult.inputErrors,
+          hasSameDaySource: allProductionDays.some(
+            (day) =>
+              day.date === draft.date &&
+              getProductionProcess(day) === getPreviousProcess(draft.process),
+          ),
         },
       ),
-    [buildResult, hasSufficientData],
+    [allProductionDays, buildResult, draft.date, draft.process, hasSufficientData],
   )
 
   const canClose = closureValidation.canClose
@@ -118,12 +125,12 @@ export function useProductionCalculations({
   )
 
   const balanceShiftDiagnostics = useMemo(
-    () => buildBalanceShiftDiagnostics(buildResult.calculation),
-    [buildResult.calculation],
+    () => buildBalanceShiftDiagnostics(buildResult.calculation, draft.process),
+    [buildResult.calculation, draft.process],
   )
 
   const freezingBalanceUseSummary = useMemo(() => {
-    if (!isFreezing) return null
+    if (!hasPreviousProcess(draft.process)) return null
 
     const diagnosticProductIds = new Set(
       balanceShiftDiagnostics.map((diagnostic) => diagnostic.productId),
@@ -159,7 +166,7 @@ export function useProductionCalculations({
         reviewCount: 0,
       },
     )
-  }, [balanceShiftDiagnostics, draft.balanceUses, isFreezing])
+  }, [balanceShiftDiagnostics, draft.balanceUses, draft.process])
 
   const dayHasReportData =
     draft.declaredDayTotalKg.trim() !== '' && draft.rows.length > 0
@@ -282,16 +289,16 @@ export function useProductionCalculations({
             ),
         )
         .sort((first, second) =>
-          isFreezing
+          hasPreviousProcess(draft.process)
             ? (freezing.freezingAvailabilityByProduct.get(second.productId) ?? 0) -
               (freezing.freezingAvailabilityByProduct.get(first.productId) ?? 0)
             : 0,
         ),
     [
       catalogItems,
+      draft.process,
       draft.rows,
       freezing.freezingAvailabilityByProduct,
-      isFreezing,
     ],
   )
 
@@ -305,8 +312,10 @@ export function useProductionCalculations({
       ),
     )
 
-    const positions = isFreezing
-      ? freezing.freezingOpenOriginPositions
+    const positions = hasPreviousProcess(draft.process)
+      ? freezing.freezingOpenOriginPositions.filter(
+          (pos) => pos.originDate < draft.date,
+        )
       : calculateOutstandingBalances(
           allProductionDays.filter(
             (day) =>
@@ -327,8 +336,8 @@ export function useProductionCalculations({
     allProductionDays,
     draft.balanceUses,
     draft.date,
+    draft.process,
     freezing.freezingOpenOriginPositions,
-    isFreezing,
     subsequentBalanceLots,
   ])
 

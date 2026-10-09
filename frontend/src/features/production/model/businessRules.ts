@@ -25,11 +25,17 @@ import {
   sumKg100,
 } from "./calculations";
 import { isBalanceOnlyProductionDay } from "./productionDayMode";
-import { isFreezingProductionDay } from "./productionProcess";
+import {
+  getPreviousProcess,
+  getProductionProcess,
+  isFreezingProductionDay,
+  productionProcessLabels,
+} from "./productionProcess";
 import type {
   Kg100,
   ProductionDay,
   ProductionDayCalculation,
+  ProductionProcess,
   ProductReconciliation,
   ShiftCode,
   SummaryGroupId,
@@ -175,9 +181,10 @@ export interface BalanceShiftDiagnostic {
   readonly message: string;
 }
 
-interface ClosureValidationOptions {
+export interface ClosureValidationOptions {
   requiredDataComplete: boolean;
   inputErrors?: readonly string[];
+  hasSameDaySource?: boolean;
 }
 
 const ZERO = kg100(0);
@@ -421,7 +428,7 @@ export function calculateReportFamilySubtotals(
     .filter((line) => line.summaryGroupId === "ANILLAS")
     .reduce(
       (totals, line) => {
-        const yieldClass = getAnillaYieldClass(line.productId);
+        const yieldClass = getAnillaYieldClass(line.productId, line.productName);
         if (yieldClass) {
           totals[yieldClass] +=
             line.shifts.DAY.reportedKg100 + line.shifts.NIGHT.reportedKg100;
@@ -689,7 +696,12 @@ function kilograms(value: Kg100) {
 
 export function buildBalanceShiftDiagnostics(
   calculation: ProductionDayCalculation,
+  process: ProductionProcess = "PACKING",
 ): readonly BalanceShiftDiagnostic[] {
+  if (process !== "PACKING") {
+    return [];
+  }
+
   return calculation.products.flatMap((product) =>
     (
       [
@@ -871,12 +883,15 @@ export function validateProductionClosure(
     });
   }
 
-  if (isFreezingProductionDay(productionDay)) {
+  const currentProcess = getProductionProcess(productionDay);
+  const previousStage = getPreviousProcess(currentProcess);
+  if (previousStage !== null) {
+    const currentLabel = productionProcessLabels[currentProcess];
+    const prevLabel = productionProcessLabels[previousStage];
     if (productionDay.declaredRawMaterialKg100 !== 0) {
       blockers.push({
-        code: "FREEZING_RAW_MATERIAL",
-        message:
-          "Congelamiento recibe producto envasado y no registra una nueva descarga de materia prima.",
+        code: `${currentProcess}_RAW_MATERIAL`,
+        message: `${currentLabel} recibe producto de ${prevLabel} y no registra una nueva descarga de materia prima.`,
       });
     }
     if (
@@ -884,20 +899,20 @@ export function validateProductionClosure(
       calculation.ownTurnProductionKg100 !== 0
     ) {
       const hasAnyTraceableOrigin =
+        Boolean(options.hasSameDaySource) ||
         calculation.processedPreviousBalanceKg100 > 0;
 
       if (!hasAnyTraceableOrigin) {
         blockers.push({
-          code: "FREEZING_WITHOUT_AVAILABILITY",
-          message:
-            "Existe producto congelado sin ninguna disponibilidad trazable desde Envasado. Vincula al menos un origen válido antes de cerrar.",
+          code: `${currentProcess}_WITHOUT_AVAILABILITY`,
+          message: `Existe producto de ${currentLabel} sin ninguna disponibilidad trazable desde ${prevLabel}. Vincula al menos un origen válido antes de cerrar.`,
         });
       } else {
         warnings.push({
-          code: "FREEZING_TRACEABILITY_DIFFERENCE",
+          code: `${currentProcess}_TRACEABILITY_DIFFERENCE`,
           message: `Existen ${kilograms(
             calculation.reportOwnProductionKg100,
-          )} congelados sin origen suficiente desde Envasado. La jornada puede cerrarse con observación y la diferencia queda sujeta a revisión de presentación, clasificación u origen.`,
+          )} reportados sin origen suficiente desde ${prevLabel}. La jornada puede cerrarse con observación y la diferencia queda sujeta a revisión de presentación, clasificación u origen.`,
         });
 
         for (const product of calculation.products) {
@@ -911,11 +926,11 @@ export function validateProductionClosure(
           }
 
           warnings.push({
-            code: "FREEZING_PRODUCT_TRACEABILITY_DIFFERENCE",
+            code: `${currentProcess}_PRODUCT_TRACEABILITY_DIFFERENCE`,
             productId: product.productId,
             message: `${product.productName}: ${kilograms(
               untracedKg100,
-            )} congelados sin origen suficiente. Revisa si corresponde a una diferencia de presentación/clasificación o a un origen todavía no vinculado.`,
+            )} sin origen suficiente desde ${prevLabel}. Revisa si corresponde a una diferencia de presentación/clasificación o a un origen todavía no vinculado.`,
           });
         }
       }
@@ -926,9 +941,8 @@ export function validateProductionClosure(
       calculation.newClosingBalanceKg100 !== 0
     ) {
       blockers.push({
-        code: "FREEZING_PACKING_STAGE",
-        message:
-          "Congelamiento no utiliza Túnel, Tratamiento ni saldo productivo de Envasado.",
+        code: `${currentProcess}_PACKING_STAGE`,
+        message: `${currentLabel} no utiliza Túnel, Tratamiento ni saldo productivo de Envasado.`,
       });
     }
 

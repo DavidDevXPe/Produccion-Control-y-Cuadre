@@ -11,6 +11,8 @@ export interface ProductionBreakdownGroupRowProps {
   readonly group: ProductGroup
   readonly isExpanded: boolean
   readonly showTunnel: boolean
+  readonly hasPreviousBalances?: boolean
+  readonly hasAdjustments?: boolean
   readonly onToggleFamily: (familyId: string) => void
 }
 
@@ -18,6 +20,8 @@ export function ProductionBreakdownGroupRow({
   group,
   isExpanded,
   showTunnel,
+  hasPreviousBalances = false,
+  hasAdjustments = false,
   onToggleFamily,
 }: ProductionBreakdownGroupRowProps) {
   const subtotal = (selector: (product: ProductReconciliation) => number) =>
@@ -54,24 +58,31 @@ export function ProductionBreakdownGroupRow({
           </span>
         </button>
       </th>
-      <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.day.reportedKg100)}
-      </td>
-      <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.day.previousBalanceProcessedKg100)}
-      </td>
-      <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.day.ownProductionKg100)}
-      </td>
-      <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.night.reportedKg100)}
-      </td>
-      <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.night.previousBalanceProcessedKg100)}
-      </td>
-      <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal((product) => product.night.ownProductionKg100)}
-      </td>
+      {hasPreviousBalances ? (
+        <>
+          <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.day.reportedKg100)}
+          </td>
+          <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.day.previousBalanceProcessedKg100)}
+          </td>
+          <td className="number-tabular border-l border-slate-200 px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.night.reportedKg100)}
+          </td>
+          <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.night.previousBalanceProcessedKg100)}
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.day.reportedKg100)}
+          </td>
+          <td className="number-tabular border-l border-slate-200 px-3 py-3 text-right text-xs font-bold text-slate-700">
+            {subtotal((product) => product.night.reportedKg100)}
+          </td>
+        </>
+      )}
       {showTunnel ? (
         <>
           <td className="number-tabular border-l-2 border-violet-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
@@ -82,13 +93,15 @@ export function ProductionBreakdownGroupRow({
           </td>
         </>
       ) : null}
-      <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
-        {subtotal(
-          (product) =>
-            product.day.adjustmentKg100 + product.night.adjustmentKg100,
-        )}
-      </td>
-      <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">
+      {hasAdjustments ? (
+        <td className="number-tabular border-l border-brand-100 px-3 py-3 text-right text-xs font-bold text-slate-700">
+          {subtotal(
+            (product) =>
+              product.day.adjustmentKg100 + product.night.adjustmentKg100,
+          )}
+        </td>
+      ) : null}
+      <td className={`number-tabular ${hasAdjustments ? '' : 'border-l border-brand-100 '}px-3 py-3 text-right text-xs font-bold text-slate-700`}>
         {subtotal((product) => product.treatmentKg100)}
       </td>
       <td className="number-tabular px-3 py-3 text-right text-xs font-bold text-slate-700">

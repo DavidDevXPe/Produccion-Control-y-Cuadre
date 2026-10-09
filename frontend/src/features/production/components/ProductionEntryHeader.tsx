@@ -1,11 +1,16 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { ProcessSelector } from './ProcessSelector'
 import { formatIsoDate } from '../../../utils/formatters'
+import {
+  productionProcessLabels,
+} from '../model/productionProcess'
 import type { ProductionDay, ProductionProcess } from '../model/types'
 import type { ProductionClosureValidation } from '../model/businessRules'
+import { ProductionDayDeleteDialog } from './ProductionDayDeleteDialog'
 
 export interface ProductionEntryHeaderProps {
   existingDay: ProductionDay | undefined
@@ -17,11 +22,11 @@ export interface ProductionEntryHeaderProps {
   mode: 'MANUAL' | 'EXCEL'
   onModeChange: (mode: 'MANUAL' | 'EXCEL') => void
   onChangeProcess: (process: ProductionProcess) => void
+  onDeleteDay?: () => void
 }
 
 export function ProductionEntryHeader({
   existingDay,
-  isFreezing,
   canClose,
   closureValidation,
   isBalanceOnly,
@@ -29,7 +34,9 @@ export function ProductionEntryHeader({
   mode,
   onModeChange,
   onChangeProcess,
+  onDeleteDay,
 }: ProductionEntryHeaderProps) {
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   return (
     <>
       <Link
@@ -44,14 +51,21 @@ export function ProductionEntryHeader({
         eyebrow="Captura operativa"
         title={existingDay ? `Editar ${formatIsoDate(existingDay.date)}` : 'Nueva jornada'}
         description={
-          isFreezing
+          draftProcess === 'FREEZING'
             ? 'Registra lo congelado por turno y vincula cada kilo con el producto disponible desde Envasado.'
-            : 'Registra los reportes de producción y concilia cada turno hasta obtener un cuadre exacto.'
+            : draftProcess === 'VIDEOJET'
+              ? 'Registra el rotulado Videojet por turno y vincula cada kilo con el producto disponible desde Congelamiento.'
+              : draftProcess === 'PALLETIZING'
+                ? 'Registra lo paletizado por turno y vincula cada kilo con el producto disponible desde Videojet / Congelamiento.'
+                : 'Registra los reportes de producción y concilia cada turno hasta obtener un cuadre exacto.'
         }
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {isBalanceOnly ? (
+              <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
+            ) : null}
             <StatusBadge tone="info">
-              {isFreezing ? 'CONGELAMIENTO' : 'ENVASADO'}
+              {productionProcessLabels[draftProcess].toUpperCase()}
             </StatusBadge>
             <StatusBadge
               tone={
@@ -68,19 +82,37 @@ export function ProductionEntryHeader({
                   ? 'LISTA · CON OBSERVACIONES'
                   : 'LISTA PARA CERRAR'}
             </StatusBadge>
-            {isBalanceOnly ? (
-              <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
+            {existingDay && existingDay.status !== 'CLOSED' && onDeleteDay ? (
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:text-rose-800 transition-colors shadow-2xs"
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Eliminar jornada
+              </button>
             ) : null}
           </div>
         }
       />
 
+      {existingDay ? (
+        <ProductionDayDeleteDialog
+          isOpen={isDeleteOpen}
+          date={existingDay.date}
+          processLabel={productionProcessLabels[draftProcess]}
+          onClose={() => setIsDeleteOpen(false)}
+          onConfirm={() => {
+            setIsDeleteOpen(false)
+            onDeleteDay?.()
+          }}
+        />
+      ) : null}
+
       <ProcessSelector
         value={draftProcess}
         disabled={Boolean(existingDay)}
-        onChange={(process) => {
-          if (process !== 'COMPARISON') onChangeProcess(process)
-        }}
+        onChange={onChangeProcess}
       />
 
       <div>

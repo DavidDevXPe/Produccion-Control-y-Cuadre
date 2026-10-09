@@ -9,51 +9,46 @@ export function freezingTraceabilityStatus(
   const pendingToLinkKg100 = kg100(
     Math.max(reportedKg100 - linkedKg100, 0),
   )
+  /**
+   * Envasado − Congelado reportado.
+   * - Envasado = Congelado -> Cuadrado (0.00 kg)
+   * - Envasado > Congelado -> Pendiente de congelar / excedente (+X.XX kg)
+   * - Congelado > Envasado -> Congelado sin envasado / déficit (-X.XX kg)
+   */
+  const differenceKg100 = kg100(availableKg100 - reportedKg100)
 
   if (reportedKg100 === 0 && linkedKg100 === 0) {
     return {
       tone: 'neutral' as const,
       label: 'SIN MOVIMIENTO',
       pendingToLinkKg100,
+      differenceKg100: availableKg100 > 0 ? availableKg100 : kg100(0),
     }
   }
 
-  if (linkedKg100 > reportedKg100) {
+  if (reportedKg100 > availableKg100 || linkedKg100 > reportedKg100) {
     return {
       tone: 'danger' as const,
-      label: 'REVISAR VÍNCULO',
+      label: 'DESCUADRE',
       pendingToLinkKg100,
+      differenceKg100,
     }
   }
 
-  if (availableKg100 === 0) {
+  if (availableKg100 > reportedKg100) {
     return {
-      tone: 'danger' as const,
-      label: 'SIN ORIGEN TRAZABLE',
+      tone: 'info' as const,
+      label: 'EXCEDENTE',
       pendingToLinkKg100,
-    }
-  }
-
-  if (availableKg100 < reportedKg100) {
-    return {
-      tone: 'danger' as const,
-      label: 'ORIGEN INSUFICIENTE',
-      pendingToLinkKg100,
-    }
-  }
-
-  if (linkedKg100 < reportedKg100) {
-    return {
-      tone: 'warning' as const,
-      label: 'PENDIENTE VINCULAR',
-      pendingToLinkKg100,
+      differenceKg100,
     }
   }
 
   return {
     tone: 'success' as const,
-    label: 'TRAZABLE',
+    label: 'CUADRADO',
     pendingToLinkKg100,
+    differenceKg100,
   }
 }
 

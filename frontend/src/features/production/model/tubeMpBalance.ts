@@ -112,7 +112,7 @@ export function getProductionOutputPositions(
     summaryGroupId: line.summaryGroupId,
     finishedKg100:
       calculation.products[index]?.expectedFinishedKg100 ?? kg100(0),
-    anillaYieldClass: getAnillaYieldClass(line.productId),
+    anillaYieldClass: getAnillaYieldClass(line.productId, line.productName),
     processOrigin: getProcessOrigin(line.productId),
   }))
 }

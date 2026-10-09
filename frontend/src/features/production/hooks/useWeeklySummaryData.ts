@@ -9,6 +9,7 @@ import { calculateWeeklySummary, kg100, sumKg100 } from '../model/calculations'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import { isProductionProcess } from '../model/productionProcess'
 import { getTubeMpBalance } from '../model/tubeMpBalance'
+import { buildPalletizingRowsFromWeekDays } from '../model/palletizingWeekAggregation'
 import type {
   Kg100,
   ProductionDay,
@@ -142,7 +143,9 @@ export function useWeeklySummaryData() {
 
   const handleViewChange = (nextView: ProductionView) => {
     setSearchParams({ view: nextView }, { replace: true })
-    if (nextView !== 'COMPARISON') setActiveProcess(nextView)
+    if (nextView !== 'COMPARISON') {
+      setActiveProcess(nextView)
+    }
   }
 
   // Calculations for PACKING view when days exist
@@ -254,22 +257,12 @@ export function useWeeklySummaryData() {
   const isNucaSemilimpiaReferenceApplicable = summary?.nucaSemilimpia.applicable ?? false
   const isNucaBikiniReferenceApplicable = summary?.nucaBikini.applicable ?? false
 
-  const handleExportExcel = async () => {
-    if (!summary) return
-    const { exportWeeklySummaryWorkbook } = await import(
-      '../export/weeklySummaryWorkbook'
+  const aggregatedPalletizingRows = useMemo(() => {
+    return buildPalletizingRowsFromWeekDays(
+      activeWeek.number,
+      allProductionDays,
     )
-    exportWeeklySummaryWorkbook({
-      weekNumber: activeWeek.number,
-      period: activeWeek.period,
-      summary,
-      productionDays,
-    })
-  }
-
-  const handleExportPdf = () => {
-    exportPageToPdf(`Resumen Semanal ${activeWeek.number}`)
-  }
+  }, [activeWeek.number, allProductionDays])
 
   const packingWeek = useMemo(() => {
     return getWeekView(activeWeek.number, 'PACKING')
@@ -278,6 +271,68 @@ export function useWeeklySummaryData() {
   const freezingWeek = useMemo(() => {
     return getWeekView(activeWeek.number, 'FREEZING')
   }, [getWeekView, activeWeek.number])
+
+  const handleExportExcel = async () => {
+    if (view === 'COMPARISON' || view === 'VIDEOJET' || view === 'PALLETIZING') {
+      const { downloadPalletizingReconciliationWorkbook } = await import(
+        '../export/palletizingReconciliationWorkbook'
+      )
+      const filename =
+        view === 'VIDEOJET'
+          ? `Control_Videojet_Semana_${activeWeek.number}.xlsx`
+          : view === 'PALLETIZING'
+            ? `Control_Paletizado_Semana_${activeWeek.number}.xlsx`
+            : `Control_Comparativo_Semana_${activeWeek.number}.xlsx`
+      await downloadPalletizingReconciliationWorkbook(
+        {
+          rows: aggregatedPalletizingRows,
+          title:
+            view === 'VIDEOJET'
+              ? 'CONTROL DE TRAZABILIDAD Y ROTULADO VIDEOJET'
+              : view === 'PALLETIZING'
+                ? 'CONTROL DE PALETIZADO Y SALDOS DE CÁMARA'
+                : 'CONTROL DE ENVASADO, CONGELAMIENTO, VIDEOJET Y PALETIZADO',
+          subtitle: `Semana ${activeWeek.number} · Consolidado Operativo`,
+        },
+        filename,
+      )
+      return
+    }
+    if (view === 'FREEZING') {
+      const { exportFreezingSummaryWorkbook } = await import(
+        '../export/freezingSummaryWorkbook'
+      )
+      await exportFreezingSummaryWorkbook({
+        week: freezingWeek,
+        allProductionDays,
+      })
+      return
+    }
+    if (!summary) return
+    const { exportWeeklySummaryWorkbook } = await import(
+      '../export/weeklySummaryWorkbook'
+    )
+    await exportWeeklySummaryWorkbook({
+      weekNumber: activeWeek.number,
+      period: activeWeek.period,
+      summary,
+      productionDays,
+    })
+  }
+
+  const handleExportPdf = () => {
+    const label =
+      view === 'COMPARISON'
+        ? `Comparativo Semanal ${activeWeek.number}`
+        : view === 'FREEZING'
+          ? `Resumen Congelamiento Semanal ${activeWeek.number}`
+          : view === 'VIDEOJET'
+            ? `Resumen Videojet Semanal ${activeWeek.number}`
+            : view === 'PALLETIZING'
+              ? `Resumen Paletizado Semanal ${activeWeek.number}`
+              : `Resumen Semanal ${activeWeek.number}`
+    exportPageToPdf(label)
+  }
 
   return {
     view,
@@ -297,5 +352,6 @@ export function useWeeklySummaryData() {
     handleExportPdf,
     packingWeek,
     freezingWeek,
+    aggregatedPalletizingRows,
   }
 }

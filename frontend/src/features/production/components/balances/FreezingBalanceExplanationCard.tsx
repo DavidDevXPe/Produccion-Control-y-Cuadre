@@ -9,6 +9,8 @@ export interface FreezingBalanceExplanationCardProps {
   freezingBalanceExplanation: FreezingBalanceExplanation
   freezingPendingAfterKg100: Kg100
   freezingLinkedThisDayKg100: Kg100
+  prevProcessName?: string
+  currentProcessName?: string
 }
 
 export function FreezingBalanceExplanationCard({
@@ -17,11 +19,13 @@ export function FreezingBalanceExplanationCard({
   freezingBalanceExplanation,
   freezingPendingAfterKg100,
   freezingLinkedThisDayKg100,
+  prevProcessName = 'Envasado',
+  currentProcessName = 'Congelamiento',
 }: FreezingBalanceExplanationCardProps) {
   return (
     <div
       role="region"
-      aria-label="Explicación del saldo de Congelamiento"
+      aria-label={`Explicación del saldo de ${currentProcessName}`}
       className="border-b border-slate-200 px-4 py-4 sm:px-5 dark:border-ui-line-dark-grid"
     >
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark-recessed/60">
@@ -33,9 +37,9 @@ export function FreezingBalanceExplanationCard({
               </p>
               <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500 dark:text-ui-text-dark-soft">
                 El saldo pendiente no representa necesariamente un error. Parte
-                corresponde a producto que comenzó a congelarse y todavía queda
-                disponible, y otra parte a producto envasado que aún no tuvo
-                movimiento de Congelamiento.
+                corresponde a producto que comenzó a procesarse y todavía queda
+                disponible, y otra parte a producto de {prevProcessName} que aún no tuvo
+                movimiento de {currentProcessName}.
               </p>
             </div>
             <StatusBadge
@@ -55,7 +59,7 @@ export function FreezingBalanceExplanationCard({
         <div className="grid gap-px bg-slate-200 sm:grid-cols-3 dark:bg-ui-line-dark-grid">
           <div className="bg-white px-4 py-3 dark:bg-ui-surface-dark">
             <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-              Envasado disponible
+              {prevProcessName} disponible
             </p>
             <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
               {formatCentiKg(freezingTotalAvailableKg100)}
@@ -64,7 +68,7 @@ export function FreezingBalanceExplanationCard({
 
           <div className="bg-white px-4 py-3 dark:bg-ui-surface-dark">
             <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-              Congelado físicamente
+              {currentProcessName} físicamente
             </p>
             <p className="number-tabular mt-1 text-base font-extrabold text-slate-950 dark:text-ui-text-dark-strong">
               {formatCentiKg(totalReportedKg100)}
@@ -124,12 +128,12 @@ export function FreezingBalanceExplanationCard({
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-ui-line-dark-grid dark:bg-ui-surface-dark">
             <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
-              Diferencia frente al congelado físico
+              Diferencia frente al {currentProcessName.toLowerCase()} físico
             </p>
             <dl className="mt-3 space-y-2 text-xs">
               <div className="flex items-center justify-between gap-4">
                 <dt className="text-slate-500 dark:text-ui-text-dark-soft">
-                  Congelado con origen identificado
+                  {currentProcessName} con origen identificado
                 </dt>
                 <dd className="number-tabular font-bold text-emerald-700 dark:text-emerald-300">
                   {formatCentiKg(freezingLinkedThisDayKg100)}
@@ -138,7 +142,7 @@ export function FreezingBalanceExplanationCard({
 
               <div className="flex items-center justify-between gap-4">
                 <dt className="text-slate-500 dark:text-ui-text-dark-soft">
-                  Congelado sin origen suficiente
+                  {currentProcessName} sin origen suficiente
                 </dt>
                 <dd
                   className={`number-tabular font-bold ${
@@ -153,7 +157,7 @@ export function FreezingBalanceExplanationCard({
 
               <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 dark:border-ui-line-dark-grid">
                 <dt className="font-bold text-slate-800 dark:text-ui-text-dark-strong">
-                  Diferencia física Envasado vs Congelado
+                  Diferencia física {prevProcessName} vs {currentProcessName}
                 </dt>
                 <dd className="number-tabular font-extrabold text-amber-700 dark:text-amber-300">
                   {formatCentiKg(freezingBalanceExplanation.physicalDifferenceKg100)}
@@ -163,7 +167,7 @@ export function FreezingBalanceExplanationCard({
 
             {freezingBalanceExplanation.untracedFrozenKg100 > 0 ? (
               <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[0.6875rem] font-semibold leading-5 text-amber-900 dark:border-ui-amber-border-dark-soft dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-bright">
-                Hay producto congelado cuya presentación u origen no alcanza a
+                Hay producto reportado en {currentProcessName} cuya presentación u origen no alcanza a
                 justificarse completamente. La jornada puede cerrarse con
                 observación y la diferencia quedará registrada para revisión.
               </div>

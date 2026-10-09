@@ -1,7 +1,7 @@
 import { ClipboardCheck } from 'lucide-react'
 import { FreezingSummaryView } from '../components/FreezingSummaryView'
 import { ProcessSelector } from '../components/ProcessSelector'
-import { ProductionComparisonView } from '../components/ProductionComparisonView'
+import { PalletizingReconciliationView } from '../components/palletizing/PalletizingReconciliationView'
 import { WeeklyConsistencyPanel } from '../components/WeeklyConsistencyPanel'
 import { WeeklyDaysTable } from '../components/WeeklyDaysTable'
 import { WeeklyProductSummary } from '../components/WeeklyProductSummary'
@@ -28,8 +28,7 @@ export function WeeklySummaryPage() {
     isNucaBikiniReferenceApplicable,
     handleExportExcel,
     handleExportPdf,
-    packingWeek,
-    freezingWeek,
+    aggregatedPalletizingRows,
   } = useWeeklySummaryData()
 
   const selector = (
@@ -52,16 +51,63 @@ export function WeeklySummaryPage() {
     )
   }
 
+  if (view === 'VIDEOJET') {
+    return (
+      <div className="space-y-5">
+        <WeeklySummaryHeader
+          weekNumber={activeWeek.number}
+          productionDaysCount={productionDays.length}
+          isClosed={activeWeek.isClosed}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+        {selector}
+        <PalletizingReconciliationView
+          initialRows={aggregatedPalletizingRows}
+          title="Trazabilidad y Rotulado Videojet QR"
+          subtitle={`Control de rotulado, sacos QR e identificación de blocks sin QR · Semana ${activeWeek.number}`}
+        />
+      </div>
+    )
+  }
+
+  if (view === 'PALLETIZING') {
+    return (
+      <div className="space-y-5">
+        <WeeklySummaryHeader
+          weekNumber={activeWeek.number}
+          productionDaysCount={productionDays.length}
+          isClosed={activeWeek.isClosed}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+        {selector}
+        <PalletizingReconciliationView
+          initialRows={aggregatedPalletizingRows}
+          title="Conciliación de Paletizado y Saldos de Cámara"
+          subtitle={`Etapa final de despacho y arrastre de saldos físicos · Semana ${activeWeek.number}`}
+        />
+      </div>
+    )
+  }
+
   if (view === 'COMPARISON') {
     return (
-      <ProductionComparisonView
-        weekNumber={activeWeek.number}
-        period={activeWeek.period}
-        productionDays={allProductionDays}
-        packingClosed={packingWeek.isClosed}
-        freezingClosed={freezingWeek.isClosed}
-        selector={selector}
-      />
+      <div className="space-y-5">
+        <WeeklySummaryHeader
+          weekNumber={activeWeek.number}
+          productionDaysCount={productionDays.length}
+          isClosed={activeWeek.isClosed}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+        {selector}
+        <PalletizingReconciliationView
+          initialRows={aggregatedPalletizingRows}
+          title="Flujo de Cuadre Integral entre Procesos (Semanal)"
+          subtitle={`Consolidado de Envasado, Congelamiento, Videojet y Paletizado · Semana ${activeWeek.number}`}
+        />
+      </div>
     )
   }
 

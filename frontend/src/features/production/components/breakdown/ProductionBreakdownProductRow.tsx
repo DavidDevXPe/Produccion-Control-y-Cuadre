@@ -5,11 +5,15 @@ import { formatTunnelMovement } from './breakdownTypes'
 export interface ProductionBreakdownProductRowProps {
   readonly product: ProductReconciliation
   readonly showTunnel: boolean
+  readonly hasPreviousBalances?: boolean
+  readonly hasAdjustments?: boolean
 }
 
 export function ProductionBreakdownProductRow({
   product,
   showTunnel,
+  hasPreviousBalances = false,
+  hasAdjustments = false,
 }: ProductionBreakdownProductRowProps) {
   return (
     <tr className="group border-t border-slate-100 hover:bg-slate-50/80">
@@ -21,24 +25,31 @@ export function ProductionBreakdownProductRow({
           {product.productName}
         </span>
       </th>
-      <td className="number-tabular whitespace-nowrap border-l-2 border-brand-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.day.reportedKg100)}
-      </td>
-      <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.day.previousBalanceProcessedKg100)}
-      </td>
-      <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.day.ownProductionKg100)}
-      </td>
-      <td className="number-tabular whitespace-nowrap border-l-2 border-slate-200 px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.night.reportedKg100)}
-      </td>
-      <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.night.previousBalanceProcessedKg100)}
-      </td>
-      <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(product.night.ownProductionKg100)}
-      </td>
+      {hasPreviousBalances ? (
+        <>
+          <td className="number-tabular whitespace-nowrap border-l-2 border-brand-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.day.reportedKg100)}
+          </td>
+          <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.day.previousBalanceProcessedKg100)}
+          </td>
+          <td className="number-tabular whitespace-nowrap border-l-2 border-slate-200 px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.night.reportedKg100)}
+          </td>
+          <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.night.previousBalanceProcessedKg100)}
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="number-tabular whitespace-nowrap border-l-2 border-brand-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.day.reportedKg100)}
+          </td>
+          <td className="number-tabular whitespace-nowrap border-l-2 border-slate-200 px-2.5 py-2.5 text-right text-xs text-slate-600">
+            {formatCentiKg(product.night.reportedKg100)}
+          </td>
+        </>
+      )}
       {showTunnel ? (
         <>
           <td className="number-tabular whitespace-nowrap border-l-2 border-violet-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
@@ -49,13 +60,15 @@ export function ProductionBreakdownProductRow({
           </td>
         </>
       ) : null}
-      <td className="number-tabular whitespace-nowrap border-l-2 border-brand-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
-        {formatCentiKg(
-          (product.day.adjustmentKg100 +
-            product.night.adjustmentKg100) as Kg100,
-        )}
-      </td>
-      <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">
+      {hasAdjustments ? (
+        <td className="number-tabular whitespace-nowrap border-l-2 border-brand-100 px-2.5 py-2.5 text-right text-xs text-slate-600">
+          {formatCentiKg(
+            (product.day.adjustmentKg100 +
+              product.night.adjustmentKg100) as Kg100,
+          )}
+        </td>
+      ) : null}
+      <td className={`number-tabular whitespace-nowrap ${hasAdjustments ? '' : 'border-l-2 border-brand-100 '}px-2.5 py-2.5 text-right text-xs text-slate-600`}>
         {formatCentiKg(product.treatmentKg100)}
       </td>
       <td className="number-tabular whitespace-nowrap px-2.5 py-2.5 text-right text-xs text-slate-600">

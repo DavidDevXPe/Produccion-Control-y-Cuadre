@@ -5,6 +5,8 @@ export interface BulkFreezingLinkDialogProps {
   readonly pendingLinkCount: number
   readonly onCancel: () => void
   readonly onConfirm: () => void
+  readonly originProcessName?: string
+  readonly currentProcessName?: string
 }
 
 export function BulkFreezingLinkDialog({
@@ -12,8 +14,17 @@ export function BulkFreezingLinkDialog({
   pendingLinkCount,
   onCancel,
   onConfirm,
+  originProcessName = 'Envasado',
+  currentProcessName = 'Congelamiento',
 }: BulkFreezingLinkDialogProps) {
   if (!isOpen) return null
+
+  const currentAction =
+    currentProcessName === 'Videojet'
+      ? 'rotular'
+      : currentProcessName === 'Paletizado'
+        ? 'paletizar'
+        : 'congelar'
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">
@@ -37,8 +48,8 @@ export function BulkFreezingLinkDialog({
               {pendingLinkCount}{' '}
               {pendingLinkCount === 1 ? 'producto' : 'productos'}
             </strong>{' '}
-            utilizando primero las jornadas origen de Envasado que todavía tienen
-            saldo pendiente de congelar.
+            utilizando primero las jornadas origen de {originProcessName} que todavía tienen
+            saldo pendiente de {currentAction}.
           </p>
 
           <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-3 text-xs leading-5 text-amber-100">

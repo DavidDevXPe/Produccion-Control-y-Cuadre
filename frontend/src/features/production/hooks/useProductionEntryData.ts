@@ -8,6 +8,7 @@ import { useProductionExcelImport } from './useProductionExcelImport'
 import { useProductionNavigation } from './useProductionNavigation'
 import { useProductionPersistence } from './useProductionPersistence'
 import { useProductionSectionProducts } from './useProductionSectionProducts'
+import { useProductionData } from '../state/ProductionDataContext'
 import type { ProductionProcess } from '../model/types'
 
 export function useProductionEntryData() {
@@ -16,6 +17,8 @@ export function useProductionEntryData() {
   const [catalogItems, setCatalogItems] = useState<ProductionCatalogItem[]>(() => getActiveProducts())
   const manualProductSearchInputRef = useRef<HTMLInputElement>(null)
   const onProcessChangeResetRef = useRef<(() => void) | undefined>(undefined)
+
+  const { deleteProductionDay, findProductionDay } = useProductionData()
 
   const navigation = useProductionNavigation({
     onProcessChangeReset: () => onProcessChangeResetRef.current?.(),
@@ -42,7 +45,7 @@ export function useProductionEntryData() {
     setPendingProcessChange,
     changeProcess,
     applyProcessChange,
-    allProductionDays,
+    effectiveProductionDays,
     subsequentBalanceLots,
     upsertProductionDay,
   } = navigation
@@ -76,7 +79,7 @@ export function useProductionEntryData() {
 
   const calculations = useProductionCalculations({
     draft,
-    allProductionDays,
+    allProductionDays: effectiveProductionDays,
     subsequentBalanceLots,
     catalogItems,
     isFreezing,
@@ -96,12 +99,11 @@ export function useProductionEntryData() {
     setSaveError,
     updateDraft,
   })
-
   const persistence = useProductionPersistence({
     draft,
     editingDate,
     activeWeek,
-    allProductionDays,
+    allProductionDays: effectiveProductionDays,
     subsequentBalanceLots,
     upsertProductionDay,
     navigate,
@@ -124,6 +126,12 @@ export function useProductionEntryData() {
   const handleConfirmBulkFreezingLink = () => {
     draftActions.autoLinkAllFreezingProducts()
     setIsBulkFreezingLinkConfirmationOpen(false)
+  }
+
+  const handleDeleteDay = () => {
+    if (!editingDate) return
+    deleteProductionDay(editingDate, selectedProcess)
+    navigation.navigate(`/jornadas?process=${selectedProcess}`)
   }
 
   return {
@@ -151,6 +159,8 @@ export function useProductionEntryData() {
     handleConfirmProcessChange,
     handleCancelProcessChange,
     handleConfirmBulkFreezingLink,
+    handleDeleteDay,
+    findProductionDay,
     sectionProducts,
     excelImport,
     calculations,

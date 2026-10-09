@@ -4,9 +4,12 @@ import type { ReportFamilySubtotal } from '../../model/businessRules'
 import type { Kg100 } from '../../model/types'
 import { freezingTraceabilityStatus } from '../../pages/captureProductStatus'
 
+import type { ProductionProcess } from '../../model/types'
+
 export interface CaptureSubtotalRowProps {
   readonly subtotal: ReportFamilySubtotal
-  readonly isFreezing: boolean
+  readonly isFreezing?: boolean
+  readonly process?: ProductionProcess
   readonly isBalanceOnly: boolean
   readonly familyTraceability: {
     readonly availableKg100: Kg100
@@ -17,9 +20,12 @@ export interface CaptureSubtotalRowProps {
 export function CaptureSubtotalRow({
   subtotal,
   isFreezing,
+  process,
   isBalanceOnly,
   familyTraceability,
 }: CaptureSubtotalRowProps) {
+  const currentProcess = process ?? (isFreezing ? 'FREEZING' : 'PACKING')
+  const isDownstream = currentProcess !== 'PACKING'
   const familyTraceabilityStatusData = freezingTraceabilityStatus(
     subtotal.totalKg100,
     familyTraceability.availableKg100,
@@ -86,7 +92,7 @@ export function CaptureSubtotalRow({
         </span>
       </td>
       <td className="number-tabular px-3 py-2 text-right text-xs">
-        {isFreezing ? (
+        {isDownstream ? (
           <>
             <span className="font-semibold text-slate-800 dark:text-white">
               {formatCentiKgValue(familyTraceability.availableKg100)}
@@ -120,10 +126,10 @@ export function CaptureSubtotalRow({
         )}
       </td>
       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isFreezing ? (
+        {isDownstream ? (
           <>
             <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(familyTraceability.linkedKg100)}
+              {formatCentiKgValue(subtotal.totalKg100)}
             </span>
             <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
               kg
@@ -140,10 +146,18 @@ export function CaptureSubtotalRow({
         )}
       </td>
       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isFreezing ? (
+        {isDownstream ? (
           <>
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(familyTraceabilityStatusData.pendingToLinkKg100)}
+            <span
+              className={`font-semibold ${
+                familyTraceabilityStatusData.differenceKg100 < 0
+                  ? 'font-bold text-rose-700 dark:text-rose-400'
+                  : familyTraceabilityStatusData.differenceKg100 > 0
+                    ? 'font-semibold text-sky-700 dark:text-sky-400'
+                    : 'text-slate-800 dark:text-white'
+              }`}
+            >
+              {formatCentiKgValue(familyTraceabilityStatusData.differenceKg100)}
             </span>
             <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
               kg

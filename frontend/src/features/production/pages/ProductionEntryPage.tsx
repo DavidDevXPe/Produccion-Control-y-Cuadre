@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react'
+import { useMemo } from 'react'
 import { FamilyYieldPanel } from '../components/FamilyYieldPanel'
 import { ProductionBalancesSection } from '../components/ProductionBalancesSection'
 import { ProductionClosingSection } from '../components/ProductionClosingSection'
@@ -14,6 +16,9 @@ import { ProductionTreatmentSection } from '../components/ProductionTreatmentSec
 import { ProductionTunnelSection } from '../components/ProductionTunnelSection'
 import { TubeMpBalancePanel } from '../components/TubeMpBalancePanel'
 import { useProductionEntryData } from '../hooks/useProductionEntryData'
+import { getPreviousProcess } from '../model/productionProcess'
+import type { ProductionDay } from '../model/types'
+import { formatIsoDate, formatIsoDateCompact } from '../../../utils/formatters'
 
 export function ProductionEntryPage() {
   const {
@@ -40,12 +45,47 @@ export function ProductionEntryPage() {
     handleConfirmProcessChange,
     handleCancelProcessChange,
     handleConfirmBulkFreezingLink,
+    handleDeleteDay,
+    findProductionDay,
     sectionProducts,
     excelImport,
     calculations,
     draftActions,
     persistence,
   } = useProductionEntryData()
+
+  const upstreamProcess = getPreviousProcess(selectedProcess)
+  const candidateUpstreamDate = useMemo(() => {
+    if (!upstreamProcess) return null
+    if (
+      calculations.freezingLinkedThisDayKg100 > 0 ||
+      calculations.totalReportedKg100 === 0 ||
+      draft.balanceUses.length > 0
+    ) {
+      return null
+    }
+    const upstreamDays = activeWeek.calendarDays
+      .map((calDay) => findProductionDay(calDay.isoDate, upstreamProcess))
+      .filter(Boolean) as ProductionDay[]
+
+    const candidate = upstreamDays.find((upDay) => {
+      if (upDay.date === draft.date) return false
+      const existingDownstream = findProductionDay(upDay.date, selectedProcess)
+      return !existingDownstream || (editingDate && existingDownstream.date === editingDate)
+    })
+
+    return candidate?.date ?? null
+  }, [
+    activeWeek.calendarDays,
+    calculations.freezingLinkedThisDayKg100,
+    calculations.totalReportedKg100,
+    draft.balanceUses.length,
+    draft.date,
+    editingDate,
+    findProductionDay,
+    selectedProcess,
+    upstreamProcess,
+  ])
 
   if (!isEditingAllowed || (editingDate && !existingDay)) {
     return <ProductionEntryReadOnlyWarning editingDate={editingDate} />
@@ -65,7 +105,35 @@ export function ProductionEntryPage() {
         mode={mode}
         onModeChange={setMode}
         onChangeProcess={handleChangeProcess}
+        onDeleteDay={handleDeleteDay}
       />
+
+      {candidateUpstreamDate ? (
+        <section
+          role="region"
+          aria-label="Aviso de fecha desfasada"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" aria-hidden="true" />
+            <div>
+              <h2 className="text-sm font-bold">
+                Fecha desfasada con {upstreamProcess === 'PACKING' ? 'Envasado' : 'etapa anterior'}
+              </h2>
+              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                Esta jornada está registrada para el <strong>{formatIsoDate(draft.date)}</strong>, pero la producción disponible de {upstreamProcess === 'PACKING' ? 'Envasado' : 'la etapa anterior'} se registró el <strong>{formatIsoDate(candidateUpstreamDate)}</strong>. Mueve la fecha para vincular automáticamente los productos registrados.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => draftActions.updateDate(candidateUpstreamDate)}
+            className="whitespace-nowrap self-start sm:self-center rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-xs transition-colors shrink-0"
+          >
+            Mover a {formatIsoDateCompact(candidateUpstreamDate)}
+          </button>
+        </section>
+      ) : null}
 
       <ProductionExcelImportSection
         enabled={mode === 'EXCEL'}
@@ -103,8 +171,6 @@ export function ProductionEntryPage() {
         isSunday={isSunday}
         isFreezing={isFreezing}
         isBalanceOnly={isBalanceOnly}
-        editingDate={editingDate}
-        existingDayDate={existingDay?.date}
         activeWeekStartDate={activeWeek.period.startDate}
         activeWeekEndDate={activeWeek.period.endDate}
         usesExternalAvailability={usesExternalAvailability}
@@ -224,6 +290,7 @@ export function ProductionEntryPage() {
         totalReportedKg100={calculations.totalReportedKg100}
         calculation={buildResult.calculation}
         businessSummary={businessSummary}
+        process={selectedProcess}
       />
 
       {!usesExternalAvailability ? (

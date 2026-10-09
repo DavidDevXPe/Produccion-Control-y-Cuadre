@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
-import { captureProductAvailability } from '../capture/productionEntryHelpers'
+import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
-import { kg100 } from '../model/calculations'
+import { kg100, sumKg100 } from '../model/calculations'
 import type { ReportFamilySubtotal } from '../model/businessRules'
 import type { Kg100, ProductionDayCalculation } from '../model/types'
 import { CaptureFamilyBand } from './captureTable/CaptureFamilyBand'
@@ -48,24 +48,30 @@ export function ProductionCaptureTable({
 }: ProductionCaptureTableProps) {
   return (
     <DataTableScroll label="Captura por producto y turno" showEdgeIndicators={false} className="data-scroll-clean-edge">
-      <table className="erp-table w-full min-w-[70rem] table-fixed border-collapse text-left">
-        <CaptureTableHeader isFreezing={isFreezing} />
+      <table className="erp-table w-full min-w-[76rem] table-fixed border-collapse text-left">
+        <CaptureTableHeader isFreezing={isFreezing} process={draft.process} />
         <tbody>
           {reportFamilySubtotals.map((subtotal) => {
             const familyTraceability = subtotal.productIds.reduce(
               (total, productId) => {
-                const linkedAvailability = captureProductAvailability(
-                  draft,
-                  productId,
+                const row = draft.rows.find(
+                  (candidate) => candidate.product.productId === productId,
                 )
+                const productReportedKg100 = row
+                  ? sumKg100([
+                      captureQuantityKg100(row.dayReportedKg),
+                      captureQuantityKg100(row.nightReportedKg),
+                    ])
+                  : kg100(0)
                 const availableKg100 =
                   getFreezingPotentialAvailabilityKg100(productId)
+                const linkedKg100 = kg100(
+                  Math.min(productReportedKg100, availableKg100),
+                )
 
                 return {
                   availableKg100: kg100(total.availableKg100 + availableKg100),
-                  linkedKg100: kg100(
-                    total.linkedKg100 + linkedAvailability.frozenKg100,
-                  ),
+                  linkedKg100: kg100(total.linkedKg100 + linkedKg100),
                 }
               },
               {
@@ -73,6 +79,8 @@ export function ProductionCaptureTable({
                 linkedKg100: kg100(0),
               },
             )
+
+            const hasStageComparison = isFreezing || draft.process !== 'PACKING'
 
             return (
               <Fragment key={subtotal.key}>
@@ -87,14 +95,16 @@ export function ProductionCaptureTable({
                   const calculated = calculation.products.find(
                     (candidate) => candidate.productId === productId,
                   )
-                  const linkedAvailability = isFreezing
-                    ? captureProductAvailability(draft, productId)
-                    : null
-                  const availableKg100 = isFreezing
+                  const productReportedKg100 = sumKg100([
+                    captureQuantityKg100(row.dayReportedKg),
+                    captureQuantityKg100(row.nightReportedKg),
+                  ])
+                  const availableKg100 = hasStageComparison
                     ? getFreezingPotentialAvailabilityKg100(productId)
                     : kg100(0)
-                  const linkedKg100 =
-                    linkedAvailability?.frozenKg100 ?? kg100(0)
+                  const linkedKg100 = hasStageComparison
+                    ? kg100(Math.min(productReportedKg100, availableKg100))
+                    : kg100(0)
                   const rowIndex = orderedProductIds.indexOf(productId)
 
                   return (
@@ -118,6 +128,7 @@ export function ProductionCaptureTable({
                 <CaptureSubtotalRow
                   subtotal={subtotal}
                   isFreezing={isFreezing}
+                  process={draft.process}
                   isBalanceOnly={isBalanceOnly}
                   familyTraceability={familyTraceability}
                 />

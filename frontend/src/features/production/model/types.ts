@@ -17,7 +17,11 @@ export type ProductionDayStatus =
 
 export type ReconciliationStatus = 'BALANCED' | 'UNBALANCED'
 
-export type ProductionProcess = 'PACKING' | 'FREEZING'
+export type ProductionProcess =
+  | 'PACKING'
+  | 'FREEZING'
+  | 'VIDEOJET'
+  | 'PALLETIZING'
 
 export type ProductionDayOperationMode = 'NORMAL' | 'BALANCE_ONLY'
 
@@ -102,6 +106,13 @@ export interface ProductionLine {
   readonly newClosingBalanceKg100: Kg100
   /** Independent total from the product-finished table. */
   readonly declaredFinishedKg100: Kg100
+  readonly videojetBagsCount?: number
+  readonly videojetQrKg100?: Kg100
+  readonly looseBlockWithoutQrKg100?: Kg100
+  readonly initialCameraBalanceKg100?: Kg100
+  readonly palletizedBagsCount?: number
+  readonly palletizedKg100?: Kg100
+  readonly finalCameraBalanceKg100?: Kg100
 }
 
 export interface BalanceUse {

@@ -216,19 +216,33 @@ function calculateShift(
   shift: ShiftCode,
   products: readonly ProductReconciliation[],
   declaredReportedKg100: Kg100,
+  productionDay?: ProductionDay,
 ): ShiftCalculation {
   const entries = products.map((product) =>
     shift === "DAY" ? product.day : product.night,
   );
   const reportedKg100 = sumKg100(entries.map((entry) => entry.reportedKg100));
 
+  const previousBalanceProcessedKg100 =
+    productionDay?.process && productionDay.process !== "PACKING"
+      ? sumKg100(
+          productionDay.receivedBalanceLots.flatMap((lot) =>
+            lot.uses
+              .filter(
+                (use) =>
+                  use.targetDayId === productionDay.id &&
+                  use.shift === shift,
+              )
+              .map((use) => use.kg100),
+          ),
+        )
+      : sumKg100(entries.map((entry) => entry.previousBalanceProcessedKg100));
+
   return {
     reportedKg100,
     declaredReportedKg100,
     adjustmentKg100: sumKg100(entries.map((entry) => entry.adjustmentKg100)),
-    previousBalanceProcessedKg100: sumKg100(
-      entries.map((entry) => entry.previousBalanceProcessedKg100),
-    ),
+    previousBalanceProcessedKg100,
     ownProductionKg100: sumKg100(
       entries.map((entry) => entry.ownProductionKg100),
     ),
@@ -712,11 +726,13 @@ export function calculateProductionDay(
     "DAY",
     products,
     productionDay.declaredShiftTotalsKg100.DAY,
+    productionDay,
   );
   const night = calculateShift(
     "NIGHT",
     products,
     productionDay.declaredShiftTotalsKg100.NIGHT,
+    productionDay,
   );
   const reportOwnProductionKg100 = sumKg100([
     day.ownProductionKg100,

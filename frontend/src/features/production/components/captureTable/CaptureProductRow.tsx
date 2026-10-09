@@ -55,11 +55,14 @@ export function CaptureProductRow({
     calculated?.night.reportedKg100 ?? kg100(0),
   ])
 
-  const productStatus = isFreezing
+  const isDownstream = isFreezing || draft.process !== 'PACKING'
+
+  const productStatus = isDownstream
     ? freezingTraceabilityStatus(totalKg100, availableKg100, linkedKg100)
     : {
         ...packingProductStatus(totalKg100),
         pendingToLinkKg100: kg100(0),
+        differenceKg100: kg100(0),
       }
 
   return (
@@ -121,7 +124,7 @@ export function CaptureProductRow({
         </span>
       </td>
       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isFreezing ? (
+        {isDownstream ? (
           <>
             <span className="font-semibold text-slate-800 dark:text-white">
               {formatCentiKgValue(availableKg100)}
@@ -136,10 +139,10 @@ export function CaptureProductRow({
       </td>
 
       <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isFreezing ? (
+        {isDownstream ? (
           <>
             <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(linkedKg100)}
+              {formatCentiKgValue(totalKg100)}
             </span>
             <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
               kg
@@ -152,14 +155,16 @@ export function CaptureProductRow({
 
       <td
         className={`number-tabular px-3 py-2 text-right text-xs ${
-          isFreezing && productStatus.pendingToLinkKg100 > 0
-            ? 'font-bold text-amber-700 dark:text-amber-400'
-            : 'text-slate-400 dark:text-slate-500'
+          isDownstream && productStatus.differenceKg100 < 0
+            ? 'font-bold text-rose-700 dark:text-rose-400'
+            : isDownstream && productStatus.differenceKg100 > 0
+              ? 'font-semibold text-sky-700 dark:text-sky-400'
+              : 'text-slate-400 dark:text-slate-500'
         }`}
       >
-        {isFreezing ? (
+        {isDownstream ? (
           <>
-            <span>{formatCentiKgValue(productStatus.pendingToLinkKg100)}</span>
+            <span>{formatCentiKgValue(productStatus.differenceKg100)}</span>
             <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
           </>
         ) : (
@@ -182,7 +187,7 @@ export function CaptureProductRow({
             </StatusBadge>
           )}
 
-          {isFreezing &&
+          {isDownstream &&
           productStatus.pendingToLinkKg100 > 0 &&
           availableKg100 > linkedKg100 ? (
             <button
@@ -190,7 +195,7 @@ export function CaptureProductRow({
               onClick={() => autoLinkFreezingProduct(row.product.productId)}
               className="inline-flex min-h-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-2.5 text-[0.6875rem] font-bold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
               aria-label={`Vincular FIFO ${row.product.productName}`}
-              title="Consume primero la jornada de Envasado pendiente más antigua para este producto"
+              title="Consume primero la jornada de la etapa anterior pendiente más antigua para este producto"
             >
               Vincular FIFO
             </button>

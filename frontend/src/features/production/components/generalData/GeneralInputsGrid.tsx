@@ -5,8 +5,6 @@ import type { ProductionCaptureDraft } from '../../capture/productionCapture'
 export interface GeneralInputsGridProps {
   readonly draft: ProductionCaptureDraft
   readonly isFreezing: boolean
-  readonly editingDate?: string | undefined
-  readonly existingDayDate?: string | undefined
   readonly activeWeekStartDate: string
   readonly activeWeekEndDate: string
   readonly usesExternalAvailability: boolean
@@ -21,8 +19,6 @@ export interface GeneralInputsGridProps {
 export function GeneralInputsGrid({
   draft,
   isFreezing,
-  editingDate,
-  existingDayDate,
   activeWeekStartDate,
   activeWeekEndDate,
   usesExternalAvailability,
@@ -43,9 +39,8 @@ export function GeneralInputsGrid({
         <input
           type="date"
           value={draft.date}
-          min={editingDate ? existingDayDate : activeWeekStartDate}
-          max={editingDate ? existingDayDate : activeWeekEndDate}
-          disabled={Boolean(existingDayDate)}
+          min={activeWeekStartDate}
+          max={activeWeekEndDate}
           onChange={(event) => onUpdateDate(event.target.value)}
           className="number-tabular h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
         />

@@ -33,4 +33,15 @@ describe('ProcessSelector', () => {
       'true',
     )
   })
+
+  it('allows selecting Videojet and Palletizado options', () => {
+    const onChange = vi.fn()
+    render(<ProcessSelector value="PACKING" onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Videojet' }))
+    expect(onChange).toHaveBeenCalledWith('VIDEOJET')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Paletizado' }))
+    expect(onChange).toHaveBeenCalledWith('PALLETIZING')
+  })
 })

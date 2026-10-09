@@ -49,11 +49,33 @@ export function getFreezingCatalogFamilyOptions(
   )
 }
 
+export function parseIsoDateFromSheetName(sheetName: string): string | null {
+  const trimmed = sheetName.trim()
+  const dmyMatch = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.exec(trimmed)
+  if (dmyMatch) {
+    const day = dmyMatch[1]!.padStart(2, '0')
+    const month = dmyMatch[2]!.padStart(2, '0')
+    const year = dmyMatch[3]!
+    return `${year}-${month}-${day}`
+  }
+  const ymdMatch = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(trimmed)
+  if (ymdMatch) {
+    const year = ymdMatch[1]!
+    const month = ymdMatch[2]!.padStart(2, '0')
+    const day = ymdMatch[3]!.padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return null
+}
+
 export function buildUpdatedFreezingDraft(
   current: ProductionCaptureDraft,
   freezingExcelPreview: FreezingExcelPreview,
 ): ProductionCaptureDraft {
   const importedShift = freezingExcelPreview.shift
+  const sheetDate = parseIsoDateFromSheetName(freezingExcelPreview.sheetName)
+  const targetDate = sheetDate ?? current.date
+  const dateChanged = targetDate !== current.date
 
   const totalsByProduct = new Map<
     string,
@@ -119,20 +141,23 @@ export function buildUpdatedFreezingDraft(
     nextRows.push(row)
   }
 
-  const nextBalanceUses = current.balanceUses.map((balance) =>
-    importedShift === 'DAY'
-      ? {
-          ...balance,
-          dayKg: '0',
-        }
-      : {
-          ...balance,
-          nightKg: '0',
-        },
-  )
+  const nextBalanceUses = dateChanged
+    ? []
+    : current.balanceUses.map((balance) =>
+        importedShift === 'DAY'
+          ? {
+              ...balance,
+              dayKg: '0',
+            }
+          : {
+              ...balance,
+              nightKg: '0',
+            },
+      )
 
   return {
     ...current,
+    date: targetDate,
     source: 'EXCEL',
     sourceSheet: freezingExcelPreview.sheetName,
     shiftAllocationMode: 'EXPLICIT',

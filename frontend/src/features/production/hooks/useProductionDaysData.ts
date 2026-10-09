@@ -29,6 +29,7 @@ export function useProductionDaysData() {
     activeProcess,
     allProductionDays,
     closeWeekManually,
+    deleteProductionDay,
     getWeekView,
     setActiveProcess,
   } = useProductionData();
@@ -169,7 +170,11 @@ export function useProductionDaysData() {
     }
   };
 
-  const handleSelectProcess = (process: "PACKING" | "FREEZING") => {
+  const handleDeleteDay = (date: string) => {
+    deleteProductionDay(date, selectedProcess);
+  };
+
+  const handleSelectProcess = (process: ProductionProcess) => {
     setActiveProcess(process);
     setSearchParams({ process }, { replace: true });
   };
@@ -257,6 +262,7 @@ export function useProductionDaysData() {
     setIsWeekCloseOpen,
     weekCloseError,
     confirmWeekClosure,
+    handleDeleteDay,
     handleSelectProcess,
     handleExportCsv,
   };
