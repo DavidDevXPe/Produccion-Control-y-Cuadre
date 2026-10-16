@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ParsedFreezingWorkbook } from "./parseFreezingWorkbook";
 import type { ProductionCatalogItem } from "./productionCatalog";
+import { SEED_CAPTURE_PRODUCTS } from "./seedProducts";
 import {
   buildFreezingExcelPreview,
   comparableProductName,
@@ -27,6 +28,12 @@ describe("freezingExcelPreview", () => {
 
     expect(isTreatmentOnlyProduct(treatmentItem)).toBe(true);
     expect(isTreatmentOnlyProduct(normalItem)).toBe(false);
+
+    const seededRejosTiras = SEED_CAPTURE_PRODUCTS.find(
+      (product) => product.productId === "rejos-tiras-tratamiento",
+    );
+    expect(seededRejosTiras).toBeDefined();
+    expect(isTreatmentOnlyProduct(seededRejosTiras!)).toBe(true);
   });
 
   it("formats display status", () => {

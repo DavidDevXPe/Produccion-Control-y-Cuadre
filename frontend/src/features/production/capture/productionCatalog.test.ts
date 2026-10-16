@@ -58,8 +58,8 @@ describe("active capture catalog", () => {
       expect.arrayContaining([...SEED_CAPTURE_PRODUCTS]),
     );
     expect(CAPTURE_CATALOG_ITEMS).toHaveLength(SEED_CAPTURE_PRODUCTS.length);
-    expect(PRODUCTION_CATALOG_ITEMS.length).toBeGreaterThan(
-      CAPTURE_CATALOG_ITEMS.length,
+    expect(PRODUCTION_CATALOG_ITEMS).toEqual(
+      expect.arrayContaining([expect.objectContaining({ productId: "pico-crudo" })]),
     );
   });
 
@@ -156,6 +156,22 @@ describe("active capture catalog", () => {
           product.productId.trim().length > 0,
       ),
     ).toBe(true);
+  });
+
+  it("includes Rejos Tiras as an official treatment product in the Rejos family", () => {
+    expect(SEED_CAPTURE_PRODUCTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "rejos-tiras-tratamiento",
+          productName: "REJOS TIRAS (EN TRATAMIENTO)",
+          canonicalName: "REJOS TIRAS (EN TRATAMIENTO)",
+          familyId: "rejos-crudo",
+          familyName: "REJOS CRUDO",
+          summaryGroupId: "REJOS",
+          active: true,
+        }),
+      ]),
+    );
   });
 
   it("does not assign incomplete imported fragments to Aleta or Manto by default", () => {

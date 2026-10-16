@@ -36,6 +36,7 @@ const seedNames = [
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE CORONA (EN TRATAMIENTO)", "REJOS"],
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE MEDIA (EN TRATAMIENTO)", "REJOS"],
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE TERMINAL (EN TRATAMIENTO)", "REJOS"],
+  ["REJOS TIRAS (EN TRATAMIENTO)", "REJOS"],
   ["BOTON USA SM CP ST (EN TRATAMIENTO)", "BOTON"],
   ["BOTON ESPAÑA SM SP ST (TRATAMIENTO)", "BOTON"],
   [
@@ -113,6 +114,7 @@ const seedIds = [
   "rejos-seccionados-1-2-corona-tratamiento",
   "rejos-seccionados-1-2-media-tratamiento",
   "rejos-seccionados-1-2-terminal-tratamiento",
+  "rejos-tiras-tratamiento",
   "boton-usa-sm-cp-tratamiento",
   "boton-espana-sm-sp-st-tratamiento",
   "rejo-bailarina-500-1000",
