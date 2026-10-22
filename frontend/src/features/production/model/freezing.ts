@@ -1,4 +1,9 @@
-import { calculateProductionDay, kg100, sumKg100 } from "./calculations";
+import {
+  calculateProductionDay,
+  calculateShiftEntry,
+  kg100,
+  sumKg100,
+} from "./calculations";
 import {
   getPreviousProcess,
   getProductionProcess,
@@ -52,6 +57,18 @@ export interface FreezingAvailabilityPosition {
   readonly excessKg100: Kg100;
 }
 
+export interface FreezingDayOriginUsage {
+  readonly originDayId: string;
+  readonly originDate: string;
+  readonly familyId: string;
+  readonly familyName: string;
+  readonly productId: string;
+  readonly productName: string;
+  readonly availableAtStartKg100: Kg100;
+  readonly frozenThisDayKg100: Kg100;
+  readonly pendingAfterKg100: Kg100;
+}
+
 export interface FreezingComparisonRow {
   readonly id: string;
   readonly label: string;
@@ -59,6 +76,8 @@ export interface FreezingComparisonRow {
   readonly frozenKg100: Kg100;
   readonly pendingKg100: Kg100;
   readonly unexplainedDifferenceKg100: Kg100;
+  /** Freezing report amount attributed to Packing origins in this period. */
+  readonly linkedKg100: Kg100;
   /** Linked to Packing origins above the physical Freezing report. */
   readonly linkageExcessKg100: Kg100;
 }
@@ -171,7 +190,18 @@ export function calculateStageAvailability(
       getProductionProcess(day) === targetProcess && (!asOfDate || day.date <= asOfDate),
   );
 
-  return sourceDays.flatMap(({ day: originDay, calculation }) =>
+  const sameDayPhysicalRemaining = new Map<
+    string,
+    { DAY: Kg100; NIGHT: Kg100 }
+  >()
+  const orderedSourceDays = [...sourceDays].sort((first, second) => {
+    const firstIsSameDay = consumingDays.some((day) => day.date === first.day.date)
+    const secondIsSameDay = consumingDays.some((day) => day.date === second.day.date)
+    if (firstIsSameDay !== secondIsSameDay) return firstIsSameDay ? -1 : 1
+    return second.day.date.localeCompare(first.day.date)
+  })
+
+  return orderedSourceDays.flatMap(({ day: originDay, calculation }) =>
     originDay.lines.flatMap((line, lineIndex) => {
       let source: PackingFreezingSource;
       if (sourceProcess === "PACKING") {
@@ -293,13 +323,33 @@ export function calculateStageAvailability(
             .map((u) => u.kg100),
         );
 
-        // The processed amount on the same day is the max of physical net vs explicit lots targeting originDay
+        const sameDayProductKey = `${sameDayConsuming.id}|${line.familyId}|${normalizeProductName(
+          matchingSameDayLines[0]?.productName ?? line.productName,
+        )}`
+        const physicalRemaining =
+          sameDayPhysicalRemaining.get(sameDayProductKey) ?? {
+            DAY: physicalSameDayDayKg100,
+            NIGHT: physicalSameDayNightKg100,
+          }
+
+        // One physical report can only be consumed once. Same-date origins
+        // are processed first; older origins receive only the remainder.
         sameDayDayKg100 = kg100(
-          Math.max(netPhysicalDayKg100, explicitDayKg100),
+          Math.min(
+            Math.max(netPhysicalDayKg100, explicitDayKg100),
+            physicalRemaining.DAY,
+          ),
         );
         sameDayNightKg100 = kg100(
-          Math.max(netPhysicalNightKg100, explicitNightKg100),
+          Math.min(
+            Math.max(netPhysicalNightKg100, explicitNightKg100),
+            physicalRemaining.NIGHT,
+          ),
         );
+        sameDayPhysicalRemaining.set(sameDayProductKey, {
+          DAY: kg100(physicalRemaining.DAY - sameDayDayKg100),
+          NIGHT: kg100(physicalRemaining.NIGHT - sameDayNightKg100),
+        });
       }
 
       // 2. Subsequent consuming days (consumingDay.date > originDay.date)
@@ -308,8 +358,12 @@ export function calculateStageAvailability(
         (day) => day.date > originDay.date,
       );
 
-      const subsequentMatchingUses = subsequentDays.flatMap((consumingDay) =>
-        normalizeBalanceLots(consumingDay.receivedBalanceLots).flatMap((lot) =>
+      let subsequentDayKg100 = kg100(0);
+      let subsequentNightKg100 = kg100(0);
+      for (const consumingDay of subsequentDays) {
+        const matchingUses = normalizeBalanceLots(
+          consumingDay.receivedBalanceLots,
+        ).flatMap((lot) =>
           lot.originDayId === originDay.id &&
           lot.familyId === line.familyId &&
           (productIdsEquivalent(
@@ -320,19 +374,39 @@ export function calculateStageAvailability(
               normalizeProductName(line.productName))
             ? lot.uses.filter((u) => u.targetDayId === consumingDay.id)
             : [],
-        ),
-      );
+        );
+        if (matchingUses.length === 0) continue;
 
-      const subsequentDayKg100 = sumKg100(
-        subsequentMatchingUses
-          .filter((u) => u.shift === "DAY")
-          .map((u) => u.kg100),
-      );
-      const subsequentNightKg100 = sumKg100(
-        subsequentMatchingUses
-          .filter((u) => u.shift === "NIGHT")
-          .map((u) => u.kg100),
-      );
+        const matchingLine = consumingDay.lines.find(
+          (candidate) =>
+            candidate.familyId === line.familyId &&
+            (productIdsEquivalent(candidate.productId, line.productId) ||
+              normalizeProductName(candidate.productName) ===
+                normalizeProductName(line.productName)),
+        );
+        const capacityKey = `${consumingDay.id}|${line.familyId}|${normalizeProductName(
+          matchingLine?.productName ?? line.productName,
+        )}`;
+        const physicalRemaining =
+          sameDayPhysicalRemaining.get(capacityKey) ?? {
+            DAY: matchingLine?.shifts.DAY.reportedKg100 ?? kg100(0),
+            NIGHT: matchingLine?.shifts.NIGHT.reportedKg100 ?? kg100(0),
+          };
+        const requestedDay = sumKg100(
+          matchingUses.filter((use) => use.shift === "DAY").map((use) => use.kg100),
+        );
+        const requestedNight = sumKg100(
+          matchingUses.filter((use) => use.shift === "NIGHT").map((use) => use.kg100),
+        );
+        const acceptedDay = kg100(Math.min(requestedDay, physicalRemaining.DAY));
+        const acceptedNight = kg100(Math.min(requestedNight, physicalRemaining.NIGHT));
+        subsequentDayKg100 = kg100(subsequentDayKg100 + acceptedDay);
+        subsequentNightKg100 = kg100(subsequentNightKg100 + acceptedNight);
+        sameDayPhysicalRemaining.set(capacityKey, {
+          DAY: kg100(physicalRemaining.DAY - acceptedDay),
+          NIGHT: kg100(physicalRemaining.NIGHT - acceptedNight),
+        });
+      }
 
       const processedDayKg100 = sumKg100([
         sameDayDayKg100,
@@ -381,8 +455,61 @@ export function calculateFreezingAvailability(
   return calculateStageAvailability("FREEZING", productionDays, asOfDate);
 }
 
+/**
+ * Returns the origin balances consumed by one Freezing day. Snapshots on the
+ * previous and current dates keep direct same-day Packing consumption visible
+ * without requiring it to be persisted as a previous-balance lot.
+ */
+export function calculateFreezingDayOriginUsage(
+  productionDays: readonly ProductionDay[],
+  freezingDate: string,
+): readonly FreezingDayOriginUsage[] {
+  const previousDateValue = new Date(`${freezingDate}T00:00:00.000Z`);
+  previousDateValue.setUTCDate(previousDateValue.getUTCDate() - 1);
+  const previousDate = previousDateValue.toISOString().slice(0, 10);
+
+  const previousPositions = calculateFreezingAvailability(
+    productionDays,
+    previousDate,
+  );
+  const previousByKey = new Map(
+    previousPositions.map((position) => [
+      `${position.originDayId}|${position.familyId}|${position.productId}`,
+      position,
+    ] as const),
+  );
+
+  return calculateFreezingAvailability(productionDays, freezingDate).map(
+    (position) => {
+      const previous = previousByKey.get(
+        `${position.originDayId}|${position.familyId}|${position.productId}`,
+      );
+      const availableAtStartKg100 =
+        position.originDate === freezingDate
+          ? position.generatedKg100
+          : (previous?.pendingKg100 ?? kg100(0));
+      const frozenBeforeDayKg100 = previous?.processedTotalKg100 ?? kg100(0);
+
+      return {
+        originDayId: position.originDayId,
+        originDate: position.originDate,
+        familyId: position.familyId,
+        familyName: position.familyName,
+        productId: position.productId,
+        productName: position.productName,
+        availableAtStartKg100,
+        frozenThisDayKg100: kg100(
+          Math.max(position.processedTotalKg100 - frozenBeforeDayKg100, 0),
+        ),
+        pendingAfterKg100: position.pendingKg100,
+      };
+    },
+  );
+}
+
 interface ComparisonAdjustment {
   label: string;
+  linkedKg100: Kg100;
   /** Physical Freezing quantity without a Packing origin. */
   unlinkedKg100: Kg100;
   /** Quantity linked to Packing origins above the physical Freezing report. */
@@ -395,15 +522,44 @@ function addAdjustment(
   label: string,
   unlinkedKg100: Kg100,
   linkageExcessKg100: Kg100,
+  linkedKg100: Kg100 = kg100(0),
 ): void {
   const current = adjustments.get(id);
   adjustments.set(id, {
     label,
+    linkedKg100: kg100((current?.linkedKg100 ?? 0) + linkedKg100),
     unlinkedKg100: kg100((current?.unlinkedKg100 ?? 0) + unlinkedKg100),
     linkageExcessKg100: kg100(
       (current?.linkageExcessKg100 ?? 0) + linkageExcessKg100,
     ),
   });
+}
+
+function balanceUseHasPhysicalReport(
+  day: ProductionDay,
+  lot: (typeof day.receivedBalanceLots)[number],
+  use: (typeof lot.uses)[number],
+): boolean {
+  const matchingLines = day.lines.filter(
+    (line) =>
+      line.familyId === lot.familyId &&
+      (productIdsEquivalent(line.productId, lot.productId) ||
+        productIdsEquivalent(
+          line.productId,
+          lot.sourceProductId ?? lot.productId,
+        )),
+  );
+
+  if (matchingLines.length > 0) {
+    return matchingLines.some(
+      (line) => calculateShiftEntry(line.shifts[use.shift]).ownProductionKg100 > 0,
+    );
+  }
+
+  // Keep detecting a genuine orphan link when the shift reported production,
+  // but do not mistake a merely received balance on a zero-production day for
+  // product already frozen.
+  return day.declaredShiftTotalsKg100[use.shift] > 0;
 }
 
 function aggregateComparisonRows(
@@ -437,12 +593,17 @@ function aggregateComparisonRows(
       unexplainedDifferenceKg100: kg100(
         packedKg100 - frozenKg100 - pendingKg100,
       ),
+      linkedKg100: kg100(0),
       linkageExcessKg100: kg100(0),
     });
   }
 
   for (const [id, adjustment] of adjustmentsById) {
-    if (adjustment.unlinkedKg100 === 0 && adjustment.linkageExcessKg100 === 0) {
+    if (
+      adjustment.linkedKg100 === 0 &&
+      adjustment.unlinkedKg100 === 0 &&
+      adjustment.linkageExcessKg100 === 0
+    ) {
       continue;
     }
 
@@ -455,6 +616,7 @@ function aggregateComparisonRows(
             unexplainedDifferenceKg100: kg100(
               current.unexplainedDifferenceKg100 - adjustment.unlinkedKg100,
             ),
+            linkedKg100: adjustment.linkedKg100,
             linkageExcessKg100: adjustment.linkageExcessKg100,
           }
         : {
@@ -464,6 +626,7 @@ function aggregateComparisonRows(
             frozenKg100: kg100(0),
             pendingKg100: kg100(0),
             unexplainedDifferenceKg100: kg100(-adjustment.unlinkedKg100),
+            linkedKg100: adjustment.linkedKg100,
             linkageExcessKg100: adjustment.linkageExcessKg100,
           },
     );
@@ -526,7 +689,11 @@ export function calculateFreezingComparison(
   for (const day of freezingDaysInPeriod) {
     const lots = normalizeBalanceLots(day.receivedBalanceLots);
     const usesForDay = (lot: (typeof lots)[number]) =>
-      lot.uses.filter((use) => use.targetDayId === day.id);
+      lot.uses.filter(
+        (use) =>
+          use.targetDayId === day.id &&
+          balanceUseHasPhysicalReport(day, lot, use),
+      );
 
     for (const line of day.lines) {
       const physicalKg100 = sumKg100([
@@ -542,13 +709,58 @@ export function calculateFreezingComparison(
           )
           .flatMap((lot) => usesForDay(lot).map((use) => use.kg100)),
       );
+      const sameDayPackingPositions = positions.filter(
+        (position) =>
+          position.originDate === day.date &&
+          position.familyId === line.familyId &&
+          productIdsEquivalent(position.productId, line.productId) &&
+          position.generatedKg100 > 0,
+      );
+      const sameDayPackingKg100 = sumKg100(
+        sameDayPackingPositions.map((position) => position.generatedKg100),
+      );
+      const sameDayOriginIds = new Set(
+        sameDayPackingPositions.map((position) => position.originDayId),
+      );
+      const explicitlyLinkedFromSameDayKg100 = sumKg100(
+        lots
+          .filter(
+            (lot) =>
+              sameDayOriginIds.has(lot.originDayId) &&
+              lot.familyId === line.familyId &&
+              productIdsEquivalent(
+                lot.sourceProductId ?? lot.productId,
+                line.productId,
+              ),
+          )
+          .flatMap((lot) => usesForDay(lot).map((use) => use.kg100)),
+      );
+      const remainingSameDayPackingKg100 = kg100(
+        Math.max(sameDayPackingKg100 - explicitlyLinkedFromSameDayKg100, 0),
+      );
+      const sameDayDirectKg100 =
+        sameDayPackingKg100 > 0
+          ? kg100(
+            Math.min(
+              Math.max(physicalKg100 - linkedKg100, 0),
+              remainingSameDayPackingKg100,
+            ),
+          )
+          : kg100(0);
+      const attributableLinkedKg100 = kg100(
+        linkedKg100 + sameDayDirectKg100,
+      );
       // Both differences are kept as separate non-negative quantities: neither
       // one is a clamp that hides the other.
-      const unlinkedKg100 = kg100(Math.max(physicalKg100 - linkedKg100, 0));
-      const excessKg100 = kg100(Math.max(linkedKg100 - physicalKg100, 0));
+      const unlinkedKg100 = kg100(
+        Math.max(physicalKg100 - attributableLinkedKg100, 0),
+      );
+      const excessKg100 = kg100(
+        Math.max(attributableLinkedKg100 - physicalKg100, 0),
+      );
 
       physicalKg100ByLine.push(physicalKg100);
-      linkedKg100ByLine.push(linkedKg100);
+      linkedKg100ByLine.push(attributableLinkedKg100);
       unlinkedKg100ByLine.push(unlinkedKg100);
       excessKg100ByLine.push(excessKg100);
       addAdjustment(
@@ -557,6 +769,7 @@ export function calculateFreezingComparison(
         line.familyName,
         unlinkedKg100,
         excessKg100,
+        attributableLinkedKg100,
       );
       addAdjustment(
         adjustmentsByProduct,
@@ -564,6 +777,7 @@ export function calculateFreezingComparison(
         line.productName,
         unlinkedKg100,
         excessKg100,
+        attributableLinkedKg100,
       );
     }
 
@@ -587,12 +801,14 @@ export function calculateFreezingComparison(
         lot.familyId,
         kg100(0),
         orphanKg100,
+        orphanKg100,
       );
       addAdjustment(
         adjustmentsByProduct,
         lot.productId,
         lot.productId,
         kg100(0),
+        orphanKg100,
         orphanKg100,
       );
     }

@@ -39,6 +39,14 @@ export interface PendingFamilyBalance {
   productIds: Set<string>
 }
 
+export interface PackedFamilySummary {
+  familyId: string
+  familyName: string
+  packedKg100: ReturnType<typeof kg100>
+  sharePercent: number
+  productIds: Set<string>
+}
+
 export interface WeeklyProductionDataPoint {
   id: string
   label: string
@@ -203,14 +211,76 @@ export function useDashboardData() {
       0,
     )
 
+    const packedFamiliesAll = (() => {
+      const families = new Map<
+        string,
+        {
+          familyId: string
+          familyName: string
+          packedKg100: ReturnType<typeof kg100>
+          productIds: Set<string>
+        }
+      >()
+
+      for (const { calculation } of packingCalculatedDays) {
+        for (const product of calculation.products) {
+          if (product.declaredFinishedKg100 <= 0) continue
+
+          const current = families.get(product.familyId)
+
+          if (current) {
+            current.packedKg100 = kg100(
+              current.packedKg100 + product.declaredFinishedKg100,
+            )
+            current.productIds.add(product.productId)
+            continue
+          }
+
+          families.set(product.familyId, {
+            familyId: product.familyId,
+            familyName: product.familyName,
+            packedKg100: product.declaredFinishedKg100,
+            productIds: new Set([product.productId]),
+          })
+        }
+      }
+
+      return [...families.values()]
+        .sort((first, second) => second.packedKg100 - first.packedKg100)
+        .map(
+          (family): PackedFamilySummary => ({
+            ...family,
+            sharePercent:
+              packedWeekKg100 > 0
+                ? (family.packedKg100 / packedWeekKg100) * 100
+                : 0,
+          }),
+        )
+    })()
+
+    const packedFamilies = packedFamiliesAll.slice(0, 4)
+    const hiddenPackedFamilyCount = Math.max(
+      packedFamiliesAll.length - packedFamilies.length,
+      0,
+    )
+
+    const weekDistinctProductCount = new Set(
+      [...packingDays, ...freezingDays].flatMap((day) =>
+        day.lines.map((line) => line.productId),
+      ),
+    ).size
+
     const attentionItems: readonly DashboardAttentionItem[] = buildDashboardAttentionItems({
       packingDays: packingCalculatedDays,
       freezingDays: freezingCalculatedDays,
       comparison: processComparison,
-      freezingPositions: freezingAvailability,
+      freezingPositions: weekFreezingPositions,
       weekEndDate: packingWeek.period.endDate,
     })
-    const attention: DashboardAttentionSummary = summarizeDashboardAttention(attentionItems)
+    const attention: DashboardAttentionSummary = summarizeDashboardAttention(
+      attentionItems,
+      attentionItems.length,
+    )
 
     const operationStatus: { tone: StatusBadgeTone; label: string } =
       attention.criticalCount > 0 || notBalancedJourneyCount > 0
@@ -297,6 +367,10 @@ export function useDashboardData() {
       pendingBalancesByFamilyAll,
       pendingBalancesByFamily,
       hiddenPendingFamilyCount,
+      packedFamiliesAll,
+      packedFamilies,
+      hiddenPackedFamilyCount,
+      weekDistinctProductCount,
       attentionItems,
       attention,
       operationStatus,

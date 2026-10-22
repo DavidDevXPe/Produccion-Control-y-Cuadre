@@ -75,6 +75,12 @@ export function ProductionDayRow({
       : journey.status === 'NOT_BALANCED'
         ? 'text-rose-700'
         : 'text-amber-700'
+  const freezingDifferenceClass =
+    item.freezingDifferenceKg100 === 0
+      ? 'text-emerald-700'
+      : item.freezingDifferenceKg100 < 0
+        ? 'text-rose-700'
+        : 'text-amber-700'
 
   return (
     <tr
@@ -133,16 +139,14 @@ export function ProductionDayRow({
       <td
         className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
           isFreezing
-            ? calculation.ownTurnProductionKg100 === 0
-              ? 'text-emerald-700'
-              : 'text-amber-700'
+            ? freezingDifferenceClass
             : differenceClass
         }`}
       >
         <QuantityValue
           value={
             isFreezing
-              ? calculation.ownTurnProductionKg100
+              ? item.freezingDifferenceKg100
               : calculation.differenceKg100
           }
         />
@@ -158,7 +162,7 @@ export function ProductionDayRow({
         {isFreezing ? (
           <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700">
             <QuantityValue
-              value={calculation.processedPreviousBalanceKg100}
+              value={item.freezingLinkedKg100}
             />
           </div>
         ) : isBalanceOnly ? (
@@ -187,7 +191,7 @@ export function ProductionDayRow({
         )}
       </td>
       <td className="px-3 py-3 text-center align-middle">
-        <div className="flex w-full items-center justify-center gap-1.5">
+        <div className="flex w-full items-center justify-center">
           <ActionLink
             to={`${
               isClosed || activeWeekReadOnly || isReadyToClose
@@ -204,11 +208,15 @@ export function ProductionDayRow({
                 : 'Seguir cuadrando'}
             <ArrowRight className="size-4" aria-hidden="true" />
           </ActionLink>
+        </div>
+      </td>
+      <td className="px-2 py-3 text-center align-middle">
+        <div className="flex w-full items-center justify-center">
           {!isClosed && !activeWeekReadOnly && onDeleteDay ? (
             <button
               type="button"
               onClick={() => setIsDeleteOpen(true)}
-              className="inline-flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-ui-line-dark dark:bg-ui-surface-dark dark:text-ui-text-dark-pale dark:hover:border-rose-500/50 dark:hover:bg-rose-500/10 dark:hover:text-rose-300 dark:focus-visible:ring-offset-ui-surface-dark-deep"
               title={`Eliminar jornada del ${formatIsoDateCompact(day.date)}`}
               aria-label={`Eliminar jornada del ${formatIsoDateCompact(day.date)}`}
             >

@@ -12,6 +12,7 @@ export interface ProductPickerMeta {
 export interface ProductPickerProps<T> {
   items: readonly T[]
   getItemId: (item: T) => string
+  getItemRecentId?: ((item: T) => string) | undefined
   getItemLabel: (item: T) => string
   getItemMeta?: ((item: T) => ProductPickerMeta) | undefined
   onAdd: (item: T) => void
@@ -32,6 +33,7 @@ export interface ProductPickerProps<T> {
 export function ProductPicker<T>({
   items,
   getItemId,
+  getItemRecentId,
   getItemLabel,
   getItemMeta,
   onAdd,
@@ -92,6 +94,32 @@ export function ProductPicker<T>({
     })
   }, [items, getItemId, getItemLabel, getItemMeta])
 
+  const recentOptionValues = useMemo(() => {
+    if (!scopeKey || recentIds.length === 0) return []
+
+    const optionByRecentId = new Map<string, string>()
+    const recentIdByOption = new Map<string, string>()
+    for (const item of items) {
+      const optionValue = getItemId(item)
+      const recentId = getItemRecentId?.(item) ?? getItemId(item)
+      if (!optionByRecentId.has(recentId)) {
+        optionByRecentId.set(recentId, optionValue)
+      }
+      optionByRecentId.set(optionValue, optionValue)
+      recentIdByOption.set(optionValue, recentId)
+    }
+
+    const addedRecentIds = new Set<string>()
+    return recentIds.flatMap((recentId) => {
+      const optionValue = optionByRecentId.get(recentId)
+      if (!optionValue) return []
+      const canonicalRecentId = recentIdByOption.get(optionValue) ?? recentId
+      if (addedRecentIds.has(canonicalRecentId)) return []
+      addedRecentIds.add(canonicalRecentId)
+      return [optionValue]
+    })
+  }, [getItemId, getItemRecentId, items, recentIds, scopeKey])
+
   const handleActiveOptionChange = useCallback(
     (option: ComboboxOption | null) => {
       if (option) {
@@ -111,18 +139,21 @@ export function ProductPicker<T>({
         onAdd(found)
         setSelectedItem(null)
         if (scopeKey) {
-          addRecent(option.value)
+          addRecent(getItemRecentId?.(found) ?? option.value, option.value)
         }
       }
     },
-    [addRecent, itemsMap, onAdd, scopeKey],
+    [addRecent, getItemRecentId, itemsMap, onAdd, scopeKey],
   )
 
   const handleButtonClick = () => {
     if (disabled || !selectedItem) return
     onAdd(selectedItem)
     if (scopeKey) {
-      addRecent(getItemId(selectedItem))
+      addRecent(
+        getItemRecentId?.(selectedItem) ?? getItemId(selectedItem),
+        getItemId(selectedItem),
+      )
     }
     setSelectedItem(null)
   }
@@ -149,7 +180,7 @@ export function ProductPicker<T>({
           placeholder={placeholder}
           disabled={disabled}
           noResultsText={noResultsText}
-          recentValues={scopeKey ? recentIds : []}
+          recentValues={recentOptionValues}
           recentSectionTitle="Usados recientemente"
           searchInputRef={searchInputRef}
         />

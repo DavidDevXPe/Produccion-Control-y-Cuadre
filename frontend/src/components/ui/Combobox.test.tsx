@@ -144,6 +144,7 @@ describe('Combobox component', () => {
     fireEvent.focus(input)
 
     expect(screen.getByText('Usados recientemente')).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toHaveClass('scrollbar-subtle')
     const options = screen.getAllByRole('option')
     // The first option should be the recent one (p-3)
     expect(options[0]).toHaveTextContent('Manto limpio bloque')

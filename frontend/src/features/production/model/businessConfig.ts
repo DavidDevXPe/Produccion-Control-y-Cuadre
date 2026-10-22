@@ -40,6 +40,8 @@ const ANILLAS_PROCESS_ORIGIN_PRODUCT_IDS = new Set([
   'boton-usa-sm-cp-tratamiento',
   'boton-usa-cm-sp-tratamiento',
   'boton-usa-sm-sp-tratamiento',
+  'boton-crudo-block-espana-p-sm-cp-st',
+  'boton-crudo-block-polar-sm-sp-st',
   'recorte-crudo-anillas-sm-sp-st',
   'recorte-crudo-anillas-cm-sp-st',
   'membranas-cocidas',

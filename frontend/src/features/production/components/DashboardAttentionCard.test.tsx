@@ -21,22 +21,17 @@ describe('DashboardAttentionCard', () => {
     ...overrides,
   })
 
-  it('renders empty state when there are no attention items', () => {
+  it('renders nothing when there are no attention items', () => {
     const summary = summarizeDashboardAttention([])
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <DashboardAttentionCard attentionItems={[]} attention={summary} />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Alertas y excepciones')).toBeInTheDocument()
-    expect(screen.getByText('SIN ALERTAS')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'No hay observaciones ni validaciones bloqueantes detectadas.',
-      ),
-    ).toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText('Alertas y excepciones')).not.toBeInTheDocument()
   })
 
   it('renders critical items with critical badge and danger tone styles', () => {
@@ -198,5 +193,28 @@ describe('DashboardAttentionCard', () => {
     expect(
       screen.getByText('Hay 2 eventos adicionales de la semana.'),
     ).toBeInTheDocument()
+  })
+
+  it('applies scrollable container styling with subtle scrollbar when multiple alerts are present', () => {
+    const items = [
+      createItem({ key: '1', title: 'Alerta 1' }),
+      createItem({ key: '2', title: 'Alerta 2' }),
+      createItem({ key: '3', title: 'Alerta 3' }),
+      createItem({ key: '4', title: 'Alerta 4' }),
+    ]
+    const summary = summarizeDashboardAttention(items, items.length)
+
+    render(
+      <MemoryRouter>
+        <DashboardAttentionCard
+          attentionItems={items}
+          attention={summary}
+        />
+      </MemoryRouter>,
+    )
+
+    const list = screen.getByTestId('dashboard-attention-list')
+    expect(list).toHaveClass('max-h-[16rem]', 'overflow-y-auto', 'scrollbar-subtle')
+    expect(screen.getAllByRole('listitem')).toHaveLength(4)
   })
 })

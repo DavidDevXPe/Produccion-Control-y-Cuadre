@@ -251,7 +251,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
           role="listbox"
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 scrollbar-subtle dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
         >
           {flatSelectable.length === 0 ? (
             <div className="px-3 py-2 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">

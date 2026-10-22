@@ -1,5 +1,6 @@
 import { ChangeEvent, DragEvent, useState } from 'react'
 import { readStorageQuarantine } from '../../../storage/storageQuarantine'
+import { clearTrabundaStorage } from '../../../storage/trabundaStorage'
 import {
   createTrabundaBackup,
   downloadJsonFile,
@@ -77,15 +78,20 @@ export function useDataBackups() {
 
   const confirmResetData = () => {
     downloadJsonFile(backupFilename('trabunda-respaldo-autoguardado'), createTrabundaBackup())
-    localStorage.clear()
+    clearTrabundaStorage()
     window.location.reload()
   }
 
   const confirmRestore = () => {
     if (!preview) return
-    downloadJsonFile(backupFilename('trabunda-preimportacion'), createTrabundaBackup())
-    restoreTrabundaBackup(preview)
-    window.location.reload()
+    setError(null)
+    try {
+      downloadJsonFile(backupFilename('trabunda-preimportacion'), createTrabundaBackup())
+      restoreTrabundaBackup(preview)
+      window.location.reload()
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'No se pudo restaurar el respaldo.')
+    }
   }
 
   return {

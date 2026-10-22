@@ -22,6 +22,7 @@ export const CATALOG_FAMILIES: readonly CatalogFamily[] = [
   { id: "aleta-cruda", name: "ALETA CRUDA", summaryGroupId: "ALETA" },
   { id: "manto-crudo", name: "MANTO CRUDO", summaryGroupId: "MANTO" },
   { id: "anillas", name: "ANILLAS", summaryGroupId: "ANILLAS" },
+  { id: "boton", name: "BOTON", summaryGroupId: "BOTON" },
   {
     id: "nuca-semilimpia",
     name: "NUCA SEMILIMPIA",

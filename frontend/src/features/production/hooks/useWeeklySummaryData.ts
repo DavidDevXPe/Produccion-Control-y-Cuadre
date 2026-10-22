@@ -274,9 +274,7 @@ export function useWeeklySummaryData() {
 
   const handleExportExcel = async () => {
     if (view === 'COMPARISON' || view === 'VIDEOJET' || view === 'PALLETIZING') {
-      const { downloadPalletizingReconciliationWorkbook } = await import(
-        '../export/palletizingReconciliationWorkbook'
-      )
+      const { downloadPalletizingReconciliationWorkbook } = await import('../export/palletizingReconciliationWorkbook')
       const filename =
         view === 'VIDEOJET'
           ? `Control_Videojet_Semana_${activeWeek.number}.xlsx`

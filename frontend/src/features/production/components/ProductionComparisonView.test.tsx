@@ -74,6 +74,8 @@ describe('production comparison view', () => {
     expect(
       within(table).getByRole('columnheader', { name: 'Exceso vinculado' }),
     ).toBeInTheDocument()
-    expect(within(table).getByText('20,000.00 kg')).toBeInTheDocument()
+    const row = within(table).getByRole('row', { name: /RECORTE CRUDO/ })
+    const cells = within(row).getAllByRole('cell')
+    expect(cells[4]).toHaveTextContent('20,000.00 kg')
   })
 })

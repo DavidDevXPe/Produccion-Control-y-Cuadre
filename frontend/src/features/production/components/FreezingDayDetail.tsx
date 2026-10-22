@@ -1,5 +1,10 @@
 import { kg100, sumKg100 } from '../model/calculations'
-import { calculateFrozenPhysicalKg100 } from '../model/freezing'
+import {
+  calculateFreezingComparison,
+  calculateFreezingDayOriginUsage,
+  calculateFrozenPhysicalKg100,
+} from '../model/freezing'
+import { productIdsEquivalent } from '../model/productIdentity'
 import { getProductionDayOperationalState } from '../model/productionLifecycle'
 import type { ProductionDay } from '../model/types'
 import { FreezingClosureWarningsCard } from './freezingDayDetail/FreezingClosureWarningsCard'
@@ -36,7 +41,11 @@ export function FreezingDayDetail({
   const operationalState = getProductionDayOperationalState(productionDay)
   const calculation = operationalState.calculation
   const physicalKg100 = calculateFrozenPhysicalKg100(productionDay)
-  const linkedKg100 = calculation.processedPreviousBalanceKg100
+  const freezingComparison = calculateFreezingComparison(allProductionDays, {
+    startDate: productionDay.date,
+    endDate: productionDay.date,
+  })
+  const linkedKg100 = freezingComparison.linkedKg100
   const differenceKg100 = kg100(physicalKg100 - linkedKg100)
   const isBalanced = operationalState.isBalanced && differenceKg100 === 0
   const isClosed = operationalState.lifecycle === 'CLOSED'
@@ -71,16 +80,55 @@ export function FreezingDayDetail({
     }
   })
 
-  const previousOriginUsedKg100 = sumKg100(
+  const originUsageRows = calculateFreezingDayOriginUsage(
+    allProductionDays,
+    productionDay.date,
+  )
+    .filter(
+      (usage) =>
+        usage.frozenThisDayKg100 > 0 ||
+        productionDay.receivedBalanceLots.some(
+          (lot) =>
+            lot.originDayId === usage.originDayId &&
+            lot.familyId === usage.familyId &&
+            productIdsEquivalent(
+              lot.sourceProductId ?? lot.productId,
+              usage.productId,
+            ),
+        ),
+    )
+    .map((usage) => {
+      const originDay = allProductionDays.find(
+        (candidate) => candidate.id === usage.originDayId,
+      )
+      return {
+        id: `${usage.originDayId}|${usage.productId}`,
+        productName: usage.productName,
+        originDay,
+        originDayId: usage.originDayId,
+        availableAtStartKg100: usage.availableAtStartKg100,
+        frozenThisDayKg100: usage.frozenThisDayKg100,
+        pendingAfterKg100: usage.pendingAfterKg100,
+        originKind:
+          usage.originDate < productionDay.date
+            ? ('PREVIOUS' as const)
+            : usage.originDate === productionDay.date
+              ? ('CURRENT' as const)
+              : ('UNKNOWN' as const),
+      }
+    })
+
+  const explicitlyUsedPreviousOriginKg100 = sumKg100(
     freezingOriginRows
       .filter((row) => row.originKind === 'PREVIOUS')
       .map((row) => row.usedKg100),
   )
+  const previousOriginUsedKg100 = kg100(
+    Math.min(explicitlyUsedPreviousOriginKg100, linkedKg100),
+  )
 
-  const currentOriginUsedKg100 = sumKg100(
-    freezingOriginRows
-      .filter((row) => row.originKind === 'CURRENT')
-      .map((row) => row.usedKg100),
+  const currentOriginUsedKg100 = kg100(
+    Math.max(linkedKg100 - previousOriginUsedKg100, 0),
   )
 
   const unsupportedFrozenKg100 = kg100(Math.max(differenceKg100, 0))
@@ -153,12 +201,12 @@ export function FreezingDayDetail({
 
       <FreezingProductsTable
         lines={productionDay.lines}
-        receivedBalanceLots={productionDay.receivedBalanceLots}
+        linkedByProduct={freezingComparison.byProduct}
       />
 
       <FreezingFifoOriginTable
-        freezingOriginRows={freezingOriginRows}
-        hasReceivedLots={productionDay.receivedBalanceLots.length > 0}
+        freezingOriginRows={originUsageRows}
+        hasOriginUsage={originUsageRows.length > 0}
       />
     </div>
   )

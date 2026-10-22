@@ -40,6 +40,14 @@ const seedNames = [
   ["BOTON USA SM CP ST (EN TRATAMIENTO)", "BOTON"],
   ["BOTON ESPAÑA SM SP ST (TRATAMIENTO)", "BOTON"],
   [
+    "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N",
+    "BOTON",
+  ],
+  [
+    "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+    "BOTON",
+  ],
+  [
     "REJOS CRUDOS CONGELADOS BLOCK S/TTO BAILARINA S/R 500 G - 1000 G SEMI LIMPIOS 100% P.N.",
     "REJOS",
   ],
@@ -61,6 +69,10 @@ const seedNames = [
   ],
   [
     "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P SM CP ST MIXTA 100% P.N.",
+    "ANILLAS",
+  ],
+  [
+    "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
     "ANILLAS",
   ],
   ["ANILLAS CRUDAS CONG. BLOCK C/TTO USA SM CP ST", "ANILLAS"],
@@ -117,12 +129,15 @@ const seedIds = [
   "rejos-tiras-tratamiento",
   "boton-usa-sm-cp-tratamiento",
   "boton-espana-sm-sp-st-tratamiento",
+  "boton-crudo-block-espana-p-sm-cp-st",
+  "boton-crudo-block-polar-sm-sp-st",
   "rejo-bailarina-500-1000",
   "anillas-espana-polar-mixta",
   "anillas-espana-segunda-mixta",
   "anillas-espana-cm-2da-mixta",
   "anillas-espana-p-cm-sp-st-mixta",
   "anillas-espana-p-sm-cp-st-mixta",
+  "anillas-espana-p-cm-cp-st-mixta",
   "anillas-block-tratamiento-usa-sm-cp-st",
   "anillas-block-tratamiento-usa-cm-sp-st",
   "anillas-block-tratamiento-usa-sm-sp-st",
@@ -213,7 +228,23 @@ export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] =
     aliases:
       seedIds[index] === "membranas-cocidas"
         ? ["MEMBRANAS COCIDAS CONGELADAS 100% P.N."]
-        : [],
+        : seedIds[index] === "boton-crudo-block-espana-p-sm-cp-st"
+          ? [
+              "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+              "BOTÓN CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+              "BOTÃ“N CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+            ]
+          : seedIds[index] === "boton-crudo-block-polar-sm-sp-st"
+            ? [
+                "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N",
+                "BOTÓN CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+                "BOTÃ“N CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+              ]
+            : seedIds[index] === "anillas-espana-p-cm-cp-st-mixta"
+              ? [
+                  "ANILLAS CRUDAS CONG. BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+                ]
+              : [],
     source: "CAPTURE" as const,
     createdAt: "2026-09-15T00:00:00.000Z",
     active: true,

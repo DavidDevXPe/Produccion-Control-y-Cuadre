@@ -736,4 +736,47 @@ describe("Packing to Freezing lifecycle", () => {
     expect(palletizingPositions[0]?.originDayId).toBe(videojetDay.productionDay.id);
     expect(palletizingPositions[0]?.pendingKg100).toBe(kg(25_000));
   });
+
+  it("prioritizes the same-date origin and does not count one report twice", () => {
+    const currentPacking = packingDay("2026-10-08", 1_820);
+    const previousPacking = packingDay("2026-10-07", 20);
+    const freezing = freezingDay("2026-10-08", 1_820, currentPacking);
+    const freezingWithUses: ProductionDay = {
+      ...freezing.productionDay,
+      receivedBalanceLots: [
+        {
+          id: "previous-balance",
+          process: "PACKING",
+          originDayId: previousPacking.id,
+          familyId: product.familyId,
+          productId: product.productId,
+          originalKg100: kg(20),
+          uses: [{ id: "previous-use", targetDayId: freezing.productionDay.id, shift: "DAY", kg100: kg(20) }],
+        },
+        {
+          id: "current-balance",
+          process: "PACKING",
+          originDayId: currentPacking.id,
+          familyId: product.familyId,
+          productId: product.productId,
+          originalKg100: kg(1_820),
+          uses: [{ id: "current-use", targetDayId: freezing.productionDay.id, shift: "DAY", kg100: kg(1_820) }],
+        },
+      ],
+    };
+
+    const positions = calculateFreezingAvailability([
+      previousPacking,
+      currentPacking,
+      freezingWithUses,
+    ]);
+    const current = positions.find((position) => position.originDayId === currentPacking.id);
+    const previous = positions.find((position) => position.originDayId === previousPacking.id);
+
+    expect(current?.processedTotalKg100).toBe(kg(1_820));
+    expect(previous?.processedTotalKg100).toBe(kg(0));
+    expect(positions.reduce((total, position) => total + position.processedTotalKg100, 0)).toBe(
+      kg(1_820),
+    );
+  });
 });

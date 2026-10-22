@@ -70,7 +70,7 @@ export function ProductionDaysTable({
           showEdgeIndicators={false}
           className="data-scroll-clean-edge"
         >
-          <table className="erp-table w-full min-w-[68rem] table-fixed border-collapse text-left">
+          <table className="erp-table w-full min-w-[72rem] table-fixed border-collapse text-center">
             <ProductionDaysTableHeader isFreezing={isFreezing} />
             <tbody>
               {registeredDays.map((item, idx) => (

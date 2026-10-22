@@ -7,6 +7,7 @@ import {
 } from '../../../storage/trabundaStorage'
 import { LEGACY_PRODUCT_ID_TO_CANONICAL } from '../../production/model/productIdentity'
 import type { ProductionDay } from '../../production/model/types'
+import { isProductionDay } from '../../production/model/productionDayValidation'
 
 export interface TrabundaBackupFile {
   readonly format: typeof TRABUNDA_BACKUP_FORMAT
@@ -47,6 +48,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
 
+function validateBackupData(data: TrabundaBackupFile['data']) {
+  const arrayKeys: readonly string[] = [productionDaysKey, performanceKey, productCatalogKey,
+    TRABUNDA_STORAGE_KEYS.legacyProductionCatalog, TRABUNDA_STORAGE_KEYS.storageQuarantine]
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value !== 'string') {
+      throw new Error(`El respaldo contiene un valor inválido en ${key}.`)
+    }
+    if (arrayKeys.includes(key) || key === closuresKey) {
+      let collection: unknown
+      try { collection = JSON.parse(value) } catch {
+        throw new Error(`El respaldo contiene JSON inválido en ${key}.`)
+      }
+      const valid = Array.isArray(collection)
+      if (!valid) throw new Error(`El respaldo contiene una estructura inválida en ${key}.`)
+      if (key === productionDaysKey && Array.isArray(collection)) {
+        for (const day of collection) {
+          if (!isProductionDay(day)) {
+            throw new Error('El respaldo contiene jornadas con una estructura inválida.')
+          }
+        }
+      }
+    }
+  }
+}
+
 function normalizeIncomingBackup(parsed: unknown): {
   backup: TrabundaBackupFile
   sourceFormat: TrabundaBackupPreview['sourceFormat']
@@ -58,6 +84,11 @@ function normalizeIncomingBackup(parsed: unknown): {
     isRecord(parsed.data)
   ) {
     const backupData = parsed.data
+    for (const key of TRABUNDA_BACKUP_STORAGE_KEYS) {
+      if (key in backupData && typeof backupData[key] !== 'string') {
+        throw new Error(`El respaldo contiene un valor inválido en ${key}.`)
+      }
+    }
 
     return {
       backup: {
@@ -78,7 +109,7 @@ function normalizeIncomingBackup(parsed: unknown): {
     }
   }
 
-  if (isRecord(parsed)) {
+  if (isRecord(parsed) && !('format' in parsed) && !('version' in parsed)) {
     const data = Object.fromEntries(
       TRABUNDA_BACKUP_STORAGE_KEYS.flatMap((key) => {
         const value = parsed[key]
@@ -160,6 +191,7 @@ export function createTrabundaBackup(storage = window.localStorage): TrabundaBac
 export function parseTrabundaBackup(text: string): TrabundaBackupPreview {
   const parsed = JSON.parse(text) as unknown
   const { backup, sourceFormat } = normalizeIncomingBackup(parsed)
+  validateBackupData(backup.data)
   const days = getProductionDays(backup.data)
   const dates = days.map((day) => day.date).filter(Boolean).sort()
   const performanceRecords =
@@ -167,8 +199,7 @@ export function parseTrabundaBackup(text: string): TrabundaBackupPreview {
   const catalogProducts =
     parseJson<unknown[]>(backup.data[productCatalogKey])?.length ?? 0
   const weekProcessClosures =
-    Object.keys(parseJson<Record<string, unknown>>(backup.data[closuresKey]) ?? {})
-      .length
+    parseJson<unknown[]>(backup.data[closuresKey])?.length ?? 0
   const detectedHistoricalProductIds = collectHistoricalIds(days)
   const detectedExternalOriginDayIds = collectExternalOrigins(days)
   const warnings: string[] = []
@@ -205,22 +236,42 @@ export function restoreTrabundaBackup(
   preview: TrabundaBackupPreview,
   storage = window.localStorage,
 ) {
+  const previousValues = new Map<TrabundaStorageKey, string | null>()
+  validateBackupData(preview.backup.data)
+
   for (const key of TRABUNDA_BACKUP_STORAGE_KEYS) {
-    const value = preview.backup.data[key]
-    if (typeof value === 'string') {
-      storage.setItem(key, value)
-    } else if (key !== TRABUNDA_STORAGE_KEYS.storageQuarantine) {
-      // The quarantine holds data the app skipped while loading; an older
-      // backup that predates it must not erase that safety copy.
-      storage.removeItem(key)
-    }
+    previousValues.set(key, storage.getItem(key))
   }
 
-  for (const key of Object.keys(preview.backup.data) as TrabundaStorageKey[]) {
-    const expected = preview.backup.data[key]
-    if (typeof expected === 'string' && storage.getItem(key) !== expected) {
-      throw new Error(`No se pudo verificar la clave ${key}.`)
+  try {
+    for (const key of TRABUNDA_BACKUP_STORAGE_KEYS) {
+      const value = preview.backup.data[key]
+      if (typeof value === 'string') {
+        storage.setItem(key, value)
+      } else if (key !== TRABUNDA_STORAGE_KEYS.storageQuarantine) {
+        // The quarantine holds data the app skipped while loading; an older
+        // backup that predates it must not erase that safety copy.
+        storage.removeItem(key)
+      }
     }
+
+    for (const key of Object.keys(preview.backup.data) as TrabundaStorageKey[]) {
+      const expected = preview.backup.data[key]
+      if (typeof expected === 'string' && storage.getItem(key) !== expected) {
+        throw new Error(`No se pudo verificar la clave ${key}.`)
+      }
+    }
+  } catch (error) {
+    for (const key of TRABUNDA_BACKUP_STORAGE_KEYS) {
+      const previousValue = previousValues.get(key) ?? null
+      if (previousValue === null) {
+        storage.removeItem(key)
+      } else {
+        storage.setItem(key, previousValue)
+      }
+    }
+
+    throw error
   }
 }
 

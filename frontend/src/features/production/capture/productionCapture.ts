@@ -2,6 +2,7 @@ import { formatIsoDate } from "../../../utils/formatters";
 import {
   calculateOutstandingBalances,
   calculateProductionDay,
+  calculateShiftEntry,
   kg,
   kg100,
   sumKg100,
@@ -415,11 +416,24 @@ export function createCaptureDraftFromDay(
         const originDay = allProductionDays.find(
           (day) => day.id === lot.originDayId,
         );
+        const hasPhysicalReportForShift = (shift: ShiftCode) =>
+          productionDay.lines.some(
+            (line) =>
+              line.familyId === lot.familyId &&
+              (productIdsEquivalent(line.productId, lot.productId) ||
+                productIdsEquivalent(
+                  line.productId,
+                  lot.sourceProductId ?? lot.productId,
+                )) &&
+              calculateShiftEntry(line.shifts[shift]).ownProductionKg100 > 0,
+          );
         const processedDayKg100 = sumKg100(
           lot.uses
             .filter(
               (use) =>
-                use.targetDayId === productionDay.id && use.shift === "DAY",
+                use.targetDayId === productionDay.id &&
+                use.shift === "DAY" &&
+                hasPhysicalReportForShift("DAY"),
             )
             .map((use) => use.kg100),
         );
@@ -427,7 +441,9 @@ export function createCaptureDraftFromDay(
           lot.uses
             .filter(
               (use) =>
-                use.targetDayId === productionDay.id && use.shift === "NIGHT",
+                use.targetDayId === productionDay.id &&
+                use.shift === "NIGHT" &&
+                hasPhysicalReportForShift("NIGHT"),
             )
             .map((use) => use.kg100),
         );

@@ -22,8 +22,22 @@ export function ProductionDaysTableFooter({
   freezingDifferenceKg100,
   balancedCount,
 }: ProductionDaysTableFooterProps) {
+  const totalDayShiftKg100 = sumKg100(
+    registeredDays.map(({ day }) => day.declaredShiftTotalsKg100.DAY),
+  )
+  const totalNightShiftKg100 = sumKg100(
+    registeredDays.map(({ day }) => day.declaredShiftTotalsKg100.NIGHT),
+  )
+  const differenceKg100 = isFreezing ? freezingDifferenceKg100 : weeklySummary.differenceKg100
+  const differenceClass =
+    differenceKg100 === 0
+      ? 'text-emerald-700'
+      : !isFreezing || differenceKg100 < 0
+        ? 'text-rose-700'
+        : 'text-amber-700'
+
   return (
-    <tfoot className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+    <tfoot className="border-t-2 border-slate-300 bg-slate-50 text-center font-bold">
       <tr>
         <th
           scope="row"
@@ -34,7 +48,9 @@ export function ProductionDaysTableFooter({
         <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-extrabold text-slate-950">
           <span className="number-tabular">
             {formatCentiKgValue(
-              isFreezing ? frozenPhysicalKg100 : weeklySummary.rawMaterialKg100,
+              isFreezing
+                ? totalDayShiftKg100
+                : weeklySummary.rawMaterialKg100,
             )}{' '}
             kg
           </span>
@@ -43,7 +59,7 @@ export function ProductionDaysTableFooter({
           <span className="number-tabular">
             {formatCentiKgValue(
               isFreezing
-                ? freezingLinkedKg100
+                ? totalNightShiftKg100
                 : weeklySummary.declaredFinishedKg100,
             )}{' '}
             kg
@@ -63,7 +79,9 @@ export function ProductionDaysTableFooter({
             kg
           </span>
         </td>
-        <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-extrabold text-emerald-700">
+        <td
+          className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-extrabold ${differenceClass}`}
+        >
           <span className="number-tabular">
             {formatCentiKgValue(
               isFreezing
@@ -76,13 +94,26 @@ export function ProductionDaysTableFooter({
         <td className="px-3 py-3 text-center align-middle text-xs font-semibold text-slate-600">
           {balancedCount} de {registeredDays.length} auditadas
         </td>
-        <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-extrabold text-brand-800">
-          {!isFreezing && weeklySummary.performance.percent !== null
-            ? formatRatioAsPercent(weeklySummary.performance.ratio)
-            : '—'}
+        <td
+          className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-extrabold ${
+            isFreezing ? 'text-slate-950' : 'text-brand-800'
+          }`}
+        >
+          {isFreezing ? (
+            <span className="number-tabular">
+              {formatCentiKgValue(freezingLinkedKg100)} kg
+            </span>
+          ) : weeklySummary.performance.percent !== null ? (
+            formatRatioAsPercent(weeklySummary.performance.ratio)
+          ) : (
+            '—'
+          )}
         </td>
         <td className="px-3 py-3 text-center align-middle text-xs font-semibold text-slate-500">
           {registeredDays.length} {registeredDays.length === 1 ? 'jornada' : 'jornadas'}
+        </td>
+        <td className="px-2 py-3 text-center align-middle text-xs text-slate-400">
+          —
         </td>
       </tr>
     </tfoot>

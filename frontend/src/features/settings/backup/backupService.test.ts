@@ -28,6 +28,29 @@ describe('Trabunda backup service', () => {
     })
   })
 
+  it.each(['{', '{}', 'null', '[null]', '[{"id":"broken"}]'])('rejects malformed production data %s before restore', (value) => {
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.productionDays, 'preserved')
+    expect(() => parseTrabundaBackup(JSON.stringify({
+      format: 'TRABUNDA_BACKUP', version: 1,
+      data: { [TRABUNDA_STORAGE_KEYS.productionDays]: value },
+    }))).toThrow(/respaldo/)
+    expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.productionDays)).toBe('preserved')
+  })
+
+  it('rejects non-string values instead of dropping them', () => {
+    expect(() => parseTrabundaBackup(JSON.stringify({
+      format: 'TRABUNDA_BACKUP', version: 1,
+      data: { [TRABUNDA_STORAGE_KEYS.productionDays]: [] },
+    }))).toThrow(/valor inválido/)
+  })
+
+  it('does not interpret an unsupported version as a legacy backup', () => {
+    expect(() => parseTrabundaBackup(JSON.stringify({
+      format: 'TRABUNDA_BACKUP', version: 99,
+      [TRABUNDA_STORAGE_KEYS.productionDays]: '[]',
+    }))).toThrow(/respaldo/)
+  })
+
   it('accepts the legacy raw localStorage JSON shape and previews external origins', () => {
     const legacyBackup = JSON.stringify({
       [TRABUNDA_STORAGE_KEYS.productionDays]: JSON.stringify([
@@ -128,6 +151,40 @@ describe('Trabunda backup service', () => {
     expect(localStorage.getItem(TRABUNDA_STORAGE_KEYS.storageQuarantine)).toBe(
       quarantine,
     )
+  })
+
+  it('rolls back every touched key when restoring fails midway', () => {
+    const originalDays = 'original-days'
+    const originalTheme = 'dark'
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.productionDays, originalDays)
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.colorTheme, originalTheme)
+
+    const preview = parseTrabundaBackup(
+      JSON.stringify({
+        format: 'TRABUNDA_BACKUP',
+        version: 1,
+        data: {
+          [TRABUNDA_STORAGE_KEYS.productionDays]: '[]',
+          [TRABUNDA_STORAGE_KEYS.colorTheme]: 'light',
+        },
+      }),
+    )
+    const values = new Map<string, string>([
+      [TRABUNDA_STORAGE_KEYS.productionDays, originalDays],
+      [TRABUNDA_STORAGE_KEYS.colorTheme, originalTheme],
+    ])
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (value === 'light') throw new Error('storage full')
+        values.set(key, value)
+      },
+      removeItem: (key: string) => values.delete(key),
+    } as unknown as Storage
+
+    expect(() => restoreTrabundaBackup(preview, storage)).toThrow('storage full')
+    expect(values.get(TRABUNDA_STORAGE_KEYS.productionDays)).toBe(originalDays)
+    expect(values.get(TRABUNDA_STORAGE_KEYS.colorTheme)).toBe(originalTheme)
   })
 
   it('exports and restores dynamic products with aliases', () => {

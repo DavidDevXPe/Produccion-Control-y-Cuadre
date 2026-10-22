@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { calculateWeeklySummary, kg100, sumKg100 } from "../model/calculations";
-import { calculateFreezingAvailability } from "../model/freezing";
+import {
+  calculateFreezingAvailability,
+  calculateFreezingComparison,
+} from "../model/freezing";
 import { isBalanceOnlyProductionDay } from "../model/productionDayMode";
 import { getProductionDayOperationalState } from "../model/productionLifecycle";
 import { isProductionProcess } from "../model/productionProcess";
@@ -21,6 +24,10 @@ export interface RegisteredProductionDayItem {
   >["calculation"];
   operationalState: ReturnType<typeof getProductionDayOperationalState>;
   journey: ReturnType<typeof getJourneyStatus>;
+  /** Physical freezing attributed to Packing origins for this exact day. */
+  freezingLinkedKg100: ReturnType<typeof kg100>;
+  /** Physical amount not attributed to an origin; negative means over-linked. */
+  freezingDifferenceKg100: ReturnType<typeof kg100>;
 }
 
 export function useProductionDaysData() {
@@ -59,22 +66,29 @@ export function useProductionDaysData() {
 
   const isFreezing = selectedProcess === "FREEZING";
 
-  const weeklySummary = useMemo(
-    () => calculateWeeklySummary(activeWeek.productionDays, activeWeek.period),
-    [activeWeek.productionDays, activeWeek.period],
-  );
-
   const allRegisteredDays: RegisteredProductionDayItem[] = useMemo(() => {
     return activeWeek.productionDays.map((day) => {
       const operationalState = getProductionDayOperationalState(day);
+      const freezingLinkedKg100 = calculateFreezingComparison(allProductionDays, {
+        startDate: day.date,
+        endDate: day.date,
+      }).linkedKg100;
+      const frozenPhysicalKg100 = sumKg100([
+        day.declaredShiftTotalsKg100.DAY,
+        day.declaredShiftTotalsKg100.NIGHT,
+      ]);
       return {
         day,
         calculation: operationalState.calculation,
         operationalState,
         journey: getJourneyStatus(day, operationalState),
+        freezingLinkedKg100,
+        freezingDifferenceKg100: kg100(
+          frozenPhysicalKg100 - freezingLinkedKg100,
+        ),
       };
     });
-  }, [activeWeek.productionDays]);
+  }, [activeWeek.productionDays, allProductionDays]);
 
   const registeredDays: RegisteredProductionDayItem[] = useMemo(() => {
     return allRegisteredDays.filter(({ day }) => {
@@ -95,6 +109,11 @@ export function useProductionDaysData() {
       return matchesDate && matchesQuery;
     });
   }, [allRegisteredDays, searchQuery, selectedDate]);
+
+  const weeklySummary = useMemo(
+    () => calculateWeeklySummary(registeredDays.map(({ day }) => day), activeWeek.period),
+    [registeredDays, activeWeek.period],
+  );
 
   const balancedCount = useMemo(
     () =>
@@ -127,7 +146,7 @@ export function useProductionDaysData() {
   const freezingLinkedKg100 = useMemo(() => {
     return sumKg100(
       registeredDays.map(
-        ({ calculation }) => calculation.processedPreviousBalanceKg100,
+        ({ freezingLinkedKg100 }) => freezingLinkedKg100,
       ),
     );
   }, [registeredDays]);

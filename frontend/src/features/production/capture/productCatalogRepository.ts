@@ -1,7 +1,9 @@
 import { normalizeProductName, productNameSlug } from './productNormalizer'
 import { SEED_CAPTURE_PRODUCTS } from './seedProducts'
 import type { ProductionCatalogItem } from './productionCatalog'
+import { canonicalProductId } from '../model/productIdentity'
 import { TRABUNDA_STORAGE_KEYS } from '../../../storage/trabundaStorage'
+import { quarantineStoredData } from '../../../storage/storageQuarantine'
 
 const STORAGE_KEY = TRABUNDA_STORAGE_KEYS.productCatalog
 
@@ -14,11 +16,30 @@ function readDynamicProducts(): ProductionCatalogItem[] {
   try {
     const current = window.localStorage.getItem(STORAGE_KEY)
     const legacy = window.localStorage.getItem(TRABUNDA_STORAGE_KEYS.legacyProductionCatalog)
-    const parsed: unknown = JSON.parse(current ?? legacy ?? '[]')
-    return Array.isArray(parsed) ? parsed.filter((item): item is ProductionCatalogItem => Boolean(item && typeof item === 'object' && typeof (item as { productId?: unknown }).productId === 'string')).map((item) => ({
+    const sourceKey = current !== null ? STORAGE_KEY : TRABUNDA_STORAGE_KEYS.legacyProductionCatalog
+    const stored = current ?? legacy ?? '[]'
+    let parsed: unknown
+    try { parsed = JSON.parse(stored) } catch {
+      quarantineStoredData(sourceKey, 'INVALID_JSON', stored)
+      return []
+    }
+    const isProduct = (item: unknown): item is ProductionCatalogItem => {
+      if (!item || typeof item !== 'object') return false
+      const candidate = item as Partial<ProductionCatalogItem>
+      return ['productId', 'productName', 'familyId', 'familyName', 'summaryGroupId'].every(
+        (key) => typeof candidate[key as keyof ProductionCatalogItem] === 'string',
+      ) && (candidate.aliases === undefined || Array.isArray(candidate.aliases))
+    }
+    if (!Array.isArray(parsed)) {
+      quarantineStoredData(sourceKey, 'INVALID_RECORD', parsed)
+      return []
+    }
+    const rejected = parsed.filter((item) => !isProduct(item))
+    if (rejected.length > 0) quarantineStoredData(sourceKey, 'INVALID_RECORD', rejected)
+    return parsed.filter(isProduct).map((item) => ({
       ...item,
       aliases: (item.aliases ?? []).filter((alias) => typeof alias === 'string' && !isContaminatedAlias(alias)),
-    })) : []
+    }))
   } catch {
     return []
   }
@@ -40,22 +61,43 @@ export function getActiveProducts(): ProductionCatalogItem[] {
   }
 
   // Los productos dinámicos nuevos sí se agregan.
-  // Si existe el mismo ID en seed, solo combinamos aliases
+  // Si existe el mismo ID o nombre normalizado en seed, solo combinamos aliases
   // y conservamos los datos oficiales del seed.
   for (const dynamicProduct of dynamicProducts) {
-    const seedProduct = byId.get(dynamicProduct.productId)
+    const resolvedId = canonicalProductId(dynamicProduct.productId)
+    const normalizedDynamicName = normalizeProductName(dynamicProduct.productName)
+    const seedProduct =
+      byId.get(resolvedId) ??
+      SEED_CAPTURE_PRODUCTS.find(
+        (seed) =>
+          normalizeProductName(seed.productName) === normalizedDynamicName ||
+          (seed.aliases ?? []).some(
+            (alias) => normalizeProductName(alias) === normalizedDynamicName,
+          ),
+      )
 
     if (!seedProduct) {
       byId.set(dynamicProduct.productId, dynamicProduct)
       continue
     }
 
-    byId.set(dynamicProduct.productId, {
-      ...seedProduct,
+    const existingSeed = byId.get(seedProduct.productId) ?? seedProduct
+    byId.set(seedProduct.productId, {
+      ...existingSeed,
       ...dynamicProduct,
+      productId: seedProduct.productId,
+      productName: seedProduct.productName,
+      canonicalName: seedProduct.canonicalName ?? seedProduct.productName,
+      normalizedName: seedProduct.normalizedName ?? normalizeProductName(seedProduct.productName),
+      familyId: seedProduct.familyId,
+      familyName: seedProduct.familyName,
+      summaryGroupId: seedProduct.summaryGroupId,
+      ...(seedProduct.technicalClassification
+        ? { technicalClassification: seedProduct.technicalClassification }
+        : {}),
       aliases: [
         ...new Set([
-          ...(seedProduct.aliases ?? []),
+          ...(existingSeed.aliases ?? []),
           ...(dynamicProduct.aliases ?? []),
         ]),
       ],

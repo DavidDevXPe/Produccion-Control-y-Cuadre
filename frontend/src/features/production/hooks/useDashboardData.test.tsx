@@ -30,5 +30,23 @@ describe('useDashboardData', () => {
     expect(Array.isArray(result.current.weeklyProductionData)).toBe(true)
     expect(Array.isArray(result.current.journeyRows)).toBe(true)
   })
+
+  it('scopes attention items strictly to the selected week without leaking prior weeks', () => {
+    window.localStorage.setItem('trabunda.production.activeWeek.v1', '42')
+    const { result } = renderHook(() => useDashboardData(), {
+      wrapper: createWrapper(),
+    })
+
+    const { startDate, endDate } = result.current.packingWeek.period
+    for (const item of result.current.attentionItems) {
+      expect(item.date >= startDate && item.date <= endDate).toBe(true)
+    }
+    expect(
+      result.current.attentionItems.some(
+        (item) => item.key === 'freezing-excess-over-origin',
+      ),
+    ).toBe(false)
+    window.localStorage.removeItem('trabunda.production.activeWeek.v1')
+  })
 })
 

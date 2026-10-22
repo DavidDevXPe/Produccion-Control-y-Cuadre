@@ -59,7 +59,16 @@ export type {
   WeekClosureType,
 }
 
-const ProductionDataContext = createContext<ProductionDataValue>(fallbackValue)
+const GLOBAL_CONTEXT_KEY = '__TRABUNDA_PRODUCTION_DATA_CONTEXT__' as const
+
+const globalContextStore = globalThis as typeof globalThis & {
+  [GLOBAL_CONTEXT_KEY]?: ReturnType<typeof createContext<ProductionDataValue>>
+}
+
+const ProductionDataContext =
+  globalContextStore[GLOBAL_CONTEXT_KEY] ??
+  (globalContextStore[GLOBAL_CONTEXT_KEY] =
+    createContext<ProductionDataValue>(fallbackValue))
 
 interface ProductionDataProviderProps {
   children: ReactNode
@@ -351,13 +360,21 @@ export function ProductionDataProvider({ children }: ProductionDataProviderProps
         allProductionDays.find(
           (day) =>
             day.date === date && getProductionProcess(day) === process,
-        ),
-      isUserManagedDay: (date, process = activeProcess) =>
-        !PERMANENT_DAY_KEYS.has(productionDayKey(date, process)) &&
-        userDays.some(
+        ) ??
+        loadStoredDays().find(
           (day) =>
             day.date === date && getProductionProcess(day) === process,
         ),
+      isUserManagedDay: (date, process = activeProcess) =>
+        !PERMANENT_DAY_KEYS.has(productionDayKey(date, process)) &&
+        (userDays.some(
+          (day) =>
+            day.date === date && getProductionProcess(day) === process,
+        ) ||
+          loadStoredDays().some(
+            (day) =>
+              day.date === date && getProductionProcess(day) === process,
+          )),
       upsertProductionDay,
       deleteProductionDay,
     }

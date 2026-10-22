@@ -26,4 +26,28 @@ describe("useRecentProducts", () => {
     });
     expect(result.current.recentIds).toEqual([]);
   });
+
+  it("synchronizes recent items between mounted pickers using the same scope", () => {
+    const firstPicker = renderHook(() => useRecentProducts("shared-scope"));
+    const secondPicker = renderHook(() => useRecentProducts("shared-scope"));
+
+    act(() => {
+      firstPicker.result.current.addRecent("product-1");
+    });
+
+    expect(secondPicker.result.current.recentIds).toEqual(["product-1"]);
+  });
+
+  it("keeps an origin-specific option ahead of its shared product id", () => {
+    const { result } = renderHook(() => useRecentProducts("shared-scope"));
+
+    act(() => {
+      result.current.addRecent("product-1", "origin-day-2|product-1");
+    });
+
+    expect(result.current.recentIds).toEqual([
+      "origin-day-2|product-1",
+      "product-1",
+    ]);
+  });
 });

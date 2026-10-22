@@ -120,15 +120,15 @@ export function buildFreezingFifoAllocation({
     Math.min(initialRemainingNightKg100, remainingSameDayKg100),
   );
 
+  const updatedExistingUses = new Map<string, ProductionCaptureBalanceUse>();
+  const newUses: ProductionCaptureBalanceUse[] = [];
+
   let remainingDayKg100 = kg100(
     initialRemainingDayKg100 - dayCoveredBySameDayKg100,
   );
   let remainingNightKg100 = kg100(
     initialRemainingNightKg100 - nightCoveredBySameDayKg100,
   );
-
-  const updatedExistingUses = new Map<string, ProductionCaptureBalanceUse>();
-  const newUses: ProductionCaptureBalanceUse[] = [];
 
   const matchingPositions = [...positions]
     .filter(

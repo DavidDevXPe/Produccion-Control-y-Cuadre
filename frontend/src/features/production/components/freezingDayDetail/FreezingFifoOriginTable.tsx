@@ -3,25 +3,28 @@ import { DataTableScroll } from '../../../../components/ui/DataTableScroll'
 import { SectionCard } from '../../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../../components/ui/StatusBadge'
 import { formatCentiKg, formatIsoDate } from '../../../../utils/formatters'
-import type { Kg100, ProductionDay } from '../../model/types'
+import type { FreezingDayOriginUsage } from '../../model/freezing'
+import type { ProductionDay } from '../../model/types'
 
 export interface FreezingOriginRowItem {
-  readonly lot: ProductionDay['receivedBalanceLots'][number]
-  readonly line: ProductionDay['lines'][number] | undefined
+  readonly id: string
+  readonly productName: string
   readonly originDay: ProductionDay | undefined
-  readonly usedKg100: Kg100
-  readonly pendingKg100: Kg100
+  readonly originDayId: string
+  readonly availableAtStartKg100: FreezingDayOriginUsage['availableAtStartKg100']
+  readonly frozenThisDayKg100: FreezingDayOriginUsage['frozenThisDayKg100']
+  readonly pendingAfterKg100: FreezingDayOriginUsage['pendingAfterKg100']
   readonly originKind: 'PREVIOUS' | 'CURRENT' | 'UNKNOWN'
 }
 
 export interface FreezingFifoOriginTableProps {
   readonly freezingOriginRows: readonly FreezingOriginRowItem[]
-  readonly hasReceivedLots: boolean
+  readonly hasOriginUsage: boolean
 }
 
 export function FreezingFifoOriginTable({
   freezingOriginRows,
-  hasReceivedLots,
+  hasOriginUsage,
 }: FreezingFifoOriginTableProps) {
   return (
     <SectionCard
@@ -43,16 +46,16 @@ export function FreezingFifoOriginTable({
           <tbody>
             {freezingOriginRows.map((row) => (
               <tr
-                key={row.lot.id}
+                key={row.id}
                 className="border-b border-slate-100 dark:border-ui-line-dark-grid"
               >
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-800 dark:text-ui-text-dark-strong">
-                  {row.line?.productName ?? row.lot.productId}
+                  {row.productName}
                 </th>
                 <td className="px-3 py-3 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">
                   {row.originDay
                     ? formatIsoDate(row.originDay.date)
-                    : row.lot.originDayId}
+                    : row.originDayId}
                 </td>
                 <td className="px-3 py-3 text-center">
                   <StatusBadge
@@ -74,26 +77,26 @@ export function FreezingFifoOriginTable({
                   </StatusBadge>
                 </td>
                 <td className="number-tabular px-3 py-3 text-center text-xs font-semibold text-slate-700 dark:text-ui-text-dark-pale">
-                  {formatCentiKg(row.lot.originalKg100)}
+                  {formatCentiKg(row.availableAtStartKg100)}
                 </td>
                 <td className="number-tabular px-3 py-3 text-center text-xs font-bold text-sky-700 dark:text-sky-300">
-                  {formatCentiKg(row.usedKg100)}
+                  {formatCentiKg(row.frozenThisDayKg100)}
                 </td>
                 <td
                   className={`number-tabular px-3 py-3 text-center text-xs font-bold ${
-                    row.pendingKg100 === 0
+                    row.pendingAfterKg100 === 0
                       ? 'text-emerald-700 dark:text-emerald-300'
                       : 'text-amber-700 dark:text-amber-300'
                   }`}
                 >
-                  {formatCentiKg(row.pendingKg100)}
+                  {formatCentiKg(row.pendingAfterKg100)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </DataTableScroll>
-      {!hasReceivedLots ? (
+      {!hasOriginUsage ? (
         <div className="flex items-center gap-3 p-5 text-sm text-slate-500">
           <Boxes className="size-5 text-slate-400" aria-hidden="true" />
           No existe disponibilidad de Envasado vinculada a esta jornada.

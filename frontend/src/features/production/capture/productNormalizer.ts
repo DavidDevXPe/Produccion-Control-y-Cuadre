@@ -1,5 +1,7 @@
 export function repairProductMojibake(value: string): string {
   return value
+    .replace(/BOTÃƒâ€œN/gi, 'BOTÓN')
+    .replace(/BOTÃ“N/gi, 'BOTÓN')
     .replace(/ESPAÃƒâ€˜A/gi, 'ESPAÑA')
     .replace(/ESPAÃ‘A/gi, 'ESPAÑA')
     .replace(/JAPONÃƒâ€°S/gi, 'JAPONÉS')

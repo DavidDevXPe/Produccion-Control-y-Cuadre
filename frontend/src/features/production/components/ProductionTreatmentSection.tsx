@@ -68,7 +68,7 @@ export function ProductionTreatmentSection({
           placeholder="Ej.: aleta, manto o nuca"
           buttonLabel="Agregar tratamiento"
           disabled={!reportsReconciled}
-          scopeKey={`${selectedProcess}:TREATMENT`}
+          scopeKey={`${selectedProcess}:REPORTS`}
           searchInputRef={searchInputRef}
         />
 

@@ -95,6 +95,22 @@ describe('dashboard page', () => {
     ).toBeInTheDocument()
 
     expect(
+      screen.getByRole('heading', {
+        name: 'Distribución por familia (Envasado)',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Acciones rápidas de planta',
+      }),
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByText('Total semana 41 (acumulado)'),
+    ).toBeInTheDocument()
+
+    expect(
       screen.queryByRole('link', { name: 'Nueva jornada' }),
     ).not.toBeInTheDocument()
   })
@@ -383,6 +399,11 @@ describe('dashboard journey status coherence', () => {
       'aria-selected',
       'true',
     )
+
+    const seriesSummaryGroup = screen.getByRole('group', {
+      name: 'Acumulado semanal por serie',
+    })
+    expect(within(seriesSummaryGroup).getAllByRole('button')).toHaveLength(4)
   })
 
   it('exposes the weekly coverage as accessible progress bars', async () => {
@@ -400,5 +421,35 @@ describe('dashboard journey status coherence', () => {
     expect(
       screen.getByRole('progressbar', { name: 'Cobertura de Congelamiento' }),
     ).toHaveAttribute('aria-valuenow', '0')
+  })
+
+  it('hides Alertas y excepciones when the week has no attention items', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-10T12:00:00-05:00'))
+    const origin = closedPackingDay('2026-09-08', 100_000)
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '42')
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify([origin]),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Estado de jornadas' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Saldos pendientes por familia' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Alertas y excepciones' }),
+    ).not.toBeInTheDocument()
   })
 })

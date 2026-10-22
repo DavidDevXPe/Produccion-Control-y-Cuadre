@@ -1,4 +1,6 @@
 import { quarantineStoredData } from "../../../storage/storageQuarantine";
+import { isProductionDay } from '../model/productionDayValidation';
+export { isProductionDay } from '../model/productionDayValidation';
 import {
   getOperationalWeekContext,
   getOperationalWeekContextByNumber,
@@ -74,23 +76,6 @@ export function buildCalendarDays(
       isoDate,
     };
   });
-}
-
-export function isProductionDay(value: unknown): value is ProductionDay {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ProductionDay>;
-
-  return (
-    typeof candidate.id === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(candidate.date ?? "") &&
-    typeof candidate.displayName === "string" &&
-    Array.isArray(candidate.rawMaterialEntries) &&
-    Array.isArray(candidate.lines) &&
-    Array.isArray(candidate.receivedBalanceLots) &&
-    typeof candidate.declaredRawMaterialKg100 === "number" &&
-    typeof candidate.declaredFinishedTotalKg100 === "number" &&
-    (candidate.process === undefined || isProductionProcess(candidate.process))
-  );
 }
 
 export function normalizeNucaClassification(day: ProductionDay): ProductionDay {
@@ -434,11 +419,20 @@ export const fallbackValue: ProductionDataValue = {
   closeWeekManually: () => {
     throw new Error("ProductionDataProvider is required to close weeks.");
   },
-  findProductionDay: (date, process = "PACKING") =>
-    PERMANENT_PRODUCTION_DAYS.find(
+  findProductionDay: (date, process = "PACKING") => {
+    const storedMatch = loadStoredDays().find(
+      (day) => day.date === date && getProductionProcess(day) === process,
+    );
+    if (storedMatch) return storedMatch;
+    return PERMANENT_PRODUCTION_DAYS.find(
+      (day) => day.date === date && getProductionProcess(day) === process,
+    );
+  },
+  isUserManagedDay: (date, process = "PACKING") =>
+    !PERMANENT_DAY_KEYS.has(productionDayKey(date, process)) &&
+    loadStoredDays().some(
       (day) => day.date === date && getProductionProcess(day) === process,
     ),
-  isUserManagedDay: () => false,
   upsertProductionDay: () => {
     throw new Error(
       "ProductionDataProvider is required to save production days.",

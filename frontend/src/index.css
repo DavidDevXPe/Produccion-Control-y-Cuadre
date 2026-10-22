@@ -619,6 +619,59 @@ html.dark .kpi-card--violet {
   scrollbar-width: thin;
 }
 
+/* Keep an open product picker above the following entry cards. */
+.section-card--overlay-content:has([role='listbox']) {
+  position: relative;
+  z-index: 60;
+}
+
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #b7c6ca;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html.dark .scrollbar-subtle {
+  scrollbar-color: #365568 transparent;
+}
+
+html.dark .scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.dark .scrollbar-subtle::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #365568;
+}
+
+html.dark .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: #4a7590;
+}
+
+html.dark .scrollbar-subtle::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .week-selector-scrollbar {
   scrollbar-color: #b7c6ca #f8fbfc;
   scrollbar-width: thin;

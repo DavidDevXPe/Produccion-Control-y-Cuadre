@@ -88,7 +88,15 @@ export function useProductionNavigation({
         const pendingDownstream = upstreamDays.find(
           (date) => !findProductionDay(date, selectedProcess),
         );
-        return pendingDownstream ?? upstreamDays[upstreamDays.length - 1]!;
+        if (pendingDownstream) return pendingDownstream;
+
+        const latestUpstreamDate = upstreamDays[upstreamDays.length - 1]!;
+        const nextAvailableDate = activeWeek.calendarDays.find(
+          (day) =>
+            day.isoDate > latestUpstreamDate &&
+            !findProductionDay(day.isoDate, selectedProcess),
+        );
+        if (nextAvailableDate) return nextAvailableDate.isoDate;
       }
     }
 

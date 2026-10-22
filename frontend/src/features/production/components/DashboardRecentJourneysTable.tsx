@@ -9,6 +9,7 @@ import {
   formatIsoWeekday,
   formatRatioAsPercent,
 } from '../../../utils/formatters'
+import { sumKg100 } from '../model/calculations'
 import { isBalanceOnlyProductionDay } from '../model/productionDayMode'
 import { getYieldStatus, yieldVisualStyles } from '../presentation/yieldStatus'
 import type { DashboardJourneyRow } from '../hooks/useDashboardData'
@@ -27,6 +28,21 @@ export function DashboardRecentJourneysTable({
   journeyRows,
   packingWeekNumber,
 }: DashboardRecentJourneysTableProps) {
+  const packingRows = journeyRows.filter((row) => row.process === 'PACKING')
+  const totalRawMaterialKg100 = sumKg100(
+    packingRows.map((row) => row.day.declaredRawMaterialKg100),
+  )
+  const totalRegisteredKg100 = sumKg100(
+    journeyRows.map((row) => row.registeredKg100),
+  )
+  const allReconciled =
+    journeyRows.length > 0 &&
+    journeyRows.every(
+      (row) =>
+        row.journey.status === 'BALANCED' ||
+        row.journey.status === 'BALANCED_OBSERVED',
+    )
+
   return (
     <SectionCard
       title="Últimas jornadas"
@@ -37,6 +53,7 @@ export function DashboardRecentJourneysTable({
           <ArrowRight className="size-4" aria-hidden="true" />
         </ActionLink>
       }
+      className="shrink-0"
     >
       <DataTableScroll
         label={`Jornadas registradas en la semana ${packingWeekNumber}`}
@@ -159,6 +176,33 @@ export function DashboardRecentJourneysTable({
           </tbody>
         </table>
       </DataTableScroll>
+
+      {journeyRows.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-2.5 text-xs">
+          <span className="font-bold text-slate-700">
+            Total semana {packingWeekNumber} (acumulado)
+          </span>
+
+          <div className="flex flex-wrap items-center gap-4">
+            {totalRawMaterialKg100 > 0 ? (
+              <span className="number-tabular font-semibold text-slate-600">
+                {`Materia prima: ${formatCentiKg(totalRawMaterialKg100)}`}
+              </span>
+            ) : null}
+
+            <span className="number-tabular font-bold text-slate-900">
+              {`Total registrado: ${formatCentiKg(totalRegisteredKg100)}`}
+            </span>
+
+            <StatusBadge
+              tone={allReconciled ? 'success' : 'warning'}
+              truncateText={false}
+            >
+              {allReconciled ? 'CONCILIADO' : 'EN REVISIÓN'}
+            </StatusBadge>
+          </div>
+        </div>
+      ) : null}
     </SectionCard>
   )
 }

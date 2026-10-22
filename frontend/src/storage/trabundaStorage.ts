@@ -33,3 +33,9 @@ export const TRABUNDA_BACKUP_STORAGE_KEYS: readonly TrabundaStorageKey[] = [
 
 export const TRABUNDA_BACKUP_FORMAT = 'TRABUNDA_BACKUP'
 export const TRABUNDA_BACKUP_VERSION = 1
+
+export function clearTrabundaStorage(storage: Pick<Storage, 'removeItem'> = window.localStorage) {
+  for (const key of [...Object.values(TRABUNDA_STORAGE_KEYS), ...Object.values(TRABUNDA_LEGACY_STORAGE_KEYS)]) {
+    storage.removeItem(key)
+  }
+}

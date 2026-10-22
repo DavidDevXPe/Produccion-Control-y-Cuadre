@@ -32,14 +32,17 @@ describe('SectionCard', () => {
     expect(screen.getByRole('button', { name: 'Exportar' })).toBeInTheDocument()
   })
 
-  it('applies overflow-clip when allowStickyContent is true, and overflow-hidden otherwise', () => {
+  it('allows overlays when allowStickyContent is true, and clips otherwise', () => {
     const { container: container1 } = render(
       <SectionCard allowStickyContent={true}>
         <div>Sticky</div>
       </SectionCard>,
     )
     expect(container1.querySelector('section')?.className).toContain(
-      'overflow-clip',
+      'overflow-visible',
+    )
+    expect(container1.querySelector('section')?.className).toContain(
+      'section-card--overlay-content',
     )
 
     const { container: container2 } = render(
@@ -49,6 +52,9 @@ describe('SectionCard', () => {
     )
     expect(container2.querySelector('section')?.className).toContain(
       'overflow-hidden',
+    )
+    expect(container2.querySelector('section')?.className).not.toContain(
+      'section-card--overlay-content',
     )
   })
 

@@ -57,6 +57,27 @@ const extraCatalogItems: readonly ProductionCatalogItem[] = [
     productName: 'ANILLAS CRUDAS CONG. BLOCK C/TTO USA SM SP ST',
     summaryGroupId: 'ANILLAS',
   },
+  {
+    familyId: 'anillas',
+    familyName: 'ANILLAS',
+    productId: 'anillas-espana-p-cm-cp-st-mixta',
+    productName: 'ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.',
+    summaryGroupId: 'ANILLAS',
+  },
+  {
+    familyId: 'boton',
+    familyName: 'BOTON',
+    productId: 'boton-crudo-block-espana-p-sm-cp-st',
+    productName: 'BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N',
+    summaryGroupId: 'BOTON',
+  },
+  {
+    familyId: 'boton',
+    familyName: 'BOTON',
+    productId: 'boton-crudo-block-polar-sm-sp-st',
+    productName: 'BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.',
+    summaryGroupId: 'BOTON',
+  },
 ]
 
 const catalogByProductId = new Map<string, ProductionCatalogItem>()
@@ -151,6 +172,7 @@ function catalogMetadataForName(productName: string): Pick<
   if (normalized.includes('panza') && normalized.includes('ballena')) return { familyId: 'recorte-cocido', familyName: 'RECORTE COCIDO', summaryGroupId: 'RECORTE_COCIDO' }
   if (normalized.includes('manto') || normalized.includes('cono')) return { familyId: 'manto-crudo', familyName: 'MANTO CRUDO', summaryGroupId: 'MANTO' }
   if (normalized.includes('anilla')) return { familyId: 'anillas', familyName: 'ANILLAS', summaryGroupId: 'ANILLAS' }
+  if (normalized.includes('boton')) return { familyId: 'boton', familyName: 'BOTON', summaryGroupId: 'BOTON' }
   if (normalized.includes('reproductor')) return { familyId: 'reproductor-crudo', familyName: 'REPRODUCTOR CRUDO', summaryGroupId: 'REPRODUCTOR' }
   if (normalized.includes('rejo')) return { familyId: 'rejos-crudo', familyName: 'REJOS CRUDO', summaryGroupId: 'REJOS' }
   if (normalized.includes('nuca')) return { familyId: 'nuca-semilimpia', familyName: 'NUCA SEMILIMPIA', summaryGroupId: 'NUCA_SEMILIMPIA' }

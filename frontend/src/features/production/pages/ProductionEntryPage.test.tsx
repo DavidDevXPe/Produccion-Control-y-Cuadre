@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -953,7 +953,7 @@ describe('capture product status labels', () => {
     const inputs = within(captureRegion).getAllByRole<HTMLInputElement>('textbox')
     expect(inputs.length).toBeGreaterThanOrEqual(4)
 
-    inputs[0]!.focus()
+    act(() => inputs[0]!.focus())
     expect(document.activeElement).toBe(inputs[0])
 
     // Flecha derecha salta de Día a Noche en la misma fila

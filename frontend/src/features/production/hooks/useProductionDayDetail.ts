@@ -37,7 +37,10 @@ export function useProductionDayDetail() {
     : undefined;
 
   const productionDay = date
-    ? findProductionDay(date, requestedProcess)
+    ? (findProductionDay(date, requestedProcess) ??
+      (!requestedProcess
+        ? allProductionDays.find((day) => day.date === date)
+        : undefined))
     : undefined;
 
   usePageTitle(

@@ -116,7 +116,8 @@ export function DashboardJourneyStatusCard({
           <ArrowRight className="size-4" aria-hidden="true" />
         </ActionLink>
       }
-      contentClassName="space-y-3 p-4 shrink-0"
+      className="flex flex-col xl:grow xl:shrink-0"
+      contentClassName="flex flex-1 flex-col justify-between space-y-3 p-4"
     >
       <div className="space-y-3">
         <CoverageRow label="Envasado" value={packingDaysCount} />

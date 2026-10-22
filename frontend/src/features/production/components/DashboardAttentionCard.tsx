@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   ArrowRight,
-  CheckCircle2,
   Info,
   XCircle,
   type LucideIcon,
@@ -52,130 +51,119 @@ export function DashboardAttentionCard({
   attentionItems,
   attention,
 }: DashboardAttentionCardProps) {
+  if (attentionItems.length === 0) {
+    return null
+  }
+
   return (
     <SectionCard
       title="Alertas y excepciones"
       description="Primero lo crítico, luego las observaciones de la semana."
-      className={`xl:flex xl:flex-col xl:flex-1 xl:min-h-0 ${
+      className={`shrink-0 ${
         attention.criticalCount > 0
           ? 'border-rose-300/80 ring-1 ring-rose-200/60 dark:border-rose-500/40 dark:ring-rose-500/20'
           : ''
       }`}
-      contentClassName="xl:flex xl:flex-col xl:flex-1 xl:min-h-0"
+      contentClassName="flex flex-col"
       action={
         <StatusBadge
-          tone={
-            attention.criticalCount > 0
-              ? 'danger'
-              : attentionItems.length > 0
-                ? 'warning'
-                : 'success'
-          }
+          tone={attention.criticalCount > 0 ? 'danger' : 'warning'}
           truncateText={false}
         >
           {attention.criticalCount > 0
             ? `${attention.criticalCount} CRÍTICA${
                 attention.criticalCount === 1 ? '' : 'S'
               }`
-            : attentionItems.length > 0
-              ? attentionItems.length === 1
-                ? '1 OBSERVACIÓN'
-                : `${attentionItems.length} OBSERVACIONES`
-              : 'SIN ALERTAS'}
+            : attentionItems.length === 1
+              ? '1 OBSERVACIÓN'
+              : `${attentionItems.length} OBSERVACIONES`}
         </StatusBadge>
       }
     >
-      {attentionItems.length > 0 ? (
-        <div className="xl:flex xl:flex-col xl:flex-1 xl:min-h-0">
-          <ul className="divide-y divide-slate-100 xl:flex-1 xl:min-h-0 xl:overflow-y-auto scrollbar-subtle pr-1">
-            {attention.visible.map((item) => {
-              const { Icon, iconClass, rowClass } =
-                attentionToneStyles[item.tone]
-              const isCritical = item.tone === 'danger'
+      <div className="flex flex-col">
+        <ul
+          data-testid="dashboard-attention-list"
+          className="max-h-[16rem] divide-y divide-slate-100 overflow-y-auto overscroll-contain pr-1 scrollbar-subtle [color-scheme:light] dark:[color-scheme:dark]"
+        >
+          {attention.visible.map((item) => {
+            const { Icon, iconClass, rowClass } =
+              attentionToneStyles[item.tone]
+            const isCritical = item.tone === 'danger'
 
-              return (
-                <li
-                  key={item.key}
-                  className={`flex items-start gap-3 px-4 py-3 ${rowClass}`}
+            return (
+              <li
+                key={item.key}
+                className={`flex items-start gap-3 px-4 py-3 ${rowClass}`}
+              >
+                <span
+                  className={`grid size-8 shrink-0 place-items-center rounded-lg ${iconClass}`}
+                  aria-hidden="true"
                 >
-                  <span
-                    className={`grid size-8 shrink-0 place-items-center rounded-lg ${iconClass}`}
-                    aria-hidden="true"
-                  >
-                    <Icon className="size-4" />
-                  </span>
+                  <Icon className="size-4" />
+                </span>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p
-                        className={`text-xs font-bold ${
-                          isCritical
-                            ? 'text-rose-950 dark:text-rose-100'
-                            : 'text-slate-950'
-                        }`}
-                      >
-                        {item.title}
-                      </p>
-                      <span className="number-tabular shrink-0 text-[0.625rem] font-semibold text-slate-500">
-                        {formatIsoDateCompact(item.date)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.05em] text-slate-500">
-                      {processLabel(item.process)}
-                    </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <p
-                      className={`mt-0.5 line-clamp-2 text-xs leading-5 ${
+                      className={`text-xs font-bold ${
                         isCritical
-                          ? 'text-rose-900/80 dark:text-rose-100/80'
-                          : 'text-slate-600'
+                          ? 'text-rose-950 dark:text-rose-100'
+                          : 'text-slate-950'
                       }`}
                     >
-                      {item.description}
+                      {item.title}
                     </p>
-                    <ActionLink
-                      to={
-                        item.to ??
-                        `/jornadas/${item.date}?process=${item.process}`
-                      }
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Revisar: ${item.title}`}
-                      className="-ml-3 mt-0.5"
-                    >
-                      Revisar
-                      <ArrowRight className="size-4" aria-hidden="true" />
-                    </ActionLink>
+                    <span className="number-tabular shrink-0 text-[0.625rem] font-semibold text-slate-500">
+                      {formatIsoDateCompact(item.date)}
+                    </span>
                   </div>
-                </li>
-              )
-            })}
-          </ul>
+                  <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.05em] text-slate-500">
+                    {processLabel(item.process)}
+                  </p>
+                  <p
+                    className={`mt-0.5 line-clamp-2 text-xs leading-5 ${
+                      isCritical
+                        ? 'text-rose-900/80 dark:text-rose-100/80'
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    {item.description}
+                  </p>
+                  <ActionLink
+                    to={
+                      item.to ??
+                      `/jornadas/${item.date}?process=${item.process}`
+                    }
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Revisar: ${item.title}`}
+                    className="-ml-3 mt-0.5"
+                  >
+                    Revisar
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </ActionLink>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
 
-          {attention.hiddenCount > 0 ? (
-            <div className="flex flex-col gap-1 border-t border-slate-100 bg-slate-50 px-4 py-2 shrink-0 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs font-semibold text-slate-600">
-                Hay {attention.hiddenCount}{' '}
-                {attention.hiddenCount === 1
-                  ? 'evento adicional'
-                  : 'eventos adicionales'}{' '}
-                de la semana.
-              </p>
-              <ActionLink to="/jornadas" variant="ghost" size="sm">
-                Ver todas
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </ActionLink>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-5 py-6 text-sm text-slate-500">
-          <CheckCircle2
-            className="size-5 shrink-0 text-emerald-600"
-            aria-hidden="true"
-          />
-          No hay observaciones ni validaciones bloqueantes detectadas.
-        </div>
-      )}
+        {attention.hiddenCount > 0 ? (
+          <div className="flex flex-col gap-1 border-t border-slate-100 bg-slate-50 px-4 py-2 shrink-0 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-semibold text-slate-600">
+              Hay {attention.hiddenCount}{' '}
+              {attention.hiddenCount === 1
+                ? 'evento adicional'
+                : 'eventos adicionales'}{' '}
+              de la semana.
+            </p>
+            <ActionLink to="/jornadas" variant="ghost" size="sm">
+              Ver todas
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </ActionLink>
+          </div>
+        ) : null}
+      </div>
     </SectionCard>
   )
 }

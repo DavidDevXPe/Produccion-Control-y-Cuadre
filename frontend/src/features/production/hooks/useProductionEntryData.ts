@@ -17,6 +17,7 @@ export function useProductionEntryData() {
   const [catalogItems, setCatalogItems] = useState<ProductionCatalogItem[]>(() => getActiveProducts())
   const manualProductSearchInputRef = useRef<HTMLInputElement>(null)
   const onProcessChangeResetRef = useRef<(() => void) | undefined>(undefined)
+  const autoReconciledFreezingRef = useRef<string | null>(null)
 
   const { deleteProductionDay, findProductionDay } = useProductionData()
 
@@ -99,6 +100,16 @@ export function useProductionEntryData() {
     setSaveError,
     updateDraft,
   })
+
+  useEffect(() => {
+    if (!existingDay || !isFreezing || draft.rows.length === 0) return
+
+    const reconciliationKey = `${existingDay.id}|${draft.date}`
+    if (autoReconciledFreezingRef.current === reconciliationKey) return
+
+    autoReconciledFreezingRef.current = reconciliationKey
+    draftActions.autoLinkAllFreezingProducts()
+  }, [draft.date, draft.rows.length, draftActions, existingDay, isFreezing])
   const persistence = useProductionPersistence({
     draft,
     editingDate,

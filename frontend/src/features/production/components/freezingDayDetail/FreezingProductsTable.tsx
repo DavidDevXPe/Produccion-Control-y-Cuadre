@@ -2,16 +2,18 @@ import { DataTableScroll } from '../../../../components/ui/DataTableScroll'
 import { SectionCard } from '../../../../components/ui/SectionCard'
 import { formatCentiKg } from '../../../../utils/formatters'
 import { sumKg100 } from '../../model/calculations'
+import { productIdsEquivalent } from '../../model/productIdentity'
+import type { FreezingComparisonRow } from '../../model/freezing'
 import type { ProductionDay } from '../../model/types'
 
 export interface FreezingProductsTableProps {
   readonly lines: readonly ProductionDay['lines'][number][]
-  readonly receivedBalanceLots: readonly ProductionDay['receivedBalanceLots'][number][]
+  readonly linkedByProduct: readonly FreezingComparisonRow[]
 }
 
 export function FreezingProductsTable({
   lines,
-  receivedBalanceLots,
+  linkedByProduct,
 }: FreezingProductsTableProps) {
   return (
     <SectionCard
@@ -33,11 +35,18 @@ export function FreezingProductsTable({
           </thead>
           <tbody>
             {lines.map((line) => {
-              const linkedForProduct = sumKg100(
-                receivedBalanceLots
-                  .filter((lot) => lot.productId === line.productId)
-                  .flatMap((lot) => lot.uses.map((use) => use.kg100)),
+              const exactLinkedRow = linkedByProduct.find(
+                (row) => row.id === line.productId,
               )
+              const linkedForProduct = exactLinkedRow
+                ? exactLinkedRow.linkedKg100
+                : sumKg100(
+                    linkedByProduct
+                      .filter((row) =>
+                        productIdsEquivalent(row.id, line.productId),
+                      )
+                      .map((row) => row.linkedKg100),
+                  )
               const frozenKg100 = sumKg100([
                 line.shifts.DAY.reportedKg100,
                 line.shifts.NIGHT.reportedKg100,

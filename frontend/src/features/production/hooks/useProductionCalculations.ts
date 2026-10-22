@@ -313,7 +313,7 @@ export function useProductionCalculations({
     )
 
     const positions = hasPreviousProcess(draft.process)
-      ? freezing.freezingOpenOriginPositions.filter(
+      ? freezing.freezingAutomaticOriginPositions.filter(
           (pos) => pos.originDate < draft.date,
         )
       : calculateOutstandingBalances(
@@ -325,9 +325,20 @@ export function useProductionCalculations({
           subsequentBalanceLots,
         )
 
+    const newestOriginByProduct = new Map<string, string>()
+    for (const position of positions) {
+      const key = `${position.familyId}|${position.productId}`
+      const currentDate = newestOriginByProduct.get(key)
+      if (!currentDate || position.originDate > currentDate) {
+        newestOriginByProduct.set(key, position.originDate)
+      }
+    }
+
     return positions.filter(
       (balance) =>
         balance.pendingKg100 > 0 &&
+        newestOriginByProduct.get(`${balance.familyId}|${balance.productId}`) ===
+          balance.originDate &&
         !selectedKeys.has(
           `${balance.originDayId}|${balance.productId}`,
         ),
@@ -337,7 +348,7 @@ export function useProductionCalculations({
     draft.balanceUses,
     draft.date,
     draft.process,
-    freezing.freezingOpenOriginPositions,
+    freezing.freezingAutomaticOriginPositions,
     subsequentBalanceLots,
   ])
 

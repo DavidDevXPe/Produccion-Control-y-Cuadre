@@ -10,7 +10,9 @@ import { DashboardKpiGrid } from '../components/DashboardKpiGrid'
 import { DashboardEvolutionCard } from '../components/DashboardEvolutionCard'
 import { DashboardRecentJourneysTable } from '../components/DashboardRecentJourneysTable'
 import { DashboardJourneyStatusCard } from '../components/DashboardJourneyStatusCard'
+import { DashboardPackingFamilyCard } from '../components/DashboardPackingFamilyCard'
 import { DashboardPendingBalancesCard } from '../components/DashboardPendingBalancesCard'
+import { DashboardQuickActionsCard } from '../components/DashboardQuickActionsCard'
 import { DashboardAttentionCard } from '../components/DashboardAttentionCard'
 import { DashboardWeeklyValidationBanner } from '../components/DashboardWeeklyValidationBanner'
 import type { WeeklyProductionSeries } from '../components/WeeklyProductionChart'
@@ -47,7 +49,7 @@ export function DashboardPage() {
     <div className="space-y-4">
       <div className="dashboard-eyebrow pl-4">
         <PageHeader
-          eyebrow="Dashboard operativo"
+          eyebrow="Dashboard operativo · Cuadre semanal"
           title="En resumen"
           description={data.weekDescription}
           actions={
@@ -78,13 +80,20 @@ export function DashboardPage() {
         weeklyYieldDelta={data.weeklyYieldDelta}
       />
 
-      <DashboardProcessComparison
-        comparison={data.processComparison}
-        hasFreezingData={data.hasFreezingData}
-      />
+      {data.attentionItems.length > 0 ? (
+        <DashboardAttentionCard
+          attentionItems={data.attentionItems}
+          attention={data.attention}
+        />
+      ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] xl:items-stretch">
-        <div className="min-w-0 space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-stretch">
+        <div className="flex min-w-0 flex-col gap-4">
+          <DashboardRecentJourneysTable
+            journeyRows={data.journeyRows}
+            packingWeekNumber={data.packingWeek.number}
+          />
+
           <DashboardEvolutionCard
             weeklyProductionData={data.weeklyProductionData}
             chartSeries={chartSeries}
@@ -92,14 +101,14 @@ export function DashboardPage() {
             weekBadge={data.weekBadge}
           />
 
-          <DashboardRecentJourneysTable
-            journeyRows={data.journeyRows}
-            packingWeekNumber={data.packingWeek.number}
-          />
-        </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:flex-1 xl:items-stretch">
+            <DashboardPackingFamilyCard
+              packedFamilies={data.packedFamilies}
+              totalFamiliesCount={data.packedFamiliesAll.length}
+              packingWeekNumber={data.packingWeek.number}
+              weeklyYieldPercent={data.weeklyYieldPercent}
+            />
 
-        <div className="min-w-0 xl:relative xl:min-h-[18rem]">
-          <div className="flex flex-col gap-4 xl:absolute xl:inset-0">
             <DashboardJourneyStatusCard
               packingDaysCount={data.packingDays.length}
               freezingDaysCount={data.freezingDays.length}
@@ -110,19 +119,27 @@ export function DashboardPage() {
               registeredJourneyCount={data.registeredJourneyCount}
               registeredOperationalDayCount={data.registeredOperationalDayCount}
             />
-
-            <DashboardPendingBalancesCard
-              pendingBalancesByFamily={data.pendingBalancesByFamily}
-              hiddenPendingFamilyCount={data.hiddenPendingFamilyCount}
-              pendingTraceableKg100={data.pendingTraceableKg100}
-              packingWeekNumber={data.packingWeek.number}
-            />
-
-            <DashboardAttentionCard
-              attentionItems={data.attentionItems}
-              attention={data.attention}
-            />
           </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          <DashboardProcessComparison
+            comparison={data.processComparison}
+            hasFreezingData={data.hasFreezingData}
+          />
+
+          <DashboardPendingBalancesCard
+            pendingBalancesByFamily={data.pendingBalancesByFamily}
+            hiddenPendingFamilyCount={data.hiddenPendingFamilyCount}
+            pendingTraceableKg100={data.pendingTraceableKg100}
+            packingWeekNumber={data.packingWeek.number}
+          />
+
+          <DashboardQuickActionsCard
+            canCreateJourney={data.activeWeekState.canCreate}
+            weekDistinctProductCount={data.weekDistinctProductCount}
+            weeklyYieldPercent={data.weeklyYieldPercent}
+          />
         </div>
       </div>
 

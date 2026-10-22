@@ -121,6 +121,14 @@ function balanceProcessedForProduct(
   line: ProductionLine,
   shift: ShiftCode,
 ): Kg100 {
+  const shiftEntry = line.shifts[shift];
+  const availableForShiftKg100 = calculateShiftEntry(shiftEntry).ownProductionKg100;
+
+  // A selected origin is only availability until this product has physical
+  // production in the corresponding shift. In particular, a stale/manual
+  // allocation must not consume a balance when the shift reports zero kilos.
+  if (availableForShiftKg100 <= 0) return ZERO_KG100;
+
   const hasExactLineForLot = (lot: BalanceLot) =>
     productionDay.lines.some(
       (candidate) =>
@@ -216,27 +224,15 @@ function calculateShift(
   shift: ShiftCode,
   products: readonly ProductReconciliation[],
   declaredReportedKg100: Kg100,
-  productionDay?: ProductionDay,
 ): ShiftCalculation {
   const entries = products.map((product) =>
     shift === "DAY" ? product.day : product.night,
   );
   const reportedKg100 = sumKg100(entries.map((entry) => entry.reportedKg100));
 
-  const previousBalanceProcessedKg100 =
-    productionDay?.process && productionDay.process !== "PACKING"
-      ? sumKg100(
-          productionDay.receivedBalanceLots.flatMap((lot) =>
-            lot.uses
-              .filter(
-                (use) =>
-                  use.targetDayId === productionDay.id &&
-                  use.shift === shift,
-              )
-              .map((use) => use.kg100),
-          ),
-        )
-      : sumKg100(entries.map((entry) => entry.previousBalanceProcessedKg100));
+  const previousBalanceProcessedKg100 = sumKg100(
+    entries.map((entry) => entry.previousBalanceProcessedKg100),
+  );
 
   return {
     reportedKg100,
@@ -628,7 +624,14 @@ function collectDayIntegrityIssues(
                   ? productIdsEquivalent(line.productId, lot.sourceProductId)
                   : false),
             );
-      if (sameProduct.length === 0) {
+      const hasPhysicalForShift =
+        productionDay.declaredShiftTotalsKg100[use.shift] > 0 ||
+        productionDay.lines.some(
+          (line) =>
+            calculateShiftEntry(line.shifts[use.shift]).ownProductionKg100 >
+            0,
+        );
+      if (sameProduct.length === 0 && hasPhysicalForShift) {
         issues.push(
           dayIssue({
             code: "BALANCE_PRODUCT_NOT_FOUND",
@@ -639,7 +642,10 @@ function collectDayIntegrityIssues(
             shift: use.shift,
           }),
         );
-      } else if (!sameProduct.some((line) => line.familyId === lot.familyId)) {
+      } else if (
+        sameProduct.length > 0 &&
+        !sameProduct.some((line) => line.familyId === lot.familyId)
+      ) {
         issues.push(
           dayIssue({
             code: "BALANCE_FAMILY_MISMATCH",
@@ -726,13 +732,11 @@ export function calculateProductionDay(
     "DAY",
     products,
     productionDay.declaredShiftTotalsKg100.DAY,
-    productionDay,
   );
   const night = calculateShift(
     "NIGHT",
     products,
     productionDay.declaredShiftTotalsKg100.NIGHT,
-    productionDay,
   );
   const reportOwnProductionKg100 = sumKg100([
     day.ownProductionKg100,

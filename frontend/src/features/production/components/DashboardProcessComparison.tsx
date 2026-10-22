@@ -64,6 +64,24 @@ export function DashboardProcessComparison({
   // a link above the physical report is a review even when the net is zero.
   const needsReview = comparison.status === 'REVIEW'
 
+  const packedTotal = comparison.packedKg100
+  const frozenPercent =
+    packedTotal > 0
+      ? Math.min(100, Math.max(0, (comparison.frozenKg100 / packedTotal) * 100))
+      : 0
+  const pendingPercent =
+    packedTotal > 0
+      ? Math.min(
+          100 - frozenPercent,
+          Math.max(0, (comparison.pendingKg100 / packedTotal) * 100),
+        )
+      : 0
+  const explainedKg100 = comparison.frozenKg100 + comparison.pendingKg100
+  const explainedPercent =
+    packedTotal > 0
+      ? Math.min(100, Math.max(0, (explainedKg100 / packedTotal) * 100))
+      : 100
+
   const tiles: readonly {
     label: string
     value: number
@@ -112,21 +130,69 @@ export function DashboardProcessComparison({
           </StatusBadge>
         ) : null
       }
-      contentClassName="p-4"
+      className="shrink-0"
+      contentClassName="space-y-3 p-4"
     >
+      {packedTotal > 0 ? (
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-bold text-slate-800">
+              Estructura del volumen ({formatCentiKg(packedTotal)})
+            </span>
+            <span
+              className={`number-tabular font-bold ${
+                needsReview
+                  ? 'text-rose-700 dark:text-rose-300'
+                  : 'text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              {explainedPercent.toFixed(1)}% explicado
+            </span>
+          </div>
+
+          <div
+            className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-slate-100"
+            aria-label="Distribución de volumen entre Congelado y Saldo pendiente"
+          >
+            <div
+              className="h-full bg-sky-500 transition-all"
+              style={{ width: `${frozenPercent}%` }}
+            />
+            <div
+              className="h-full bg-amber-500 transition-all"
+              style={{ width: `${pendingPercent}%` }}
+            />
+          </div>
+
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full bg-sky-500"
+                aria-hidden="true"
+              />
+              Congelado ({frozenPercent.toFixed(1)}%)
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full bg-amber-500"
+                aria-hidden="true"
+              />
+              Saldo pendiente ({pendingPercent.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       {hasFreezingData ? (
         <>
           <ol
             aria-label="Flujo del cuadre"
-            className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] xl:items-stretch"
+            className="grid gap-2 sm:grid-cols-2"
           >
             {tiles.map((item, index) => (
               <li key={item.label} className="contents">
                 {index > 0 ? (
-                  <span
-                    className="hidden place-items-center text-slate-400 xl:grid"
-                    aria-hidden="true"
-                  >
+                  <span className="sr-only" aria-hidden="true">
                     <ChevronRight className="size-4" />
                   </span>
                 ) : null}
@@ -158,7 +224,7 @@ export function DashboardProcessComparison({
           </ol>
 
           {reviewReasons.length > 0 ? (
-            <div className="mt-3 flex gap-3 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-3 dark:border-rose-400/40 dark:bg-rose-500/10">
+            <div className="flex gap-3 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-3 dark:border-rose-400/40 dark:bg-rose-500/10">
               <AlertTriangle
                 className="mt-0.5 size-5 shrink-0 text-rose-700 dark:text-rose-300"
                 aria-hidden="true"
@@ -179,7 +245,7 @@ export function DashboardProcessComparison({
             </div>
           ) : null}
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4">
+          <div className="flex flex-wrap items-center gap-x-4 border-t border-slate-100 pt-2">
             <ActionLink
               to="/saldos?process=FREEZING"
               variant="ghost"
@@ -196,7 +262,7 @@ export function DashboardProcessComparison({
           </div>
         </>
       ) : (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span
               className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-white"

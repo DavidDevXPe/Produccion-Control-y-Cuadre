@@ -19,7 +19,9 @@ export function SectionCard({
   allowStickyContent = false,
   ...props
 }: SectionCardProps) {
-  const overflowClass = allowStickyContent ? 'overflow-clip' : 'overflow-hidden'
+  const overflowClass = allowStickyContent
+    ? 'overflow-visible section-card--overlay-content'
+    : 'overflow-hidden'
 
   return (
     <section

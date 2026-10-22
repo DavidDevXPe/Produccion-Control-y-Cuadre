@@ -39,7 +39,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
+      includeAssets: ["brand/trabunda-logo-white.png"],
       manifest: {
         name: "Producción Control y Cuadre",
         short_name: "Producción",
@@ -50,13 +50,8 @@ export default defineConfig({
         display: "standalone",
         icons: [
           {
-            src: "pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
+            src: "brand/trabunda-logo-white.png",
+            sizes: "any",
             type: "image/png",
           },
         ],

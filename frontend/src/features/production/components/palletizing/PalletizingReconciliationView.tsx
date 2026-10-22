@@ -23,7 +23,6 @@ import type {
   PalletizingComparisonMode,
   PalletizingRowInput,
 } from '../../model/palletizingTypes'
-import { downloadPalletizingReconciliationWorkbook } from '../../export/palletizingReconciliationWorkbook'
 
 export interface PalletizingReconciliationViewProps {
   readonly initialRows?: readonly PalletizingRowInput[] | undefined
@@ -65,6 +64,7 @@ export function PalletizingReconciliationView({
     if (isExporting) return
     try {
       setIsExporting(true)
+      const { downloadPalletizingReconciliationWorkbook } = await import('../../export/palletizingReconciliationWorkbook')
       await downloadPalletizingReconciliationWorkbook({
         rows: currentRows,
         comparisonMode,

@@ -3,8 +3,12 @@ import {
   closedFreezingDay,
   closedPackingDay,
 } from '../../../test/productionFixtures'
-import { kg } from './calculations'
-import { calculateFreezingComparison } from './freezing'
+import { createCaptureDraftFromDay } from '../capture/productionCapture'
+import { calculateProductionDay, kg } from './calculations'
+import {
+  calculateFreezingComparison,
+  calculateFreezingDayOriginUsage,
+} from './freezing'
 import { getProductionDayOperationalState } from './productionLifecycle'
 
 const week = { startDate: '2026-09-07', endDate: '2026-09-13' } as const
@@ -22,6 +26,57 @@ function compare(reportedKg: number, linkedKg: number) {
 }
 
 describe('Freezing comparison status', () => {
+  it('keeps a selected prior-day balance pending when the next day reports no freezing', () => {
+    const packing = closedPackingDay('2026-09-08', 34_180)
+    const freezing08 = closedFreezingDay({
+      date: '2026-09-08',
+      reportedKg: 33_650,
+      linkedKg: 33_650,
+      origin: packing,
+    })
+    const freezing09 = {
+      ...closedFreezingDay({
+        date: '2026-09-09',
+        reportedKg: 0,
+        linkedKg: 530,
+        origin: packing,
+      }),
+      lines: [],
+    }
+
+    const comparison = calculateFreezingComparison(
+      [packing, freezing08, freezing09],
+      week,
+    )
+
+    expect(comparison.physicalReportedKg100).toBe(kg(33_650))
+    expect(comparison.linkedKg100).toBe(kg(33_650))
+    expect(comparison.pendingKg100).toBe(kg(530))
+    expect(comparison.linkageExcessKg100).toBe(0)
+    expect(comparison.unexplainedDifferenceKg100).toBe(0)
+    expect(comparison.status).toBe('BALANCED')
+    expect(
+      calculateProductionDay(freezing09).processedPreviousBalanceKg100,
+    ).toBe(0)
+    expect(
+      calculateFreezingDayOriginUsage(
+        [packing, freezing08, freezing09],
+        '2026-09-09',
+      )[0],
+    ).toMatchObject({
+      availableAtStartKg100: kg(530),
+      frozenThisDayKg100: 0,
+      pendingAfterKg100: kg(530),
+    })
+    const restoredDraft = createCaptureDraftFromDay(freezing09, [
+      packing,
+      freezing08,
+      freezing09,
+    ])
+    expect(restoredDraft.balanceUses[0]?.dayKg).toBe('0')
+    expect(restoredDraft.balanceUses[0]?.nightKg).toBe('0')
+  })
+
   it('is CONCILIADO when everything packed is physically frozen and linked', () => {
     const { comparison } = compare(100_000, 100_000)
 
@@ -64,7 +119,7 @@ describe('Freezing comparison status', () => {
       expect(comparison.physicalReportedKg100).toBe(kg(80_000))
       expect(comparison.linkedKg100).toBe(kg(100_000))
       expect(comparison.unlinkedPhysicalKg100).toBe(0)
-      expect(comparison.pendingKg100).toBe(0)
+      expect(comparison.pendingKg100).toBe(kg(20_000))
       expect(comparison.linkageExcessKg100).toBe(kg(20_000))
     })
 

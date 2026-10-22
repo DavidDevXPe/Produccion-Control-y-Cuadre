@@ -10,6 +10,8 @@ import {
 } from "./productionCatalog";
 import { SEED_CAPTURE_PRODUCTS } from "./seedProducts";
 import { addAliasToActiveProduct, getActiveProducts } from "./productCatalogRepository";
+import { canonicalProductId, productIdsEquivalent } from "../model/productIdentity";
+import { buildFreezingExcelPreview } from "./freezingExcelPreview";
 
 describe("production catalog filtering", () => {
   it.each(["aleta", "MANTO", "nuca", "semi limpia"])(
@@ -143,6 +145,94 @@ describe("active capture catalog", () => {
     );
   });
 
+  it("includes BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N in the Boton family", () => {
+    expect(SEED_CAPTURE_PRODUCTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "boton-crudo-block-espana-p-sm-cp-st",
+          productName:
+            "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N",
+          canonicalName:
+            "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N",
+          familyId: "boton",
+          familyName: "BOTON",
+          summaryGroupId: "BOTON",
+          active: true,
+        }),
+      ]),
+    );
+
+    const matches = filterCaptureCatalogItems(
+      "BOTÃ“N CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+    );
+    expect(matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "boton-crudo-block-espana-p-sm-cp-st",
+        }),
+      ]),
+    );
+  });
+
+  it("includes BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N. in the Boton family", () => {
+    expect(SEED_CAPTURE_PRODUCTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "boton-crudo-block-polar-sm-sp-st",
+          productName:
+            "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+          canonicalName:
+            "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+          familyId: "boton",
+          familyName: "BOTON",
+          summaryGroupId: "BOTON",
+          active: true,
+        }),
+      ]),
+    );
+
+    const matches = filterCaptureCatalogItems(
+      "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+    );
+    expect(matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "boton-crudo-block-polar-sm-sp-st",
+        }),
+      ]),
+    );
+  });
+
+  it("includes ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N. in the Anillas family", () => {
+    expect(SEED_CAPTURE_PRODUCTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "anillas-espana-p-cm-cp-st-mixta",
+          productName:
+            "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+          canonicalName:
+            "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+          familyId: "anillas",
+          familyName: "ANILLAS",
+          summaryGroupId: "ANILLAS",
+          technicalClassification: "GENERAL",
+          active: true,
+        }),
+      ]),
+    );
+
+    const matches = filterCaptureCatalogItems(
+      "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+    );
+    expect(matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "anillas-espana-p-cm-cp-st-mixta",
+        }),
+      ]),
+    );
+  });
+
   it("keeps every capture seed product paired with a unique product id", () => {
     const ids = SEED_CAPTURE_PRODUCTS.map((product) => product.productId);
 
@@ -222,5 +312,96 @@ describe("active capture catalog", () => {
     expect(window.localStorage.getItem("trabunda-product-catalog-v2")).toContain(
       "nuca-semilimpia-100-300",
     );
+  });
+
+  it("maps dynamically generated slug IDs of recently added products to their canonical seed IDs and deduplicates catalog", () => {
+    expect(
+      canonicalProductId(
+        "anillas-crudas-congeladas-block-stto-espana-p-cm-cp-st-mixta-100-pn",
+      ),
+    ).toBe("anillas-espana-p-cm-cp-st-mixta");
+    expect(
+      canonicalProductId(
+        "boton-crudo-congelado-block-stto-espana-p-sm-cp-st-100-pn",
+      ),
+    ).toBe("boton-crudo-block-espana-p-sm-cp-st");
+    expect(
+      canonicalProductId(
+        "boton-crudo-congelado-block-stto-polar-sm-sp-st-100-pn",
+      ),
+    ).toBe("boton-crudo-block-polar-sm-sp-st");
+
+    confirmProductionCatalogItem({
+      ...createUnconfirmedCatalogItem(
+        "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+      ),
+      productId:
+        "anillas-crudas-congeladas-block-stto-espana-p-cm-cp-st-mixta-100-pn",
+      familyId: "anillas",
+      familyName: "ANILLAS",
+      summaryGroupId: "ANILLAS",
+      source: "MANUAL",
+    });
+
+    const active = getActiveProducts();
+    const matchingAnillas = active.filter((item) =>
+      productIdsEquivalent(item.productId, "anillas-espana-p-cm-cp-st-mixta"),
+    );
+    expect(matchingAnillas).toHaveLength(1);
+    expect(matchingAnillas[0]?.productId).toBe("anillas-espana-p-cm-cp-st-mixta");
+
+    const preview = buildFreezingExcelPreview(
+      {
+        sheetName: "15-10-2026",
+        totalAros: 30,
+        totalKg: 300,
+        sourceGrandTotalAros: 30,
+        sourceGrandTotalKg: 300,
+        warnings: [],
+        reconciled: true,
+        rows: [
+          {
+            rowNumber: 1,
+            rawProductName:
+              "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+            baseProductName:
+              "BOTON CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N.",
+            quantityAros: 10,
+            packaging: null,
+            totalKg: 100,
+          },
+          {
+            rowNumber: 2,
+            rawProductName:
+              "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+            baseProductName:
+              "ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
+            quantityAros: 10,
+            packaging: null,
+            totalKg: 100,
+          },
+          {
+            rowNumber: 3,
+            rawProductName:
+              "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+            baseProductName:
+              "BOTON CRUDO CONGELADO BLOCK S/TTO POLAR SM SP ST 100% P.N.",
+            quantityAros: 10,
+            packaging: null,
+            totalKg: 100,
+          },
+        ],
+      },
+      "congelado.xlsx",
+      "DAY",
+      active,
+    );
+
+    expect(preview.reviewRows).toBe(0);
+    expect(preview.rows.map((r) => r.product?.productId)).toEqual([
+      "boton-crudo-block-espana-p-sm-cp-st",
+      "anillas-espana-p-cm-cp-st-mixta",
+      "boton-crudo-block-polar-sm-sp-st",
+    ]);
   });
 });

@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { closedFreezingDay, closedPackingDay } from '../../../test/productionFixtures'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
+import { kg } from '../model/calculations'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { ProductionDaysPage } from './ProductionDaysPage'
 
@@ -47,7 +48,7 @@ describe('production days page', () => {
     })
     const headers = within(table).getAllByRole('columnheader')
 
-    expect(headers.map((header) => header.textContent)).toEqual([
+    expect(headers.slice(0, 8).map((header) => header.textContent)).toEqual([
       'Jornada',
       'Materia prima',
       'Producto terminado',
@@ -57,23 +58,26 @@ describe('production days page', () => {
       'Aprovechamiento',
       'Acción',
     ])
-    expect(table).toHaveClass('table-fixed', 'min-w-[68rem]')
+    expect(headers[8]).toHaveTextContent('Eliminar')
+    expect(table).toHaveClass('table-fixed', 'min-w-[72rem]')
     expect(
       [...table.querySelectorAll('col')].map((column) => column.className),
     ).toEqual([
-      'w-[14%]',
-      'w-[11%]',
-      'w-[12%]',
+      'w-[13%]',
       'w-[10%]',
-      'w-[9%]',
-      'w-[17%]',
-      'w-[15%]',
-      'w-[12%]',
+      'w-[11%]',
+      'w-[10%]',
+      'w-[8%]',
+      'w-[16%]',
+      'w-[13%]',
+      'w-[14%]',
+      'w-[5%]',
     ])
 
-    headers.forEach((header) => {
+    headers.slice(0, 8).forEach((header) => {
       expect(header).toHaveClass('px-3', 'text-center', 'align-middle')
     })
+    expect(headers[8]).toHaveClass('px-2', 'text-center', 'align-middle')
 
     const latestRow = screen.getByText('LUNES').closest('tr')
     expect(latestRow).not.toBeNull()
@@ -89,9 +93,10 @@ describe('production days page', () => {
       'text-center',
     )
 
-    cells.forEach((cell) => {
+    cells.slice(0, -1).forEach((cell) => {
       expect(cell).toHaveClass('px-3', 'text-center', 'align-middle')
     })
+    expect(cells.at(-1)).toHaveClass('px-2', 'text-center', 'align-middle')
 
     expect(screen.getByText('615,239.00').parentElement).toHaveClass(
       'w-full',
@@ -263,6 +268,9 @@ describe('production days page', () => {
     expect(within(row).queryByText('POR CUADRAR')).not.toBeInTheDocument()
     expect(badge.closest('span[class*="ring-1"]')?.className).toMatch(/amber/)
     expect(badge.closest('span[class*="ring-1"]')?.className).not.toMatch(/rose/)
+    expect(
+      within(row).getByRole('button', { name: /Eliminar jornada del/ }),
+    ).toHaveClass('size-9', 'shrink-0', 'border')
   })
 
   it('flags Freezing linked above the physical report in red inside the Freezing summary', () => {
@@ -299,6 +307,75 @@ describe('production days page', () => {
     const difference = within(summary).getByText('Dif. trazabilidad').nextElementSibling
     expect(difference).toHaveTextContent('-20,000.00')
     expect(difference?.className).toMatch(/rose/)
+  })
+
+  it('shows Freezing shift totals and linked kilograms under their matching footer columns', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-14T12:00:00-05:00'))
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '46')
+
+    const mondayOrigin = closedPackingDay('2026-10-04', 14_870)
+    const thursdayOrigin = closedPackingDay('2026-10-07', 33_650)
+    const monday = closedFreezingDay({
+      date: '2026-10-05',
+      reportedKg: 14_940,
+      linkedKg: 14_870,
+      origin: mondayOrigin,
+    })
+    const thursday = closedFreezingDay({
+      date: '2026-10-08',
+      reportedKg: 33_650,
+      linkedKg: 33_650,
+      origin: thursdayOrigin,
+    })
+    const friday = closedFreezingDay({
+      date: '2026-10-09',
+      reportedKg: 0,
+      linkedKg: 0,
+      origin: thursdayOrigin,
+    })
+    const productionDays = [
+      mondayOrigin,
+      thursdayOrigin,
+      {
+        ...monday,
+        declaredShiftTotalsKg100: { DAY: kg(0), NIGHT: kg(14_940) },
+      },
+      {
+        ...thursday,
+        declaredShiftTotalsKg100: { DAY: kg(24_740), NIGHT: kg(8_910) },
+      },
+      friday,
+    ]
+    window.localStorage.setItem(
+      'trabunda-production-days-v2',
+      JSON.stringify(productionDays),
+    )
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/jornadas?process=FREEZING']}>
+          <ProductionDaysPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    const footerRow = screen.getByText('TOTAL ACUMULADO').closest('tr')!
+    const footerCells = within(footerRow).getAllByRole('cell')
+
+    expect(within(footerRow).getByRole('rowheader')).toHaveClass('text-center')
+    footerRow.querySelectorAll('th, td').forEach((cell) => {
+      expect(cell).toHaveClass('text-center')
+    })
+    expect(footerCells[0]).toHaveTextContent('24,740.00 kg')
+    expect(footerCells[1]).toHaveTextContent('23,850.00 kg')
+    expect(footerCells[2]).toHaveTextContent('48,590.00 kg')
+    expect(footerCells[3]).toHaveTextContent('70.00 kg')
+    expect(footerCells[4]).toHaveTextContent(/\d de 3 auditadas/)
+    expect(footerCells[5]).toHaveTextContent('48,520.00 kg')
+    expect(footerCells[6]).toHaveTextContent('3 jornadas')
+    expect(footerCells[7]).toHaveTextContent('—')
   })
 })
 

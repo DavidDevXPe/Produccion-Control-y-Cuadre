@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addRecentProductId } from '../../../storage/recentProductsStore'
 import { ProductPicker } from './ProductPicker'
 
 interface TestItem {
@@ -61,6 +62,90 @@ describe('ProductPicker component', () => {
     fireEvent.click(option)
 
     expect(handleAdd).toHaveBeenCalledWith(MOCK_ITEMS[1])
+  })
+
+  it('shares recent products with balance pickers that use origin-specific option ids', () => {
+    const balanceItems = [
+      {
+        id: 'origin-day|2',
+        productId: '2',
+        name: 'Manto entero · saldo del 08 OCT',
+        family: 'MANTO',
+      },
+    ]
+
+    render(
+      <>
+        <ProductPicker
+          items={MOCK_ITEMS}
+          getItemId={(item) => item.id}
+          getItemLabel={(item) => item.name}
+          onAdd={vi.fn()}
+          label="Buscar producto"
+          scopeKey="PACKING:REPORTS"
+        />
+        <ProductPicker
+          items={balanceItems}
+          getItemId={(item) => item.id}
+          getItemRecentId={(item) => item.productId}
+          getItemLabel={(item) => item.name}
+          onAdd={vi.fn()}
+          label="Buscar saldo"
+          scopeKey="PACKING:REPORTS"
+        />
+      </>,
+    )
+
+    const reportInput = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(reportInput)
+    fireEvent.change(reportInput, { target: { value: 'Manto entero' } })
+    fireEvent.click(screen.getByRole('option', { name: /Manto entero/i }))
+
+    fireEvent.focus(screen.getByRole('combobox', { name: 'Buscar saldo' }))
+
+    const balanceList = screen.getByRole('listbox')
+    expect(within(balanceList).getByText('Usados recientemente')).toBeInTheDocument()
+    expect(within(balanceList).getAllByRole('option')[0]).toHaveTextContent(
+      'Manto entero · saldo del 08 OCT',
+    )
+  })
+
+  it('prioritizes the exact recently used balance origin without duplicating its product', () => {
+    const scopeKey = 'PACKING:REPORTS'
+    addRecentProductId(scopeKey, '2', 16)
+    addRecentProductId(scopeKey, 'origin-day-09|2', 16)
+    const balances = [
+      {
+        id: 'origin-day-08|2',
+        productId: '2',
+        name: 'Manto entero · saldo del 08 OCT',
+        family: 'MANTO',
+      },
+      {
+        id: 'origin-day-09|2',
+        productId: '2',
+        name: 'Manto entero · saldo del 09 OCT',
+        family: 'MANTO',
+      },
+    ]
+
+    render(
+      <ProductPicker
+        items={balances}
+        getItemId={(item) => item.id}
+        getItemRecentId={(item) => item.productId}
+        getItemLabel={(item) => item.name}
+        onAdd={vi.fn()}
+        label="Buscar saldo"
+        scopeKey={scopeKey}
+      />,
+    )
+
+    fireEvent.focus(screen.getByRole('combobox', { name: 'Buscar saldo' }))
+
+    const recentOptions = within(screen.getByRole('listbox')).getAllByRole('option')
+    expect(recentOptions[0]).toHaveTextContent('saldo del 09 OCT')
+    expect(recentOptions).toHaveLength(3)
   })
 
   it('allows keyboard navigation with Arrow keys and Enter to add', () => {

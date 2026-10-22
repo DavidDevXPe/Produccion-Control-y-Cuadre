@@ -175,7 +175,7 @@ export function WeeklyProductionChart({
 
   return (
     <div
-      className="h-[13.5rem] min-w-0 w-full sm:h-[14.5rem]"
+      className="h-[13.5rem] min-h-[13.5rem] min-w-0 w-full flex-1 sm:h-[14.5rem] sm:min-h-[14.5rem]"
       role="img"
       aria-label={`Producción semanal apilada. ${chartLabel}.`}
     >

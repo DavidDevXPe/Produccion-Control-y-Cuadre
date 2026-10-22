@@ -188,6 +188,7 @@ export function ProductionBalancesSection({
         <ProductPicker
           items={availableBalances}
           getItemId={(balance) => `${balance.originDayId}|${balance.productId}`}
+          getItemRecentId={(balance) => balance.productId}
           getItemLabel={(balance) =>
             `${formatIsoDate(balance.originDate)} · ${balance.familyName} · ${balance.productName}`
           }
@@ -225,7 +226,7 @@ export function ProductionBalancesSection({
                 : 'Usar saldo'
           }
           disabled={!usesExternalAvailability && !reportsReconciled}
-          scopeKey={`${selectedProcess}:BALANCES`}
+          scopeKey={`${selectedProcess}:REPORTS`}
           noResultsText={
             availableBalances.length === 0
               ? selectedProcess === 'FREEZING'

@@ -41,6 +41,25 @@ function position(
 }
 
 describe("freezing FIFO allocation", () => {
+  it("keeps oldest-first order with a target date and excludes future origins", () => {
+    const result = buildFreezingFifoAllocation({
+      targetProduct: product,
+      targetDate: "2026-09-16",
+      reportedDayKg100: kg100(12000),
+      reportedNightKg100: kg100(3000),
+      positions: [
+        position("future", "2026-09-17", 100),
+        position("new", "2026-09-15", 100),
+        position("old", "2026-09-14", 100),
+      ],
+      existingUses: [],
+    });
+    expect(result.balanceUses.map(({ originDayId, dayKg, nightKg }) => ({ originDayId, dayKg, nightKg }))).toEqual([
+      { originDayId: "old", dayKg: "100", nightKg: "0" },
+      { originDayId: "new", dayKg: "20", nightKg: "30" },
+    ]);
+  });
+
   it("uses oldest Packing availability first and then continues with the next origin", () => {
     const result = buildFreezingFifoAllocation({
       targetProduct: product,
