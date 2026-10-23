@@ -15,37 +15,43 @@ export function ProductionEntryPendingAlerts({
   pendingClosureReasons,
   saveError,
 }: ProductionEntryPendingAlertsProps) {
-  const showBlockers =
-    !canClose &&
-    (closureValidation.blockers.length > 0 ||
-      diagnostics.length > 0 ||
-      pendingClosureReasons.length > 0)
+  const warningCodes = new Set(
+    closureValidation.warnings.map((warning) => warning.code),
+  )
+  const reviewMessages = [
+    ...pendingClosureReasons,
+    ...closureValidation.blockers
+      .filter(
+        (blocker: ClosureMessage) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED',
+      )
+      .map((blocker: ClosureMessage) => blocker.message),
+    ...diagnostics
+      .filter(
+        (diagnostic: ClosureMessage) =>
+          diagnostic.code !== 'SHIFT_BALANCED' &&
+          !warningCodes.has(diagnostic.code),
+      )
+      .map((diagnostic: ClosureMessage) => diagnostic.message),
+    ...closureValidation.warnings.map((warning) => warning.message),
+  ]
+    .filter((message, index, messages) => messages.indexOf(message) === index)
+    .slice(0, 12)
+  const showReview = reviewMessages.length > 0
+  const warningsOnly = canClose && closureValidation.warnings.length > 0
 
   return (
     <>
-      {showBlockers ? (
+      {showReview ? (
         <div
           id="pendientes-para-cerrar"
           tabIndex={-1}
           className="scroll-mt-28 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 outline-none dark:border-amber-500/30 dark:bg-amber-500/10"
         >
           <p className="text-xs font-bold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-300">
-            Pendientes para cerrar
+            {warningsOnly ? 'Observaciones para revisar' : 'Pendientes para cerrar'}
           </p>
           <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900 dark:text-amber-200">
-            {(pendingClosureReasons.length > 0
-              ? pendingClosureReasons
-              : [
-                  ...closureValidation.blockers
-                    .filter((blocker: ClosureMessage) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
-                    .map((blocker: ClosureMessage) => blocker.message),
-                  ...diagnostics
-                    .filter((diagnostic: ClosureMessage) => diagnostic.code !== 'SHIFT_BALANCED')
-                    .map((diagnostic: ClosureMessage) => diagnostic.message),
-                ]
-                  .filter((message, index, messages) => messages.indexOf(message) === index)
-                  .slice(0, 12)
-            ).map((message) => (
+            {reviewMessages.map((message) => (
               <li key={message}>• {message}</li>
             ))}
           </ul>

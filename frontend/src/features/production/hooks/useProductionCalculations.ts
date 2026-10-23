@@ -10,6 +10,7 @@ import {
   sumImportedBalances,
   type ProductionCaptureDraft,
 } from '../capture/productionCapture'
+import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import {
   buildBalanceShiftDiagnostics,
@@ -86,8 +87,26 @@ export function useProductionCalculations({
   )
 
   const orderedProductIds = useMemo(
-    () => reportFamilySubtotals.flatMap((s) => s.productIds),
-    [reportFamilySubtotals],
+    () =>
+      reportFamilySubtotals.flatMap((subtotal) =>
+        subtotal.productIds.filter((productId) => {
+          const row = draft.rows.find(
+            (candidate) => candidate.product.productId === productId,
+          )
+          if (!row) return false
+          const hasNormalMovement =
+            captureQuantityKg100(row.dayReportedKg) > 0 ||
+            captureQuantityKg100(row.nightReportedKg) > 0 ||
+            captureQuantityKg100(row.treatmentKg) > 0 ||
+            captureQuantityKg100(row.closingBalanceKg) > 0 ||
+            captureQuantityKg100(row.finishedKg) > 0
+          const hasTunnelMovement =
+            captureQuantityKg100(row.tunnelDayKg) > 0 ||
+            captureQuantityKg100(row.tunnelNightKg) > 0
+          return hasNormalMovement || !hasTunnelMovement
+        }),
+      ),
+    [draft.rows, reportFamilySubtotals],
   )
 
   const { getGridCellProps: getCaptureCellProps } = useGridKeyboardNavigation({
@@ -234,6 +253,16 @@ export function useProductionCalculations({
     diagnostics,
   ])
 
+  const reviewReasons = useMemo(() => {
+    const warningMessages = closureValidation.warnings.map(
+      (warning) => warning.message,
+    )
+
+    return [...pendingClosureReasons, ...warningMessages].filter(
+      (message, index, messages) => messages.indexOf(message) === index,
+    )
+  }, [closureValidation.warnings, pendingClosureReasons])
+
   const footerStatus = canClose
     ? closureValidation.warnings.length > 0
       ? {
@@ -370,6 +399,7 @@ export function useProductionCalculations({
     reportsReconciled,
     tunnelMovementRequired,
     pendingClosureReasons,
+    reviewReasons,
     footerStatus,
     importedBalanceTotal,
     importedBalanceMatches,

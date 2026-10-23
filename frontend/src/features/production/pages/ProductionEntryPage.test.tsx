@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProductionDataProvider } from '../state/ProductionDataContext'
 import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
 import { kg100 } from '../model/calculations'
-import { formatCentiKg } from '../../../utils/formatters'
 import {
   freezingTraceabilityStatus,
   packingProductStatus,
@@ -72,7 +71,7 @@ function addClosingBalanceProduct(query: string) {
   })
   fireEvent.focus(productInput)
   fireEvent.change(productInput, { target: { value: query } })
-  const productOption = within(closingSection).getAllByRole('option')[0]!
+  const productOption = screen.getAllByRole('option')[0]!
   fireEvent.click(productOption)
 }
 
@@ -87,7 +86,7 @@ function addTunnelProduct(query: string) {
   fireEvent.focus(productInput)
   fireEvent.change(productInput, { target: { value: query } })
 
-  const productOptions = within(tunnelSection).getAllByRole('option')
+  const productOptions = screen.getAllByRole('option')
   expect(productOptions.length).toBeGreaterThan(0)
   fireEvent.click(productOptions[0]!)
 
@@ -109,7 +108,7 @@ function addTreatmentProduct(query: string) {
   fireEvent.focus(productInput)
   fireEvent.change(productInput, { target: { value: query } })
 
-  const productOptions = within(treatmentSection).getAllByRole('option')
+  const productOptions = screen.getAllByRole('option')
   expect(productOptions.length).toBeGreaterThan(0)
   fireEvent.click(productOptions[0]!)
 
@@ -241,7 +240,7 @@ expect(
   }),
 ).toBeInTheDocument()
 
-    expect(screen.queryByLabelText('Existe producto para Túnel')).toBeNull()
+    expect(screen.getByLabelText('Existe producto para Túnel')).not.toBeChecked()
     expect(screen.queryByRole('heading', { name: 'Balance MP Tubo' })).toBeNull()
 
     const input = screen.getByRole('combobox', { name: 'Buscar producto' })
@@ -451,9 +450,7 @@ describe('capture product status labels', () => {
   it('adapts the fixed action bar to the theme, viewport, and capture state', () => {
     renderNewEntry()
 
-    const incompleteTitle = screen.getByText(
-      'Completa los datos requeridos para validar la jornada.',
-    )
+    const incompleteTitle = screen.getByText('Cierre pendiente')
     const actionBar = incompleteTitle.closest('[role="status"]')?.parentElement
       ?.parentElement
     const page = screen.getByRole('heading', { name: 'Nueva jornada' }).closest(
@@ -461,7 +458,7 @@ describe('capture product status labels', () => {
     )
 
     expect(
-      screen.getByText('Puedes guardar un borrador válido y continuar después.'),
+      screen.getByText('2 validaciones para el cierre'),
     ).toBeInTheDocument()
     expect(actionBar).toHaveClass(
       'dark:border-ui-line-dark',
@@ -470,8 +467,7 @@ describe('capture product status labels', () => {
     expect(page).toHaveClass(
       'pb-[calc(var(--entry-action-bar-height)+1rem)]',
       '[--entry-action-bar-height:8.75rem]',
-      'sm:[--entry-action-bar-height:4.25rem]',
-      'xl:[--entry-action-bar-height:var(--sidebar-footer-height)]',
+      'lg:[--entry-action-bar-height:var(--sidebar-footer-height)]',
     )
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeDisabled()
 
@@ -487,23 +483,11 @@ describe('capture product status labels', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeDisabled()
 
-    expect(
-      screen.getByText('La jornada todavía requiere revisión.'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Revisa el cuadre y las validaciones pendientes antes de cerrar.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Requiere revisión')).toBeInTheDocument()
 
     fireEvent.change(captureInputs[0]!, { target: { value: '90' } })
 
-    expect(screen.getByText('La jornada puede cerrarse con observaciones.')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'El cuadre principal es válido, pero existen advertencias que quedarán sujetas a revisión.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Lista con observaciones')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeEnabled()
   })
 
@@ -863,7 +847,7 @@ describe('capture product status labels', () => {
       name: 'Saldo pendiente disponible',
     })
     fireEvent.focus(balanceInput)
-    const balanceOption = within(balancesSection).getAllByRole(
+    const balanceOption = screen.getAllByRole(
       'option',
     )[0]!
     fireEvent.click(balanceOption)
@@ -1040,10 +1024,9 @@ describe('capture product status labels', () => {
     expect(dayChip).toBeInTheDocument()
     expect(nightChip).toBeInTheDocument()
 
-    // Día cuadra: 80 kg / 80 kg · Dif. 0 kg
-    expect(dayChip).toHaveTextContent('Día:')
-    expect(dayChip).toHaveTextContent(`${formatCentiKg(8000)} / ${formatCentiKg(8000)}`)
-    expect(dayChip).toHaveTextContent(formatCentiKg(0))
+    // El footer conserva indicadores compactos; el detalle queda en el tooltip accesible.
+    expect(dayChip).toHaveAccessibleName('Turno Día conciliado')
+    expect(dayChip).toHaveTextContent('Día')
 
     // Modificamos el valor de día para crear una diferencia
     const captureInputs = within(
@@ -1052,8 +1035,8 @@ describe('capture product status labels', () => {
     fireEvent.change(captureInputs[0]!, { target: { value: '70' } })
 
     // Ahora Día tiene diferencia (faltan 10 kg) y cambia a tono de advertencia
-    expect(dayChip).toHaveTextContent(`${formatCentiKg(7000)} / ${formatCentiKg(8000)}`)
-    expect(dayChip).toHaveTextContent(formatCentiKg(1000))
+    expect(dayChip).toHaveAccessibleName(/Turno Día: revisar diferencia/)
+    expect(dayChip).toHaveTextContent('Día')
   })
 
   it('renders untruncated status badges and shows dash for subtotal without target', () => {
@@ -1116,11 +1099,11 @@ describe('capture product status labels', () => {
     expect(dayCard).not.toBeNull()
 
     const progressBar = within(dayCard).getByRole('progressbar', {
-      name: 'Avance de registro Turno Día',
+      name: 'Avance de conciliación Turno Día',
     })
     expect(progressBar).toBeInTheDocument()
     expect(progressBar).toHaveAttribute('aria-valuenow', '80')
-    expect(within(dayCard).getByText(/Avance de registro:/)).toBeInTheDocument()
+    expect(within(dayCard).getByText(/Avance de conciliación:/)).toBeInTheDocument()
     expect(within(dayCard).getByText('80.0%')).toBeInTheDocument()
     expect(within(dayCard).getByText(/Faltan 20\.00 kg por registrar/)).toBeInTheDocument()
 

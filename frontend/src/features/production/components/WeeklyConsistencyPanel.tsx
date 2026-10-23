@@ -91,8 +91,18 @@ export function WeeklyConsistencyPanel({ summary }: WeeklyConsistencyPanelProps)
             Validaciones pendientes ({summary.integrityIssues.length})
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5 leading-5">
-            {summary.integrityIssues.map((issue, index) => (
-              <li key={`${issue.code}-${issue.dayId ?? 'week'}-${index}`}>
+            {summary.integrityIssues.map((issue) => (
+              <li
+                key={JSON.stringify([
+                  issue.scope,
+                  issue.code,
+                  issue.dayId ?? null,
+                  issue.productId ?? null,
+                  issue.balanceLotId ?? null,
+                  issue.shift ?? null,
+                  issue.message,
+                ])}
+              >
                 {issue.message}
               </li>
             ))}

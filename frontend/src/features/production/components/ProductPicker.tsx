@@ -27,6 +27,7 @@ export interface ProductPickerProps<T> {
   searchInputRef?: React.RefObject<HTMLInputElement | null> | undefined
   noResultsText?: string | undefined
   extraSlot?: React.ReactNode | undefined
+  onCreateNew?: ((query: string) => void) | undefined
   className?: string | undefined
 }
 
@@ -48,6 +49,7 @@ export function ProductPicker<T>({
   searchInputRef,
   noResultsText,
   extraSlot,
+  onCreateNew,
   className = '',
 }: ProductPickerProps<T>) {
   const { recentIds, addRecent } = useRecentProducts(scopeKey ?? 'global')
@@ -180,6 +182,7 @@ export function ProductPicker<T>({
           placeholder={placeholder}
           disabled={disabled}
           noResultsText={noResultsText}
+          onCreateFromQuery={onCreateNew}
           recentValues={recentOptionValues}
           recentSectionTitle="Usados recientemente"
           searchInputRef={searchInputRef}

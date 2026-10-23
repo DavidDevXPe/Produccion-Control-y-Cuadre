@@ -15,6 +15,7 @@ export interface ProductionCaptureTableProps {
   readonly calculation: ProductionDayCalculation
   readonly reportFamilySubtotals: readonly ReportFamilySubtotal[]
   readonly orderedProductIds: readonly string[]
+  readonly tunnelProductIds?: readonly string[]
   readonly isFreezing: boolean
   readonly isBalanceOnly: boolean
   readonly isEditingAllowed: boolean
@@ -37,6 +38,7 @@ export function ProductionCaptureTable({
   calculation,
   reportFamilySubtotals,
   orderedProductIds,
+  tunnelProductIds = [],
   isFreezing,
   isBalanceOnly,
   isEditingAllowed,
@@ -52,6 +54,25 @@ export function ProductionCaptureTable({
         <CaptureTableHeader isFreezing={isFreezing} process={draft.process} />
         <tbody>
           {reportFamilySubtotals.map((subtotal) => {
+            const visibleProductIds = subtotal.productIds.filter((productId) => {
+              const candidate = draft.rows.find(
+                (row) => row.product.productId === productId,
+              )
+              if (!candidate) return false
+              const hasNormalMovement =
+                captureQuantityKg100(candidate.dayReportedKg) > 0 ||
+                captureQuantityKg100(candidate.nightReportedKg) > 0 ||
+                captureQuantityKg100(candidate.treatmentKg) > 0 ||
+                captureQuantityKg100(candidate.closingBalanceKg) > 0 ||
+                captureQuantityKg100(candidate.finishedKg) > 0
+              const hasTunnelMovement =
+                captureQuantityKg100(candidate.tunnelDayKg) > 0 ||
+                captureQuantityKg100(candidate.tunnelNightKg) > 0
+              return hasNormalMovement ||
+                (!hasTunnelMovement && !tunnelProductIds.includes(productId))
+            })
+            if (visibleProductIds.length === 0) return null
+
             const familyTraceability = subtotal.productIds.reduce(
               (total, productId) => {
                 const row = draft.rows.find(
@@ -86,9 +107,9 @@ export function ProductionCaptureTable({
               <Fragment key={subtotal.key}>
                 <CaptureFamilyBand
                   label={subtotal.label}
-                  count={subtotal.productIds.length}
+                  count={visibleProductIds.length}
                 />
-                {subtotal.productIds.map((productId) => {
+                {visibleProductIds.map((productId) => {
                   const row = draft.rows.find(
                     (candidate) => candidate.product.productId === productId,
                   )!

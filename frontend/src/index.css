@@ -625,6 +625,94 @@ html.dark .kpi-card--violet {
   z-index: 60;
 }
 
+/* Closed cards still clip their decorative/background layers to the rounded
+ * border. An open product picker opts back into visible overflow so its menu
+ * can float above the following sections. */
+.section-card--overlay-content:not(:has([role='listbox'])) {
+  overflow: hidden;
+}
+
+/* Production entry footer: one layout system, without competing responsive
+ * Tailwind display/column utilities. */
+.production-entry-action-bar__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.production-entry-action-bar__status {
+  justify-self: start;
+}
+
+.production-entry-action-bar__shifts {
+  justify-self: end;
+}
+
+.production-entry-action-bar__shift-indicator {
+  position: relative;
+  outline: none;
+}
+
+.production-entry-action-bar__shift-indicator::after {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  border: 1px solid rgb(148 163 184 / 0.35);
+  border-radius: 0.5rem;
+  background: rgb(15 23 42 / 0.96);
+  padding: 0.375rem 0.5rem;
+  color: #f8fafc;
+  content: attr(data-tooltip);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  white-space: normal;
+}
+
+.production-entry-action-bar__shift-indicator:hover::after,
+.production-entry-action-bar__shift-indicator:focus-visible::after {
+  opacity: 1;
+}
+
+.production-entry-action-bar__actions {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-content: flex-end;
+}
+
+@media (max-width: 39.999rem) {
+  .production-entry-action-bar__actions > button {
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 0.5rem;
+    white-space: normal;
+  }
+}
+
+@media (min-width: 64rem) {
+  .production-entry-action-bar__layout {
+    grid-template-columns: max-content minmax(7rem, 1fr) max-content;
+    column-gap: 0.75rem;
+  }
+
+  .production-entry-action-bar__shifts {
+    justify-self: center;
+  }
+
+  .production-entry-action-bar__actions {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
 .scrollbar-subtle::-webkit-scrollbar {
   width: 6px;
   height: 6px;

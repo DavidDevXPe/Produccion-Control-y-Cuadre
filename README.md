@@ -38,6 +38,7 @@ El sistema contempla actualmente:
 - **Vite**
 - **Tailwind CSS**
 - **Vitest**
+- **Playwright** para pruebas end-to-end en Chromium (escritorio y movil)
 - **Testing Library**
 - **ExcelJS**
 - **Recharts**
@@ -67,6 +68,7 @@ Antes de realizar un commit importante o desplegar:
 ```powershell
 npm run check
 npm test
+npm run test:e2e
 npm run build
 ```
 
@@ -624,6 +626,7 @@ La aplicación utiliza:
 
 ```text
 Vitest
+Playwright
 Testing Library
 ```
 
@@ -646,6 +649,7 @@ Antes de integrar cambios:
 ```powershell
 npm run check
 npm test
+npm run test:e2e
 npm run build
 ```
 

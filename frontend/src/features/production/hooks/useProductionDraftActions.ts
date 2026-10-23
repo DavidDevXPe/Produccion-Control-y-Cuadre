@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { createUnconfirmedCatalogItem } from '../capture/productionCatalog'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import type {
   ProductionCaptureDraft,
@@ -11,6 +12,7 @@ import {
 } from '../capture/productionEntryHelpers'
 import { normalizeCaptureBalanceUses } from '../capture/balanceUseNormalization'
 import { normalizeProductName } from '../capture/productNormalizer'
+import { addActiveProduct, getActiveProducts } from '../capture/productCatalogRepository'
 import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
 import { isSundayIsoDate } from '../model/productionDayMode'
 import { kg100, sumKg100 } from '../model/calculations'
@@ -38,6 +40,7 @@ interface UseProductionDraftActionsParams {
   clearSectionProduct: (productId: string) => void
   manualProductSearchInputRef?: React.RefObject<HTMLInputElement | null> | undefined
   setSaveError: (error: string) => void
+  setCatalogItems?: React.Dispatch<React.SetStateAction<ProductionCatalogItem[]>>
   updateDraft: <Key extends keyof ProductionCaptureDraft>(
     key: Key,
     value: ProductionCaptureDraft[Key],
@@ -54,6 +57,7 @@ export function useProductionDraftActions({
   clearSectionProduct,
   manualProductSearchInputRef,
   setSaveError,
+  setCatalogItems,
   updateDraft,
 }: UseProductionDraftActionsParams) {
   const [removedRowState, setRemovedRowState] = useState<{
@@ -87,6 +91,24 @@ export function useProductionDraftActions({
       return {
         ...current,
         rows: nextRows,
+        ...(current.process !== 'PACKING'
+          ? {
+              balanceUses: normalizeCaptureBalanceUses(
+                nextRows.reduce<ProductionCaptureBalanceUse[]>((uses, row) => {
+                  const movement = captureQuantityKg100(row.dayReportedKg) > 0 || captureQuantityKg100(row.nightReportedKg) > 0
+                  if (!movement) return uses
+                  return [...buildFreezingFifoAllocation({
+                    targetProduct: row.product,
+                    targetDate: current.date,
+                    reportedDayKg100: captureQuantityKg100(row.dayReportedKg),
+                    reportedNightKg100: captureQuantityKg100(row.nightReportedKg),
+                    positions: freezingAutomaticOriginPositions,
+                    existingUses: uses.filter((use) => use.productId !== row.product.productId),
+                  }).balanceUses]
+                }, []),
+              ),
+            }
+          : {}),
       }
     })
   }
@@ -97,11 +119,28 @@ export function useProductionDraftActions({
       setSaveError('Ese producto ya está agregado a la jornada.')
       return
     }
-    const row = createRow(productId, draft.rows.length)
+    const row = createRow(productId, draft.rows.length) ?? (() => {
+      const product = catalogItems.find((item) => item.productId === productId)
+      if (!product) return null
+      return {
+        key: `manual-${product.productId}-${Date.now()}-${draft.rows.length}`,
+        product,
+        dayReportedKg: '', dayPreviousBalanceKg: '0', nightReportedKg: '', nightPreviousBalanceKg: '0',
+        tunnelDayKg: '0', tunnelNightKg: '0', treatmentKg: '0', closingBalanceKg: '0', finishedKg: '',
+      }
+    })()
     if (!row) return
     updateDraft('rows', [...draft.rows, row])
     setSaveError('')
     manualProductSearchInputRef?.current?.focus()
+  }
+
+  const createReportProduct = (name: string) => {
+    const normalized = normalizeProductName(name)
+    const existing = catalogItems.find((product) => normalizeProductName(product.productName) === normalized)
+    const product = existing ?? addActiveProduct(createUnconfirmedCatalogItem(name))
+    setCatalogItems?.(getActiveProducts())
+    addReportProduct(product.productId)
   }
 
   const addSelectedBalance = (position: SelectedBalancePosition) => {
@@ -463,19 +502,49 @@ export function useProductionDraftActions({
     const nightKg = Number(rowToRemove.nightReportedKg.replace(',', '.')) || 0
     const hasValues = dayKg > 0 || nightKg > 0
 
-    if (productId) {
+    // A shared row can also belong to Túnel, Tratamiento or Saldos. Removing it
+    // from the normal report must only clear the normal-flow quantities; deleting
+    // the row itself would silently delete the movement from the other section.
+    const hasOtherSectionMovement =
+      captureQuantityKg100(rowToRemove.tunnelDayKg) > 0 ||
+      captureQuantityKg100(rowToRemove.tunnelNightKg) > 0 ||
+      captureQuantityKg100(rowToRemove.treatmentKg) > 0 ||
+      captureQuantityKg100(rowToRemove.closingBalanceKg) > 0 ||
+      captureQuantityKg100(rowToRemove.finishedKg) > 0 ||
+      draft.balanceUses.some((balance) => balance.productId === productId)
+
+    if (productId && !hasOtherSectionMovement) {
       clearSectionProduct(productId)
     }
 
-    setDraft((current) => ({
-      ...current,
-      rows: current.rows.filter((row) => row.key !== key),
-      balanceUses: normalizeCaptureBalanceUses(
-        current.balanceUses.filter((balance) => balance.productId !== productId),
-      ),
-    }))
+    setDraft((current) => {
+      if (hasOtherSectionMovement) {
+        return {
+          ...current,
+          rows: current.rows.map((row) =>
+            row.key === key
+              ? {
+                  ...row,
+                  dayReportedKg: '0',
+                  nightReportedKg: '0',
+                  dayPreviousBalanceKg: '0',
+                  nightPreviousBalanceKg: '0',
+                }
+              : row,
+          ),
+        }
+      }
 
-    if (hasValues) {
+      return {
+        ...current,
+        rows: current.rows.filter((row) => row.key !== key),
+        balanceUses: normalizeCaptureBalanceUses(
+          current.balanceUses.filter((balance) => balance.productId !== productId),
+        ),
+      }
+    })
+
+    if (hasValues && !hasOtherSectionMovement) {
       setRemovedRowState({
         row: rowToRemove,
         index: rowIndex,
@@ -532,6 +601,7 @@ export function useProductionDraftActions({
     updateDate,
     updateRow,
     addReportProduct,
+    createReportProduct,
     addSelectedBalance,
     autoLinkFreezingProduct,
     autoLinkAllFreezingProducts,

@@ -17,6 +17,7 @@ import { normalizeProductName } from '../capture/productNormalizer'
 import { kg100, sumKg100 } from '../model/calculations'
 import { freezingTraceabilityStatus } from '../pages/captureProductStatus'
 import { buildFreezingOriginLedger } from '../capture/freezingOriginLedger'
+import { canonicalProductId, productIdsEquivalent } from '../model/productIdentity'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import type { ProductionDay } from '../model/types'
@@ -136,9 +137,10 @@ export function useFreezingTraceability({
     if (!hasStageTraceability) return new Map<string, ReturnType<typeof kg100>>()
     const totals = new Map<string, ReturnType<typeof kg100>>()
     for (const position of freezingAutomaticOriginPositions) {
+      const key = canonicalProductId(position.productId)
       totals.set(
-        position.productId,
-        kg100((totals.get(position.productId) ?? 0) + position.pendingKg100),
+        key,
+        kg100((totals.get(key) ?? 0) + position.pendingKg100),
       )
     }
     return totals
@@ -152,8 +154,8 @@ export function useFreezingTraceability({
       )
 
       const product =
-        draft.rows.find((row) => row.product.productId === productId)?.product ??
-        catalogItems.find((candidate) => candidate.productId === productId)
+        draft.rows.find((row) => productIdsEquivalent(row.product.productId, productId))?.product ??
+        catalogItems.find((candidate) => productIdsEquivalent(candidate.productId, productId))
 
       if (!product) {
         return linkedAvailability.availableKg100
@@ -167,7 +169,7 @@ export function useFreezingTraceability({
             return false
           }
 
-          if (position.productId === product.productId) {
+          if (productIdsEquivalent(position.productId, product.productId)) {
             return true
           }
 
@@ -187,7 +189,7 @@ export function useFreezingTraceability({
       )
 
       const priorUses = draft.balanceUses.filter((use) => {
-        if (use.productId !== product.productId) return false
+        if (!productIdsEquivalent(use.productId, product.productId)) return false
         return use.originDate < draft.date
       })
       const linkedPriorKg100 = sumKg100(
@@ -226,7 +228,7 @@ export function useFreezingTraceability({
           captureQuantityKg100(row.nightReportedKg),
         ])
         const sameDayAvail = freezingCurrentOriginPositions
-          .filter((pos) => pos.productId === row.product.productId)
+          .filter((pos) => productIdsEquivalent(pos.productId, row.product.productId))
           .reduce((sum, p) => sum + p.pendingKg100, 0)
         return kg100(Math.min(reportedKg100, sameDayAvail))
       }),
@@ -351,13 +353,13 @@ export function useFreezingTraceability({
             }
 
             const sameDayAvail = freezingCurrentOriginPositions
-              .filter((pos) => pos.productId === row.product.productId)
+              .filter((pos) => productIdsEquivalent(pos.productId, row.product.productId))
               .reduce((sum, p) => sum + p.pendingKg100, 0)
 
             const priorLinked = draft.balanceUses
               .filter(
                 (b) =>
-                  b.productId === row.product.productId &&
+                  productIdsEquivalent(b.productId, row.product.productId) &&
                   b.originDate < draft.date,
               )
               .reduce(
@@ -376,7 +378,7 @@ export function useFreezingTraceability({
 
             return freezingPreviousOriginPositions.some(
               (pos) =>
-                pos.productId === row.product.productId && pos.pendingKg100 > 0,
+                productIdsEquivalent(pos.productId, row.product.productId) && pos.pendingKg100 > 0,
             )
           })
         : [],
@@ -418,7 +420,7 @@ export function useFreezingTraceability({
         }
 
         const sameDayPositions = freezingCurrentOriginPositions.filter(
-          (pos) => pos.productId === row.product.productId,
+          (pos) => productIdsEquivalent(pos.productId, row.product.productId),
         )
         const sameDayAvailKg100 = sumKg100(
           sameDayPositions.map((pos) => pos.pendingKg100),
@@ -428,7 +430,7 @@ export function useFreezingTraceability({
           draft.balanceUses
             .filter(
               (b) =>
-                b.productId === row.product.productId &&
+                productIdsEquivalent(b.productId, row.product.productId) &&
                 b.originDate < draft.date,
             )
             .flatMap((b) => [

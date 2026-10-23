@@ -248,13 +248,17 @@ describe("active capture catalog", () => {
     ).toBe(true);
   });
 
-  it("includes Rejos Tiras as an official treatment product in the Rejos family", () => {
+  it("reuses the historical Rejo Tiras id with the new canonical name and aliases", () => {
     expect(SEED_CAPTURE_PRODUCTS).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           productId: "rejos-tiras-tratamiento",
-          productName: "REJOS TIRAS (EN TRATAMIENTO)",
-          canonicalName: "REJOS TIRAS (EN TRATAMIENTO)",
+          productName: "REJO 1-2 TIRAS (EN TRATAMIENTO)",
+          canonicalName: "REJO 1-2 TIRAS (EN TRATAMIENTO)",
+          aliases: expect.arrayContaining([
+            "REJOS TIRAS (EN TRATAMIENTO)",
+            "REJO 1-2 TIRAS",
+          ]),
           familyId: "rejos-crudo",
           familyName: "REJOS CRUDO",
           summaryGroupId: "REJOS",
@@ -262,6 +266,31 @@ describe("active capture catalog", () => {
         }),
       ]),
     );
+  });
+
+  it("includes the three Reproductor treatment cuts in one family", () => {
+    const treatmentProducts = SEED_CAPTURE_PRODUCTS.filter((product) =>
+      [
+        "reproductor-grueso-tratamiento",
+        "reproductor-fino-tratamiento",
+        "reproductor-parte-terminal-tratamiento",
+      ].includes(product.productId),
+    );
+
+    expect(treatmentProducts).toHaveLength(3);
+    expect(treatmentProducts.map((product) => product.productName)).toEqual([
+      "REPRODUCTOR GRUESO (EN TRATAMIENTO)",
+      "REPRODUCTOR FINO (EN TRATAMIENTO)",
+      "REPRODUCTOR PARTE TERMINAL (EN TRATAMIENTO)",
+    ]);
+    expect(
+      treatmentProducts.every(
+        (product) =>
+          product.familyId === "reproductor-crudo" &&
+          product.summaryGroupId === "REPRODUCTOR" &&
+          product.productName.includes("EN TRATAMIENTO"),
+      ),
+    ).toBe(true);
   });
 
   it("does not assign incomplete imported fragments to Aleta or Manto by default", () => {

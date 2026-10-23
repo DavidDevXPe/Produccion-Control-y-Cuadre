@@ -191,8 +191,18 @@ export function ReconciliationPanel({ calculation }: ReconciliationPanelProps) {
             </h3>
           </div>
           <ul className="mt-2 list-disc space-y-1 pl-6 text-sm leading-5">
-            {calculation.integrityIssues.map((issue, index) => (
-              <li key={`${issue.code}-${issue.productId ?? 'day'}-${index}`}>
+            {calculation.integrityIssues.map((issue) => (
+              <li
+                key={JSON.stringify([
+                  issue.scope,
+                  issue.code,
+                  issue.dayId ?? null,
+                  issue.productId ?? null,
+                  issue.balanceLotId ?? null,
+                  issue.shift ?? null,
+                  issue.message,
+                ])}
+              >
                 {issue.message}
               </li>
             ))}

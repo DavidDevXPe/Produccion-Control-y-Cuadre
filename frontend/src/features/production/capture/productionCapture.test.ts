@@ -33,6 +33,49 @@ function row(overrides: Partial<ProductionCaptureRow> = {}): ProductionCaptureRo
 }
 
 describe('production capture', () => {
+  it('counts Tunnel once in the reconciled shift and final journey totals', () => {
+    const tunnelProduct = PRODUCTION_CATALOG_ITEMS.find(
+      (product) => product.productId === 'manto-estandar-crudo-2-4',
+    )!
+    const draft = {
+      ...createEmptyCaptureDraft('2026-10-19'),
+      rawMaterialKg: '291010',
+      declaredDayTotalKg: '158760',
+      declaredNightTotalKg: '132250',
+      hasTunnelProduction: true,
+      rows: [
+        row({
+          key: 'normal-flow',
+          dayReportedKg: '154670',
+          nightReportedKg: '132250',
+          closingBalanceKg: '0',
+        }),
+        row({
+          key: 'tunnel-flow',
+          product: tunnelProduct,
+          dayReportedKg: '0',
+          nightReportedKg: '0',
+          tunnelDayKg: '4090',
+          tunnelNightKg: '0',
+          closingBalanceKg: '0',
+        }),
+      ],
+    }
+
+    const result = buildProductionDayFromCapture(draft, [], [])
+    const { calculation } = result
+
+    expect(result.inputErrors).toEqual([])
+    expect(calculation.day.normalProductionKg100).toBe(kg100(15_467_000))
+    expect(calculation.day.tunnelProductionKg100).toBe(kg100(409_000))
+    expect(calculation.day.ownProductionKg100).toBe(kg100(15_876_000))
+    expect(calculation.night.ownProductionKg100).toBe(kg100(13_225_000))
+    expect(calculation.ownTurnProductionKg100).toBe(kg100(29_101_000))
+    expect(calculation.declaredFinishedKg100).toBe(kg100(29_101_000))
+    expect(calculation.differenceKg100).toBe(kg100(0))
+    expect(calculation.calculatedClosingBalanceKg100).toBe(kg100(0))
+  })
+
   it('calculates the Wednesday Tunnel scenario without counting Tunnel twice', () => {
     const product = (productId: string) =>
       PRODUCTION_CATALOG_ITEMS.find((candidate) => candidate.productId === productId)!
@@ -58,8 +101,8 @@ describe('production capture', () => {
       ...createEmptyCaptureDraft('2026-09-09'),
       hasTunnelProduction: true,
       rawMaterialKg: '700000',
-      declaredDayTotalKg: '270940',
-      declaredNightTotalKg: '226540',
+      declaredDayTotalKg: '303340',
+      declaredNightTotalKg: '252640',
       rows: [
         row({
           key: 'normal-report',

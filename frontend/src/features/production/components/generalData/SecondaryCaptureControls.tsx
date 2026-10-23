@@ -20,18 +20,15 @@ export function SecondaryCaptureControls({
   onUpdateDraft,
   onUpdateTunnelCondition,
 }: SecondaryCaptureControlsProps) {
-  if (usesExternalAvailability) {
-    return (
-      <p className="border-t border-brand-200 bg-brand-50/60 px-4 py-3 text-xs font-semibold text-brand-900 sm:px-5">
-        {isFreezing
-          ? 'Congelamiento no recibe nueva MP anatómica. La validación usa reportes físicos y disponibilidad trazable desde Envasado.'
-          : 'Materia Prima fija en 0 kg. La validación se realizará con los reportes físicos y los saldos vinculados por turno.'}
-      </p>
-    )
-  }
-
   return (
     <div className="grid gap-4 border-t border-slate-200 px-4 py-3 sm:px-5 lg:grid-cols-2">
+      {usesExternalAvailability ? (
+        <p className="border-brand-200 bg-brand-50/60 px-3 py-2 text-xs font-semibold text-brand-900 lg:col-span-2">
+          {isFreezing
+            ? 'Congelamiento no recibe nueva MP anatómica. La validación usa reportes físicos y disponibilidad trazable desde Envasado.'
+            : 'Esta jornada usa reportes físicos y saldos vinculados por turno.'}
+        </p>
+      ) : null}
       <div>
         <label className="flex items-start gap-3">
           <input

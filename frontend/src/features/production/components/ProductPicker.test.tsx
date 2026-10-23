@@ -64,6 +64,27 @@ describe('ProductPicker component', () => {
     expect(handleAdd).toHaveBeenCalledWith(MOCK_ITEMS[1])
   })
 
+  it('offers creating a product when the search has no matches', () => {
+    const handleCreate = vi.fn()
+    render(
+      <ProductPicker
+        items={MOCK_ITEMS}
+        getItemId={(item) => item.id}
+        getItemLabel={(item) => item.name}
+        onAdd={vi.fn()}
+        onCreateNew={handleCreate}
+        label="Buscar producto"
+      />,
+    )
+
+    const input = screen.getByRole('combobox', { name: 'Buscar producto' })
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'Producto nuevo' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear producto/i }))
+    expect(handleCreate).toHaveBeenCalledWith('Producto nuevo')
+  })
+
   it('shares recent products with balance pickers that use origin-specific option ids', () => {
     const balanceItems = [
       {

@@ -1,4 +1,5 @@
 import type React from 'react'
+import { Trash2 } from 'lucide-react'
 import { MetricCard } from '../../../components/ui/MetricCard'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
@@ -14,6 +15,7 @@ import { QuantityInput } from './QuantityInput'
 export interface ProductionTunnelSectionProps {
   readonly enabled: boolean
   readonly reportsReconciled: boolean
+  readonly isEditingAllowed?: boolean
   readonly tunnelMovementRequired: boolean
   readonly dayKg100: Kg100
   readonly nightKg100: Kg100
@@ -23,6 +25,7 @@ export interface ProductionTunnelSectionProps {
   readonly selectedProcess: ProductionProcess
   readonly searchInputRef: React.RefObject<HTMLInputElement | null>
   readonly onAddProduct: (productId: string) => void
+  readonly onRemoveProduct?: (rowKey: string) => void
   readonly onUpdateRow: (
     rowKey: string,
     field: 'tunnelDayKg' | 'tunnelNightKg',
@@ -37,6 +40,7 @@ export interface ProductionTunnelSectionProps {
 export function ProductionTunnelSection({
   enabled,
   reportsReconciled,
+  isEditingAllowed = true,
   tunnelMovementRequired,
   dayKg100,
   nightKg100,
@@ -46,19 +50,24 @@ export function ProductionTunnelSection({
   selectedProcess,
   searchInputRef,
   onAddProduct,
+  onRemoveProduct,
   onUpdateRow,
   getTunnelCellProps,
 }: ProductionTunnelSectionProps) {
   if (!enabled) return null
 
+  const hasTunnelMovement = rows.some(
+    (row) => row.tunnelDayKg.trim() !== '' || row.tunnelNightKg.trim() !== '',
+  )
+
   return (
     <SectionCard
       allowStickyContent
       title="Túnel"
-      description="Registra producción adicional por turno sin mezclarla con los reportes del supervisor."
+      description="Registra productos enviados a Túnel y concilia sus cantidades con el reporte del supervisor."
       action={
-        <StatusBadge tone={reportsReconciled ? 'success' : 'warning'}>
-          {reportsReconciled ? 'TÚNEL DISPONIBLE' : 'TÚNEL ESPERANDO CUADRE'}
+        <StatusBadge tone={reportsReconciled && hasTunnelMovement ? 'success' : 'warning'}>
+          {reportsReconciled && hasTunnelMovement ? 'TÚNEL CONCILIADO' : 'TÚNEL PENDIENTE'}
         </StatusBadge>
       }
     >
@@ -72,7 +81,7 @@ export function ProductionTunnelSection({
         </p>
       ) : null}
       <fieldset
-        disabled={!reportsReconciled}
+        disabled={!isEditingAllowed}
         className="min-w-0 disabled:opacity-65"
       >
         <legend className="sr-only">Registro de producción de Túnel</legend>
@@ -104,7 +113,7 @@ export function ProductionTunnelSection({
           label="Buscar producto de Túnel"
           placeholder="Ej.: manto, nuca o anillas"
           buttonLabel="Agregar a Túnel"
-          disabled={!reportsReconciled}
+          disabled={!isEditingAllowed}
           scopeKey={`${selectedProcess}:TUNNEL`}
           searchInputRef={searchInputRef}
         />
@@ -124,14 +133,14 @@ export function ProductionTunnelSection({
               return (
                 <div
                   key={`tunnel-${row.key}`}
-                  className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_8rem] sm:items-end sm:px-5"
+                  className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_10rem_3rem] sm:items-end sm:px-5"
                 >
                   <div className="min-w-0 sm:self-center">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-brand-700">
                       {row.product.familyName}
                     </p>
                     <p
-                      className="mt-0.5 truncate text-xs font-semibold text-slate-800"
+                      className="mt-0.5 line-clamp-2 text-xs font-semibold leading-4 text-slate-800"
                       title={row.product.productName}
                     >
                       {row.product.productName}
@@ -140,7 +149,7 @@ export function ProductionTunnelSection({
                   <QuantityInput
                     label="Kg Día"
                     value={row.tunnelDayKg}
-                    disabled={!reportsReconciled}
+                    disabled={!isEditingAllowed}
                     onChange={(value) =>
                       onUpdateRow(row.key, 'tunnelDayKg', value)
                     }
@@ -149,20 +158,32 @@ export function ProductionTunnelSection({
                   <QuantityInput
                     label="Kg Noche"
                     value={row.tunnelNightKg}
-                    disabled={!reportsReconciled}
+                    disabled={!isEditingAllowed}
                     onChange={(value) =>
                       onUpdateRow(row.key, 'tunnelNightKg', value)
                     }
                     {...getTunnelCellProps(tunnelIdx, 1)}
                   />
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:min-h-10">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
+                  <div className="min-w-0">
+                    <p className="mb-1 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500">
                       Total
                     </p>
-                    <p className="number-tabular mt-0.5 text-right text-xs font-extrabold text-slate-900">
-                      {formatCentiKg(tunnelTotalKg100)}
-                    </p>
+                    <div className="flex h-10 items-center justify-end rounded-lg border border-slate-200 bg-slate-50 px-3">
+                      <p className="number-tabular whitespace-nowrap text-right text-xs font-extrabold text-slate-900">
+                        {formatCentiKg(tunnelTotalKg100)}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                      type="button"
+                      onClick={() => onRemoveProduct?.(row.key)}
+                      className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!isEditingAllowed || !onRemoveProduct}
+                      aria-label={`Eliminar producto de Túnel ${row.product.productName}`}
+                      title="Eliminar producto de Túnel"
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                  </button>
                 </div>
               )
             })}

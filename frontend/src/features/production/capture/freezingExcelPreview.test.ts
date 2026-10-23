@@ -34,6 +34,18 @@ describe("freezingExcelPreview", () => {
     );
     expect(seededRejosTiras).toBeDefined();
     expect(isTreatmentOnlyProduct(seededRejosTiras!)).toBe(true);
+
+    for (const productId of [
+      "reproductor-grueso-tratamiento",
+      "reproductor-fino-tratamiento",
+      "reproductor-parte-terminal-tratamiento",
+    ]) {
+      const seededProduct = SEED_CAPTURE_PRODUCTS.find(
+        (product) => product.productId === productId,
+      );
+      expect(seededProduct).toBeDefined();
+      expect(isTreatmentOnlyProduct(seededProduct!)).toBe(true);
+    }
   });
 
   it("formats display status", () => {

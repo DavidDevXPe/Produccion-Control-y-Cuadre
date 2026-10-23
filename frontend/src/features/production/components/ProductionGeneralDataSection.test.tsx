@@ -212,7 +212,7 @@ describe('ProductionGeneralDataSection', () => {
           /Congelamiento no recibe nueva MP anatómica. La validación usa reportes físicos y disponibilidad trazable desde Envasado./i,
         ),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('checkbox')).toHaveLength(2)
     })
 
     it('allows toggling Nuca wash confirmation and Tunnel condition in normal mode', () => {

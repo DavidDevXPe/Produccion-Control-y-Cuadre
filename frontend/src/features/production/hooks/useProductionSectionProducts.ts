@@ -179,6 +179,11 @@ export function useProductionSectionProducts({
   }
 
   const addTreatmentProduct = (productId: string) => {
+    if (draft.rows.some((row) => row.product.productId === productId)) {
+      setTreatmentProductIds((current) => new Set(current).add(productId))
+      treatmentSearchInputRef.current?.focus()
+      return
+    }
     addMovementProduct(productId, () => {
       setTreatmentProductIds((current) => {
         const next = new Set(current)
@@ -235,6 +240,11 @@ export function useProductionSectionProducts({
   }
 
   const addTunnelProduct = (productId: string) => {
+    if (draft.rows.some((row) => row.product.productId === productId)) {
+      setTunnelProductIds((current) => new Set(current).add(productId))
+      tunnelSearchInputRef.current?.focus()
+      return
+    }
     addMovementProduct(productId, () => {
       setTunnelProductIds((current) => {
         const next = new Set(current)
@@ -245,8 +255,42 @@ export function useProductionSectionProducts({
     })
   }
 
+  const removeTunnelProduct = (rowKey: string) => {
+    const removedProductId = draft.rows.find((row) => row.key === rowKey)?.product.productId
+    setDraft((current) => {
+      const row = current.rows.find((candidate) => candidate.key === rowKey)
+      if (!row) return current
+      const hasOtherMovement =
+        captureQuantityKg100(row.dayReportedKg) > 0 ||
+        captureQuantityKg100(row.nightReportedKg) > 0 ||
+        captureQuantityKg100(row.treatmentKg) > 0 ||
+        captureQuantityKg100(row.closingBalanceKg) > 0 ||
+        captureQuantityKg100(row.finishedKg) > 0 ||
+        current.balanceUses.some((balance) => balance.productId === row.product.productId)
+      return {
+        ...current,
+        rows: hasOtherMovement
+          ? current.rows.map((candidate) => candidate.key === rowKey
+            ? { ...candidate, tunnelDayKg: '0', tunnelNightKg: '0' }
+            : candidate)
+          : current.rows.filter((candidate) => candidate.key !== rowKey),
+      }
+    })
+    setTunnelProductIds((current) => {
+      const next = new Set(current)
+      if (removedProductId) next.delete(removedProductId)
+      return next
+    })
+    setSaveError('')
+  }
+
   const addClosingProduct = (productId: string) => {
     if (!productId) return
+    if (draft.rows.some((row) => row.product.productId === productId)) {
+      setClosingProductIds((current) => new Set(current).add(productId))
+      closingSearchInputRef.current?.focus()
+      return
+    }
     setClosingProductIds((current) => new Set(current).add(productId))
     addMovementProduct(productId, () => {
       closingSearchInputRef.current?.focus()
@@ -332,12 +376,14 @@ export function useProductionSectionProducts({
     addTreatmentProduct,
     removeTreatmentProduct,
     tunnelSearchInputRef,
+    tunnelProductIds: [...effectiveTunnelProductIds],
     tunnelCatalogItems,
     tunnelRows,
     tunnelToggleError,
     getTunnelCellProps,
     updateTunnelCondition,
     addTunnelProduct,
+    removeTunnelProduct,
     closingSearchInputRef,
     closingCatalogItems,
     closingRows,

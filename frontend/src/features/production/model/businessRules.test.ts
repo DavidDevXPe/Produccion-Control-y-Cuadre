@@ -94,9 +94,17 @@ function productionDay(
 ): ProductionDay {
   const date = options.date ?? "2026-09-07";
   const lines = seeds.map(lineFor);
-  const dayTotal = sumKg100(lines.map((line) => line.shifts.DAY.reportedKg100));
+  const dayTotal = sumKg100(
+    lines.flatMap((line) => [
+      line.shifts.DAY.reportedKg100,
+      line.tunnelShifts?.DAY.reportedKg100 ?? kg(0),
+    ]),
+  );
   const nightTotal = sumKg100(
-    lines.map((line) => line.shifts.NIGHT.reportedKg100),
+    lines.flatMap((line) => [
+      line.shifts.NIGHT.reportedKg100,
+      line.tunnelShifts?.NIGHT.reportedKg100 ?? kg(0),
+    ]),
   );
   const finishedTotal = sumKg100(
     lines.map((line) => line.declaredFinishedKg100),

@@ -15,6 +15,10 @@ const seedNames = [
     "MANTO",
   ],
   [
+    "MANTO ESTANDAR CRUDO CONGELADO BLOCK C/TTO C/02 MEMB 2 KG - 4 KG SB 100% P.N.",
+    "MANTO",
+  ],
+  [
     "MANTO ESTANDAR CRUDO CONGELADO BLOCK S/TTO C/02 MEMB 2 KG - 4 KG CH 100% P.N.",
     "MANTO",
   ],
@@ -36,7 +40,10 @@ const seedNames = [
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE CORONA (EN TRATAMIENTO)", "REJOS"],
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE MEDIA (EN TRATAMIENTO)", "REJOS"],
   ["REJOS CRUDOS SECCIONADOS 1-2 PARTE TERMINAL (EN TRATAMIENTO)", "REJOS"],
-  ["REJOS TIRAS (EN TRATAMIENTO)", "REJOS"],
+  ["REJO 1-2 TIRAS (EN TRATAMIENTO)", "REJOS"],
+  ["REPRODUCTOR GRUESO (EN TRATAMIENTO)", "REPRODUCTOR"],
+  ["REPRODUCTOR FINO (EN TRATAMIENTO)", "REPRODUCTOR"],
+  ["REPRODUCTOR PARTE TERMINAL (EN TRATAMIENTO)", "REPRODUCTOR"],
   ["BOTON USA SM CP ST (EN TRATAMIENTO)", "BOTON"],
   ["BOTON ESPAÑA SM SP ST (TRATAMIENTO)", "BOTON"],
   [
@@ -113,6 +120,7 @@ const seedIds = [
   "reproductor-70-up",
   "reproductor-50-70",
   "manto-estandar-crudo-2-4",
+  "manto-estandar-crudo-2-4-ctto",
   "manto-estandar-crudo-2-4-ch",
   "manto-japones-crudo",
   "manto-japones-crudo-1-2",
@@ -127,6 +135,9 @@ const seedIds = [
   "rejos-seccionados-1-2-media-tratamiento",
   "rejos-seccionados-1-2-terminal-tratamiento",
   "rejos-tiras-tratamiento",
+  "reproductor-grueso-tratamiento",
+  "reproductor-fino-tratamiento",
+  "reproductor-parte-terminal-tratamiento",
   "boton-usa-sm-cp-tratamiento",
   "boton-espana-sm-sp-st-tratamiento",
   "boton-crudo-block-espana-p-sm-cp-st",
@@ -244,7 +255,9 @@ export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] =
               ? [
                   "ANILLAS CRUDAS CONG. BLOCK S/TTO ESPAÑA P CM CP ST MIXTA 100% P.N.",
                 ]
-              : [],
+              : seedIds[index] === "rejos-tiras-tratamiento"
+                ? ["REJOS TIRAS (EN TRATAMIENTO)", "REJO 1-2 TIRAS"]
+                : [],
     source: "CAPTURE" as const,
     createdAt: "2026-09-15T00:00:00.000Z",
     active: true,

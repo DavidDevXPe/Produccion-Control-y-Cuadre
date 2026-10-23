@@ -45,7 +45,7 @@ export function ProductionShiftCards({
         const hasReport = hasShiftData && shift.declaredReportedKg100 > 0
 
         const progressPercent = hasReport
-          ? (shift.reportedKg100 / shift.declaredReportedKg100) * 100
+          ? (shift.ownProductionKg100 / shift.declaredReportedKg100) * 100
           : 0
         const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
@@ -80,7 +80,7 @@ export function ProductionShiftCards({
               </StatusBadge>
             </div>
 
-            <dl className="mt-4 grid grid-cols-3 gap-3 border-y border-slate-100 py-3 text-xs dark:border-slate-200">
+            <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-xs dark:border-slate-200 sm:grid-cols-5">
               <div>
                 <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
                   Reporte supervisor
@@ -100,12 +100,12 @@ export function ProductionShiftCards({
               </div>
               <div>
                 <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
-                  Productos registrados
+                  Total conciliado
                 </dt>
                 <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-brand-600 dark:text-sky-400">
                   {hasShiftData ? (
                     <>
-                      <span>{formatCentiKgValue(shift.reportedKg100)}</span>
+                      <span>{formatCentiKgValue(shift.ownProductionKg100)}</span>
                       <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">
                         kg
                       </span>
@@ -113,6 +113,22 @@ export function ProductionShiftCards({
                   ) : (
                     '—'
                   )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                  Flujo normal
+                </dt>
+                <dd className="number-tabular mt-1 text-base font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
+                  {hasShiftData ? `${formatCentiKgValue(shift.normalProductionKg100)} kg` : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                  Túnel
+                </dt>
+                <dd className="number-tabular mt-1 text-base font-extrabold text-sky-600 dark:text-sky-400">
+                  {hasShiftData ? `${formatCentiKgValue(shift.tunnelProductionKg100)} kg` : '—'}
                 </dd>
               </div>
               <div>
@@ -156,7 +172,7 @@ export function ProductionShiftCards({
               <div className="mt-3">
                 <div className="flex items-center justify-between gap-2 text-xs font-semibold">
                   <span className="text-slate-600 dark:text-ui-text-dark">
-                    Avance de registro:{' '}
+                  Avance de conciliación:{' '}
                     <span className="number-tabular font-bold text-slate-900 dark:text-ui-text-dark-strong">
                       {progressPercent.toFixed(1)}%
                     </span>
@@ -178,19 +194,17 @@ export function ProductionShiftCards({
                   aria-valuenow={Math.round(clampedPercent)}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={`Avance de registro Turno ${label}`}
+                  aria-label={`Avance de conciliación Turno ${label}`}
                   className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-50 dark:ring-1 dark:ring-slate-200/50"
                 >
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isSquared
-                        ? 'bg-emerald-500'
-                        : isExceeded
-                          ? 'bg-rose-500'
-                          : 'bg-gradient-to-r from-sky-500 to-amber-500 dark:from-sky-500 dark:to-amber-400'
-                    }`}
-                    style={{ width: `${clampedPercent}%` }}
-                  />
+                  <div className="flex h-full transition-all duration-300" style={{ width: `${clampedPercent}%` }}>
+                    <div className="h-full bg-emerald-500" style={{ width: `${shift.ownProductionKg100 ? (shift.normalProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
+                    <div className="h-full bg-sky-400" style={{ width: `${shift.ownProductionKg100 ? (shift.tunnelProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
+                  </div>
+                </div>
+                <div className="mt-1 flex gap-3 text-[0.625rem] text-slate-500 dark:text-ui-text-dark-soft">
+                  <span>Normal {hasReport ? `${((shift.normalProductionKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
+                  <span>Túnel {hasReport ? `${((shift.tunnelProductionKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
                 </div>
               </div>
             )}

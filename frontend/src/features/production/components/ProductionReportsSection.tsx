@@ -19,6 +19,7 @@ export interface ProductionReportsSectionProps {
   readonly freezingAvailabilityByProduct: ReadonlyMap<string, Kg100>
   readonly reportFamilySubtotals: readonly ReportFamilySubtotal[]
   readonly orderedProductIds: readonly string[]
+  readonly tunnelProductIds?: readonly string[]
   readonly dayHasReportData: boolean
   readonly nightHasReportData: boolean
   readonly isFreezing: boolean
@@ -30,6 +31,7 @@ export interface ProductionReportsSectionProps {
   readonly getFreezingPotentialAvailabilityKg100: (productId: string) => Kg100
   readonly autoLinkFreezingProduct: (productId: string) => void
   readonly onAddReportProduct: (productId: string) => void
+  readonly onCreateReportProduct?: (name: string) => void
   readonly onUpdateRow: (
     rowKey: string,
     field: 'dayReportedKg' | 'nightReportedKg',
@@ -49,6 +51,7 @@ export function ProductionReportsSection({
   freezingAvailabilityByProduct,
   reportFamilySubtotals,
   orderedProductIds,
+  tunnelProductIds = [],
   dayHasReportData,
   nightHasReportData,
   isFreezing,
@@ -60,6 +63,7 @@ export function ProductionReportsSection({
   getFreezingPotentialAvailabilityKg100,
   autoLinkFreezingProduct,
   onAddReportProduct,
+  onCreateReportProduct,
   onUpdateRow,
   onRemoveRow,
   getCaptureCellProps,
@@ -104,6 +108,7 @@ export function ProductionReportsSection({
                 : undefined,
           })}
           onAdd={(product) => onAddReportProduct(product.productId)}
+          onCreateNew={onCreateReportProduct}
           label="Buscar producto"
           placeholder="Buscar producto o seleccionar del catálogo (ej.: aleta, manto o nuca)..."
           buttonLabel="Agregar producto"
@@ -123,6 +128,7 @@ export function ProductionReportsSection({
           calculation={calculation}
           reportFamilySubtotals={reportFamilySubtotals}
           orderedProductIds={orderedProductIds}
+          tunnelProductIds={tunnelProductIds}
           isFreezing={isFreezing}
           isBalanceOnly={isBalanceOnly}
           isEditingAllowed={isEditingAllowed}

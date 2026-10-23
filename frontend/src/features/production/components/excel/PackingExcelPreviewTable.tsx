@@ -55,9 +55,9 @@ export function PackingExcelPreviewTable({
           </thead>
 
           <tbody>
-            {rows.map((row, index) => (
+            {rows.map((row) => (
               <tr
-                key={`${row.productName}-${row.rowCalendarDate ?? 'sin-fecha'}-${index}`}
+                key={`excel-row-${row.rowNumber}`}
                 className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark"
               >
                 <td className="px-4 py-2.5 font-semibold">

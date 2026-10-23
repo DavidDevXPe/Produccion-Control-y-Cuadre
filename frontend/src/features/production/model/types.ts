@@ -221,6 +221,8 @@ export interface ShiftEntryCalculation {
 
 export interface ShiftCalculation extends ShiftEntryCalculation {
   readonly declaredReportedKg100: Kg100
+  readonly normalProductionKg100: Kg100
+  readonly tunnelProductionKg100: Kg100
   readonly detailDifferenceKg100: Kg100
 }
 

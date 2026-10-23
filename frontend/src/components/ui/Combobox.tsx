@@ -8,7 +8,9 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type CSSProperties,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Search } from 'lucide-react'
 
 export interface ComboboxOption {
@@ -34,6 +36,7 @@ export interface ComboboxProps {
   id?: string | undefined
   autoResetOnSelect?: boolean | undefined
   onActiveOptionChange?: ((option: ComboboxOption | null) => void) | undefined
+  onCreateFromQuery?: ((query: string) => void) | undefined
 }
 
 import { groupOptions, normalizeSearch } from './comboboxUtils'
@@ -56,6 +59,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
     inputClassName = '',
     id: externalId,
     autoResetOnSelect = true,
+    onCreateFromQuery,
   },
   forwardedRef,
 ) {
@@ -78,6 +82,31 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
   const [activeIndex, setActiveIndex] = useState<number>(-1)
   const listRef = useRef<HTMLDivElement | null>(null)
   const isSelectingRef = useRef(false)
+  const [listboxStyle, setListboxStyle] = useState<CSSProperties>({})
+
+  const updateListboxPosition = useCallback(() => {
+    const input = internalInputRef.current
+    if (!input) return
+    const rect = input.getBoundingClientRect()
+    setListboxStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    updateListboxPosition()
+    const handleViewportChange = () => updateListboxPosition()
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+    return () => {
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [isOpen, updateListboxPosition])
 
   const filteredOptions = useMemo(() => {
     const norm = normalizeSearch(query)
@@ -244,19 +273,21 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
         </button>
       </div>
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' ? createPortal(
         <div
           ref={listRef}
           id={listboxId}
           role="listbox"
           tabIndex={-1}
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 scrollbar-subtle dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
+          style={listboxStyle}
+          className="z-[1000] max-h-60 overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 scrollbar-subtle dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
         >
           {flatSelectable.length === 0 ? (
-            <div className="px-3 py-2 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">
-              {noResultsText}
-            </div>
+            <>
+              <div className="px-3 py-2 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">{noResultsText}</div>
+              {onCreateFromQuery && query.trim() ? <button type="button" className="w-full border-t border-slate-200 px-3 py-2 text-left text-xs font-bold text-brand-700 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-accent-cyan dark:hover:bg-ui-surface-dark" onClick={() => { onCreateFromQuery(query.trim()); setQuery(''); setIsOpen(false) }}>+ Crear producto “{query.trim()}”</button> : null}
+            </>
           ) : (
             <>
               {displayItems.recents.length > 0 && (
@@ -304,8 +335,9 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
               ))}
             </>
           )}
-        </div>
-      )}
+        </div>,
+        document.body,
+      ) : null}
     </div>
   )
 })

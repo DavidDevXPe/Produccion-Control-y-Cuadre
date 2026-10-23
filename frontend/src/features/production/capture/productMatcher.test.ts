@@ -40,6 +40,19 @@ describe('product normalization and matching', () => {
     expect(legacy.product?.productId).toBe('membranas-cocidas')
   })
 
+  it('resolves the historical Rejo Tiras label to the single treatment product', () => {
+    const legacy = matchProduct(
+      'REJOS TIRAS (EN TRATAMIENTO)',
+      SEED_CAPTURE_PRODUCTS,
+    )
+    const shortLabel = matchProduct('REJO 1-2 TIRAS', SEED_CAPTURE_PRODUCTS)
+
+    expect(legacy.kind).toBe('ALIAS')
+    expect(legacy.product?.productId).toBe('rejos-tiras-tratamiento')
+    expect(shortLabel.kind).toBe('ALIAS')
+    expect(shortLabel.product?.productId).toBe('rejos-tiras-tratamiento')
+  })
+
   it('does not merge different sizes', () => {
     const first = matchProduct('ALETA CRUDA CONGELADA BLOCK S/TTO 500 g - 1000 g 100% P.N.', SEED_CAPTURE_PRODUCTS)
     const second = matchProduct('ALETA CRUDA CONGELADA BLOCK S/TTO 1000 g - 2000 g (E) 100% P.N.', SEED_CAPTURE_PRODUCTS)

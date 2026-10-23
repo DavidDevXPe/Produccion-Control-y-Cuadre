@@ -58,10 +58,10 @@ describe('ProductionTunnelSection', () => {
     render(<ProductionTunnelSection {...props} />)
 
     expect(screen.getByRole('heading', { name: 'Túnel' })).toBeInTheDocument()
-    expect(screen.getByText('TÚNEL DISPONIBLE')).toBeInTheDocument()
+    expect(screen.getByText('TÚNEL CONCILIADO')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Registra producción adicional por turno sin mezclarla con los reportes del supervisor.',
+        'Registra productos enviados a Túnel y concilia sus cantidades con el reporte del supervisor.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('Túnel Día')).toBeInTheDocument()
@@ -69,15 +69,15 @@ describe('ProductionTunnelSection', () => {
     expect(screen.getByText('Total Túnel')).toBeInTheDocument()
   })
 
-  it('renders warning badge and disables fieldset when reports are not reconciled', () => {
+  it('renders warning badge while keeping the section editable before reconciliation', () => {
     const props = createProps({ reportsReconciled: false })
     render(<ProductionTunnelSection {...props} />)
 
-    expect(screen.getByText('TÚNEL ESPERANDO CUADRE')).toBeInTheDocument()
+    expect(screen.getByText('TÚNEL PENDIENTE')).toBeInTheDocument()
     const fieldset = screen.getByRole('group', {
       name: 'Registro de producción de Túnel',
     })
-    expect(fieldset).toBeDisabled()
+    expect(fieldset).not.toBeDisabled()
   })
 
   it('renders warning alert when tunnelMovementRequired is true', () => {

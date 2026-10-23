@@ -94,7 +94,7 @@ export function ProductionEntryPage() {
   const { buildResult, businessSummary, closureValidation } = calculations
 
   return (
-    <div className="space-y-5 pb-[calc(var(--entry-action-bar-height)+1rem)] [--entry-action-bar-height:8.75rem] sm:[--entry-action-bar-height:4.25rem] xl:[--entry-action-bar-height:var(--sidebar-footer-height)]">
+    <div className="space-y-5 pb-[calc(var(--entry-action-bar-height)+1rem)] [--entry-action-bar-height:8.75rem] lg:[--entry-action-bar-height:var(--sidebar-footer-height)]">
       <ProductionEntryHeader
         existingDay={existingDay}
         isFreezing={isFreezing}
@@ -191,6 +191,7 @@ export function ProductionEntryPage() {
         freezingAvailabilityByProduct={calculations.freezingAvailabilityByProduct}
         reportFamilySubtotals={calculations.reportFamilySubtotals}
         orderedProductIds={calculations.orderedProductIds}
+        tunnelProductIds={sectionProducts.tunnelProductIds}
         dayHasReportData={calculations.dayHasReportData}
         nightHasReportData={calculations.nightHasReportData}
         isFreezing={isFreezing}
@@ -202,14 +203,16 @@ export function ProductionEntryPage() {
         getFreezingPotentialAvailabilityKg100={calculations.getFreezingPotentialAvailabilityKg100}
         autoLinkFreezingProduct={draftActions.autoLinkFreezingProduct}
         onAddReportProduct={draftActions.addReportProduct}
+        onCreateReportProduct={draftActions.createReportProduct}
         onUpdateRow={draftActions.updateRow}
         onRemoveRow={draftActions.removeRow}
         getCaptureCellProps={calculations.getCaptureCellProps}
       />
 
       <ProductionTunnelSection
-        enabled={!usesExternalAvailability && draft.hasTunnelProduction}
+        enabled={draft.hasTunnelProduction}
         reportsReconciled={calculations.reportsReconciled}
+        isEditingAllowed={isEditingAllowed}
         tunnelMovementRequired={calculations.tunnelMovementRequired}
         dayKg100={buildResult.calculation.tunnel.dayKg100}
         nightKg100={buildResult.calculation.tunnel.nightKg100}
@@ -219,6 +222,7 @@ export function ProductionEntryPage() {
         selectedProcess={selectedProcess}
         searchInputRef={sectionProducts.tunnelSearchInputRef}
         onAddProduct={sectionProducts.addTunnelProduct}
+        onRemoveProduct={sectionProducts.removeTunnelProduct}
         onUpdateRow={(rowKey, field, value) => draftActions.updateRow(rowKey, field, value)}
         getTunnelCellProps={sectionProducts.getTunnelCellProps}
       />
@@ -340,6 +344,7 @@ export function ProductionEntryPage() {
         canClose={calculations.canClose}
         footerStatus={calculations.footerStatus}
         pendingClosureReasons={calculations.pendingClosureReasons}
+        reviewReasons={calculations.reviewReasons}
         dayShift={buildResult.calculation.day}
         nightShift={buildResult.calculation.night}
         dayHasReportData={calculations.dayHasReportData}

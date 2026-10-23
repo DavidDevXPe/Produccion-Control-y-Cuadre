@@ -49,9 +49,14 @@ export function BackupQuarantineSection({
       </div>
 
       <ul className="divide-y divide-slate-100 dark:divide-ui-line-dark-soft">
-        {quarantine.map((entry, index) => (
+        {quarantine.map((entry) => (
           <li
-            key={`${entry.sourceKey}-${entry.reason}-${entry.quarantinedAt}-${index}`}
+            key={JSON.stringify([
+              entry.sourceKey,
+              entry.reason,
+              entry.quarantinedAt,
+              entry.payload,
+            ])}
             className="px-5 py-3 text-sm"
           >
             <p className="font-bold text-slate-900 dark:text-white">

@@ -186,6 +186,9 @@ function calculateProduct(
         : EMPTY_SHIFT_ENTRY,
     ),
   };
+  // Product-level reconciliation is independent from the shift aggregate:
+  // these entries do not include Tunnel, so include the product's Tunnel
+  // movement exactly once when deriving its finished quantity.
   const productiveDayKg100 = sumKg100([
     day.ownProductionKg100,
     tunnel.DAY.ownProductionKg100,
@@ -229,6 +232,13 @@ function calculateShift(
     shift === "DAY" ? product.day : product.night,
   );
   const reportedKg100 = sumKg100(entries.map((entry) => entry.reportedKg100));
+  const tunnelKg100 = sumKg100(
+    products.map((product) =>
+      shift === "DAY"
+        ? product.tunnel.DAY.ownProductionKg100
+        : product.tunnel.NIGHT.ownProductionKg100,
+    ),
+  );
 
   const previousBalanceProcessedKg100 = sumKg100(
     entries.map((entry) => entry.previousBalanceProcessedKg100),
@@ -239,10 +249,15 @@ function calculateShift(
     declaredReportedKg100,
     adjustmentKg100: sumKg100(entries.map((entry) => entry.adjustmentKg100)),
     previousBalanceProcessedKg100,
-    ownProductionKg100: sumKg100(
+    normalProductionKg100: sumKg100(
       entries.map((entry) => entry.ownProductionKg100),
     ),
-    detailDifferenceKg100: kg100(declaredReportedKg100 - reportedKg100),
+    tunnelProductionKg100: tunnelKg100,
+    ownProductionKg100: sumKg100([
+      ...entries.map((entry) => entry.ownProductionKg100),
+      tunnelKg100,
+    ]),
+    detailDifferenceKg100: kg100(declaredReportedKg100 - reportedKg100 - tunnelKg100),
   };
 }
 
@@ -753,14 +768,12 @@ export function calculateProductionDay(
     nightKg100: tunnelNightKg100,
     totalKg100: sumKg100([tunnelDayKg100, tunnelNightKg100]),
   };
-  const productiveDayKg100 = sumKg100([
-    day.ownProductionKg100,
-    tunnel.dayKg100,
-  ]);
-  const productiveNightKg100 = sumKg100([
-    night.ownProductionKg100,
-    tunnel.nightKg100,
-  ]);
+  // `calculateShift` already includes the shift's Tunnel movement in
+  // `ownProductionKg100` (while retaining `normalProductionKg100` and
+  // `tunnelProductionKg100` as separate breakdowns). Do not add Tunnel again
+  // here: doing so inflated the final balance by twice the Tunnel quantity.
+  const productiveDayKg100 = day.ownProductionKg100;
+  const productiveNightKg100 = night.ownProductionKg100;
   const ownTurnProductionKg100 = sumKg100([
     productiveDayKg100,
     productiveNightKg100,

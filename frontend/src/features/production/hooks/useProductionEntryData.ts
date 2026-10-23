@@ -98,18 +98,19 @@ export function useProductionEntryData() {
     clearSectionProduct: sectionProducts.clearSectionProduct,
     manualProductSearchInputRef,
     setSaveError,
+    setCatalogItems,
     updateDraft,
   })
 
   useEffect(() => {
-    if (!existingDay || !isFreezing || draft.rows.length === 0) return
+    if (!isFreezing || draft.rows.length === 0) return
 
-    const reconciliationKey = `${existingDay.id}|${draft.date}`
+    const reconciliationKey = `${existingDay?.id ?? 'new'}|${draft.date}|${draft.rows.map((row) => `${row.product.productId}:${row.dayReportedKg}:${row.nightReportedKg}`).join(';')}`
     if (autoReconciledFreezingRef.current === reconciliationKey) return
 
     autoReconciledFreezingRef.current = reconciliationKey
     draftActions.autoLinkAllFreezingProducts()
-  }, [draft.date, draft.rows.length, draftActions, existingDay, isFreezing])
+  }, [draft.date, draft.rows, draftActions, existingDay, isFreezing])
   const persistence = useProductionPersistence({
     draft,
     editingDate,

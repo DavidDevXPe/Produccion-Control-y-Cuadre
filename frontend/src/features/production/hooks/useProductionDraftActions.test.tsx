@@ -133,7 +133,7 @@ describe('useProductionDraftActions', () => {
     expect(draft.rows[0]?.product.productId).toBe(catalogItems[0]!.productId)
   })
 
-  it('keeps balanceUses separate when updating rows and allows manual FIFO linking when requested', () => {
+  it('rebuilds the FIFO balance use when freezing row quantities change', () => {
     const product = catalogItems[0]!
     let draft: ProductionCaptureDraft = {
       ...createEmptyCaptureDraft('2026-10-06', 'FREEZING'),
@@ -204,22 +204,26 @@ describe('useProductionDraftActions', () => {
       }),
     )
 
-    // 1. Updating row does NOT create balance uses automatically
+    // Updating a freezing row automatically allocates the reported quantity.
     act(() => {
       result.current.updateRow('row-freezing-1', 'dayReportedKg', '280')
     })
 
     expect(draft.rows[0]?.dayReportedKg).toBe('280')
-    expect(draft.balanceUses).toHaveLength(0)
+    expect(draft.balanceUses).toHaveLength(1)
+    expect(draft.balanceUses[0]?.dayKg).toBe('280')
+    expect(draft.balanceUses[0]?.nightKg).toBe('0')
 
     act(() => {
       result.current.updateRow('row-freezing-1', 'nightReportedKg', '280')
     })
 
     expect(draft.rows[0]?.nightReportedKg).toBe('280')
-    expect(draft.balanceUses).toHaveLength(0)
+    expect(draft.balanceUses).toHaveLength(1)
+    expect(draft.balanceUses[0]?.dayKg).toBe('280')
+    expect(draft.balanceUses[0]?.nightKg).toBe('280')
 
-    // 2. Manual FIFO link consumes prior origin
+    // Explicit relinking remains idempotent and keeps the same origin.
     act(() => {
       result.current.autoLinkFreezingProduct(product.productId)
     })
