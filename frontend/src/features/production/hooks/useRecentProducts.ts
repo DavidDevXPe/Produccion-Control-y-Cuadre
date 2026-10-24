@@ -4,6 +4,7 @@ import {
   clearRecentProductIds,
   getRecentProductIds,
 } from "../../../storage/recentProductsStore";
+import { TRABUNDA_STORAGE_KEYS } from "../../../storage/trabundaStorage";
 
 const RECENT_PRODUCTS_UPDATED_EVENT = "trabunda:recent-products-updated";
 
@@ -46,6 +47,23 @@ export function useRecentProducts(scopeKey: string) {
         handleRecentProductsUpdated,
       );
     };
+  }, [scopeKey]);
+
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (
+        event.key !== null &&
+        event.key !== TRABUNDA_STORAGE_KEYS.recentProducts
+      ) {
+        return;
+      }
+
+      setRecentState({ scopeKey, ids: getRecentProductIds(scopeKey) });
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [scopeKey]);
 
   const addRecent = useCallback(

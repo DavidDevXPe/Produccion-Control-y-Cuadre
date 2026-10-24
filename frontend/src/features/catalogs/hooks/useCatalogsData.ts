@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   getActiveProducts,
+  reloadActiveProductCatalog,
   addActiveProduct,
   updateActiveProduct,
   addAliasToActiveProduct,
@@ -8,6 +9,7 @@ import {
   toggleProductActiveStatus,
   createStableProductId,
 } from "../../production/capture/productCatalogRepository";
+import { TRABUNDA_STORAGE_KEYS } from "../../../storage/trabundaStorage";
 import type { ProductionCatalogItem } from "../../production/capture/productionCatalog";
 import type { SummaryGroupId } from "../../production/model/types";
 import { usePageTitle } from "../../../hooks/usePageTitle";
@@ -81,6 +83,25 @@ export function useCatalogsData() {
   const reloadProducts = () => {
     setProducts(getActiveProducts());
   };
+
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return
+      if (
+        event.key !== null &&
+        event.key !== TRABUNDA_STORAGE_KEYS.productCatalog &&
+        event.key !== TRABUNDA_STORAGE_KEYS.legacyProductionCatalog
+      ) {
+        return
+      }
+
+      reloadActiveProductCatalog()
+      setProducts(getActiveProducts())
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [])
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {

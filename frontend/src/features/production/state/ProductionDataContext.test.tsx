@@ -8,6 +8,7 @@ import {
   ProductionDataProvider,
   useProductionData,
 } from './ProductionDataContext'
+import { DAYS_STORAGE_KEY } from './productionDataConstants'
 
 function ActiveWeekProbe() {
   const {
@@ -176,6 +177,31 @@ describe('ProductionDataProvider operational week recovery', () => {
     expect(
       window.localStorage.getItem('trabunda-active-operational-week-v1'),
     ).toBe('42')
+  })
+
+  it('refreshes production days when another tab changes shared storage', () => {
+    render(
+      <ProductionDataProvider>
+        <ActiveWeekProbe />
+      </ProductionDataProvider>,
+    )
+
+    const initialCount = Number(screen.getByTestId('all-day-count').textContent)
+    const storedDays = JSON.stringify([editableDay])
+    window.localStorage.setItem(DAYS_STORAGE_KEY, storedDays)
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: DAYS_STORAGE_KEY,
+          newValue: storedDays,
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('all-day-count')).toHaveTextContent(
+      String(initialCount + 1),
+    )
   })
 
   it('preserves a selected previous week as historical read-only', () => {

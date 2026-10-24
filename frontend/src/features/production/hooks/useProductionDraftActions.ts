@@ -17,7 +17,7 @@ import { buildFreezingFifoAllocation } from '../capture/freezingFifo'
 import { isSundayIsoDate } from '../model/productionDayMode'
 import { kg100, sumKg100 } from '../model/calculations'
 import type { FreezingAvailabilityPosition } from '../model/freezing'
-import type { Kg100 } from '../model/types'
+import type { Kg100, ProductionCaptureSection } from '../model/types'
 
 export interface SelectedBalancePosition {
   originDayId: string
@@ -27,6 +27,41 @@ export interface SelectedBalancePosition {
   productId: string
   productName: string
   pendingKg100: Kg100
+}
+
+type EditableCaptureField = Exclude<
+  keyof ProductionCaptureRow,
+  'key' | 'product' | 'captureSections'
+>
+
+const sectionForCaptureField: Partial<
+  Record<EditableCaptureField, ProductionCaptureSection>
+> = {
+  tunnelDayKg: 'TUNNEL',
+  tunnelNightKg: 'TUNNEL',
+  treatmentKg: 'TREATMENT',
+  closingBalanceKg: 'BALANCE',
+}
+
+function markCaptureSection(
+  row: ProductionCaptureRow,
+  section: ProductionCaptureSection,
+): ProductionCaptureRow {
+  const sections = new Set(row.captureSections ?? [])
+  sections.add(section)
+  return { ...row, captureSections: [...sections] }
+}
+
+function clearCaptureSection(
+  row: ProductionCaptureRow,
+  section: ProductionCaptureSection,
+): ProductionCaptureRow {
+  const sections = new Set(row.captureSections ?? [])
+  sections.delete(section)
+  return {
+    ...row,
+    ...(sections.size > 0 ? { captureSections: [...sections] } : {}),
+  }
 }
 
 interface UseProductionDraftActionsParams {
@@ -81,13 +116,25 @@ export function useProductionDraftActions({
 
   const updateRow = (
     key: string,
-    field: keyof Omit<ProductionCaptureRow, 'key' | 'product'>,
+    field: EditableCaptureField,
     value: string,
   ) => {
     setDraft((current) => {
-      const nextRows = current.rows.map((row) =>
-        row.key === key ? { ...row, [field]: value } : row,
-      )
+      const section = sectionForCaptureField[field]
+      const nextRows = current.rows.map((row) => {
+        if (row.key !== key) return row
+
+        const nextRow = { ...row, [field]: value }
+        if (
+          section &&
+          (captureQuantityKg100(String(row[field])) > 0 ||
+            captureQuantityKg100(value) > 0)
+        ) {
+          return markCaptureSection(nextRow, section)
+        }
+
+        return nextRow
+      })
       return {
         ...current,
         rows: nextRows,
@@ -222,10 +269,19 @@ export function useProductionDraftActions({
         ...current,
         rows:
           row === null
-            ? current.rows
+            ? current.rows.map((candidate) =>
+                candidate.product.productId === balanceUse.productId
+                  ? markCaptureSection(candidate, 'BALANCE')
+                  : candidate,
+              )
             : [
                 ...current.rows,
-                { ...row, dayReportedKg: '0', nightReportedKg: '0' },
+                {
+                  ...row,
+                  dayReportedKg: '0',
+                  nightReportedKg: '0',
+                  captureSections: ['BALANCE'],
+                },
               ],
         balanceUses: normalizeCaptureBalanceUses(
           alreadyExists
@@ -391,10 +447,19 @@ export function useProductionDraftActions({
         ...current,
         rows:
           row === null
-            ? current.rows
+            ? current.rows.map((candidate) =>
+                candidate.product.productId === product.productId
+                  ? markCaptureSection(candidate, 'BALANCE')
+                  : candidate,
+              )
             : [
                 ...current.rows,
-                { ...row, dayReportedKg: '0', nightReportedKg: '0' },
+                {
+                  ...row,
+                  dayReportedKg: '0',
+                  nightReportedKg: '0',
+                  captureSections: ['BALANCE'],
+                },
               ],
         balanceUses: normalizeCaptureBalanceUses(
           current.balanceUses.map((balance) =>
@@ -422,19 +487,30 @@ export function useProductionDraftActions({
       const nextBalanceUses = current.balanceUses.filter(
         (balance) => balance.key !== key,
       )
+      const removedUse = current.balanceUses.find((balance) => balance.key === key)
 
-      if (!isBalanceOnly || current.process !== 'PACKING') {
+      if (!removedUse) {
         return {
           ...current,
           balanceUses: normalizeCaptureBalanceUses(nextBalanceUses),
         }
       }
 
-      const removedUse = current.balanceUses.find((b) => b.key === key)
-      if (!removedUse) {
+      const hasRemainingBalance = nextBalanceUses.some(
+        (balance) => balance.productId === removedUse.productId,
+      )
+
+      if (!isBalanceOnly || current.process !== 'PACKING') {
         return {
           ...current,
           balanceUses: normalizeCaptureBalanceUses(nextBalanceUses),
+          rows: hasRemainingBalance
+            ? current.rows
+            : current.rows.map((row) =>
+                row.product.productId === removedUse.productId
+                  ? clearCaptureSection(row, 'BALANCE')
+                  : row,
+              ),
         }
       }
 
@@ -450,11 +526,15 @@ export function useProductionDraftActions({
         const newDayKg100 = kg100(Math.max(0, currentDayKg100 - removedDayKg100))
         const newNightKg100 = kg100(Math.max(0, currentNightKg100 - removedNightKg100))
 
-        return {
+        const updatedRow = {
           ...row,
           dayReportedKg: String(newDayKg100 / 100),
           nightReportedKg: String(newNightKg100 / 100),
         }
+
+        return hasRemainingBalance
+          ? updatedRow
+          : clearCaptureSection(updatedRow, 'BALANCE')
       })
 
       const prevTotalDayKg100 = sumKg100(
@@ -511,7 +591,8 @@ export function useProductionDraftActions({
       captureQuantityKg100(rowToRemove.treatmentKg) > 0 ||
       captureQuantityKg100(rowToRemove.closingBalanceKg) > 0 ||
       captureQuantityKg100(rowToRemove.finishedKg) > 0 ||
-      draft.balanceUses.some((balance) => balance.productId === productId)
+      draft.balanceUses.some((balance) => balance.productId === productId) ||
+      (rowToRemove.captureSections?.length ?? 0) > 0
 
     if (productId && !hasOtherSectionMovement) {
       clearSectionProduct(productId)

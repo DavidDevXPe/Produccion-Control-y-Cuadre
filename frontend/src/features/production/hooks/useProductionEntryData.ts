@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
-import { getActiveProducts } from '../capture/productCatalogRepository'
+import {
+  getActiveProducts,
+  reloadActiveProductCatalog,
+} from '../capture/productCatalogRepository'
+import { TRABUNDA_STORAGE_KEYS } from '../../../storage/trabundaStorage'
 import { useProductionCalculations } from './useProductionCalculations'
 import { useProductionDraftActions } from './useProductionDraftActions'
 import { useProductionExcelImport } from './useProductionExcelImport'
@@ -76,6 +80,25 @@ export function useProductionEntryData() {
     }
   })
 
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return
+      if (
+        event.key !== null &&
+        event.key !== TRABUNDA_STORAGE_KEYS.productCatalog &&
+        event.key !== TRABUNDA_STORAGE_KEYS.legacyProductionCatalog
+      ) {
+        return
+      }
+
+      reloadActiveProductCatalog()
+      setCatalogItems(getActiveProducts())
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   usePageTitle(existingDay ? 'Editar jornada' : 'Nueva jornada')
 
   const calculations = useProductionCalculations({
@@ -85,6 +108,7 @@ export function useProductionEntryData() {
     catalogItems,
     isFreezing,
     usesExternalAvailability,
+    nonReportProductIds: sectionProducts.nonReportProductIds,
   })
 
   const draftActions = useProductionDraftActions({

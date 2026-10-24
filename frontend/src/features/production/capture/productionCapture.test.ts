@@ -7,6 +7,7 @@ import {
 } from '../model/movements'
 import {
   buildProductionDayFromCapture,
+  createCaptureDraftFromDay,
   createEmptyCaptureDraft,
   type ProductionCaptureBalanceUse,
   type ProductionCaptureRow,
@@ -33,6 +34,30 @@ function row(overrides: Partial<ProductionCaptureRow> = {}): ProductionCaptureRo
 }
 
 describe('production capture', () => {
+  it('persists section membership so zero-quantity rows stay out of reports after reload', () => {
+    const draft = {
+      ...createEmptyCaptureDraft('2026-10-19'),
+      rawMaterialKg: '100',
+      declaredDayTotalKg: '50',
+      declaredNightTotalKg: '30',
+      rows: [
+        row({
+          dayReportedKg: '0',
+          nightReportedKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+          captureSections: ['TUNNEL'],
+        }),
+      ],
+    }
+
+    const saved = buildProductionDayFromCapture(draft, [], []).productionDay
+    const restored = createCaptureDraftFromDay(saved)
+
+    expect(saved.lines[0]?.captureSections).toEqual(['TUNNEL'])
+    expect(restored.rows[0]?.captureSections).toEqual(['TUNNEL'])
+  })
+
   it('counts Tunnel once in the reconciled shift and final journey totals', () => {
     const tunnelProduct = PRODUCTION_CATALOG_ITEMS.find(
       (product) => product.productId === 'manto-estandar-crudo-2-4',

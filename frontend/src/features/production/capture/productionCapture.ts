@@ -26,6 +26,7 @@ import type {
   ProductionDayOperationMode,
   ProductionProcess,
   ProductionDayStatus,
+  ProductionCaptureSection,
   ShiftCode,
 } from "../model/types";
 import {
@@ -52,6 +53,7 @@ export interface ProductionCaptureRow {
   nightPreviousBalanceKg: string;
   tunnelDayKg: string;
   tunnelNightKg: string;
+  captureSections?: readonly ProductionCaptureSection[]
   treatmentKg: string;
   closingBalanceKg: string;
   /** Independent finished-product value read from Excel; manual capture derives it. */
@@ -399,6 +401,9 @@ export function createCaptureDraftFromDay(
         tunnelNightKg: String(
           toKilograms(line.tunnelShifts?.NIGHT.reportedKg100 ?? ZERO_KG100),
         ),
+        ...(line.captureSections && line.captureSections.length > 0
+          ? { captureSections: line.captureSections }
+          : {}),
         treatmentKg: String(toKilograms(line.treatmentKg100)),
         closingBalanceKg: String(toKilograms(line.newClosingBalanceKg100)),
         finishedKg: String(toKilograms(line.declaredFinishedKg100)),
@@ -602,6 +607,9 @@ export function buildProductionDayFromCapture(
           adjustments: [],
         },
       },
+      ...(row.captureSections && row.captureSections.length > 0
+        ? { captureSections: row.captureSections }
+        : {}),
       treatmentKg100: usesExternalAvailability
         ? ZERO_KG100
         : quantityFor(

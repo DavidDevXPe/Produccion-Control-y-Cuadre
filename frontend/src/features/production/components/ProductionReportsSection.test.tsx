@@ -170,6 +170,20 @@ describe('ProductionReportsSection', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hides Tunnel metrics when the flag is active but there is no Tunnel movement', () => {
+    const props = createProps({
+      draft: {
+        ...createEmptyCaptureDraft('2026-09-16', 'PACKING'),
+        hasTunnelProduction: true,
+        rows: [createSampleRow()],
+      },
+    })
+
+    render(<ProductionReportsSection {...props} />)
+
+    expect(screen.queryAllByText('TÃºnel')).toHaveLength(0)
+  })
+
   it('renders capture table when rows are present', () => {
     const props = createProps()
     render(<ProductionReportsSection {...props} />)
@@ -178,5 +192,30 @@ describe('ProductionReportsSection', () => {
     expect(
       screen.getByText(wednesdayCatalogProduct.productName),
     ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['treatment', 'treatmentKg'],
+    ['tunnel', 'tunnelDayKg'],
+    ['closing balance', 'closingBalanceKg'],
+  ] as const)('does not show a product registered only in %s in the daily report', (_section, field) => {
+    const sectionOnlyRow = {
+      ...createSampleRow(),
+      dayReportedKg: '0',
+      nightReportedKg: '0',
+      finishedKg: _section === 'treatment' ? '25' : '0',
+      [field]: '25',
+    }
+    const props = createProps({
+      draft: {
+        ...createEmptyCaptureDraft('2026-09-16', 'PACKING'),
+        rows: [sectionOnlyRow],
+      },
+      nonReportProductIds: [wednesdayCatalogProduct.productId],
+    })
+
+    render(<ProductionReportsSection {...props} />)
+
+    expect(screen.queryByText(wednesdayCatalogProduct.productName)).not.toBeInTheDocument()
   })
 })

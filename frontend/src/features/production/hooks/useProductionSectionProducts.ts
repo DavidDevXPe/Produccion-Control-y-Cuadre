@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { ProductionDay } from '../model/types'
+import type { ProductionCaptureSection, ProductionDay } from '../model/types'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
 import {
@@ -21,6 +21,30 @@ interface UseProductionSectionProductsParams {
   ) => void
 }
 
+type CaptureRow = ProductionCaptureDraft['rows'][number]
+
+function hasCaptureSection(
+  row: CaptureRow,
+  section: ProductionCaptureSection,
+): boolean {
+  return row.captureSections?.includes(section) ?? false
+}
+
+function withCaptureSection(
+  row: CaptureRow,
+  section: ProductionCaptureSection,
+  enabled: boolean,
+): CaptureRow {
+  const sections = new Set(row.captureSections ?? [])
+  if (enabled) sections.add(section)
+  else sections.delete(section)
+
+  return {
+    ...row,
+    ...(sections.size > 0 ? { captureSections: [...sections] } : {}),
+  }
+}
+
 export function useProductionSectionProducts({
   draft,
   setDraft,
@@ -38,7 +62,14 @@ export function useProductionSectionProducts({
   const effectiveTreatmentProductIds = useMemo(() => {
     const ids = new Set(treatmentProductIds)
     for (const row of draft.rows) {
-      if (captureQuantityKg100(row.treatmentKg) > 0) {
+      // Older jornadas did not persist the section that originated a row.
+      // Treatment-only products are still unambiguous from their catalog
+      // identity, so recover that membership when hydrating a historical day.
+      if (
+        captureQuantityKg100(row.treatmentKg) > 0 ||
+        isTreatmentOnlyProduct(row.product) ||
+        hasCaptureSection(row, 'TREATMENT')
+      ) {
         ids.add(row.product.productId)
       }
     }
@@ -79,7 +110,8 @@ export function useProductionSectionProducts({
     for (const row of draft.rows) {
       if (
         captureQuantityKg100(row.tunnelDayKg) > 0 ||
-        captureQuantityKg100(row.tunnelNightKg) > 0
+        captureQuantityKg100(row.tunnelNightKg) > 0 ||
+        hasCaptureSection(row, 'TUNNEL')
       ) {
         ids.add(row.product.productId)
       }
@@ -122,31 +154,77 @@ export function useProductionSectionProducts({
       ),
   )
 
+  const effectiveClosingProductIds = useMemo(() => {
+    const ids = new Set(closingProductIds)
+    for (const row of draft.rows) {
+      if (
+        captureQuantityKg100(row.closingBalanceKg) > 0 ||
+        hasCaptureSection(row, 'BALANCE')
+      ) {
+        ids.add(row.product.productId)
+      }
+    }
+    return ids
+  }, [closingProductIds, draft.rows])
+
   const closingCatalogItems = useMemo(
     () =>
       catalogItems.filter(
-        (product) => !closingProductIds.has(product.productId),
+        (product) => !effectiveClosingProductIds.has(product.productId),
       ),
-    [catalogItems, closingProductIds],
+    [catalogItems, effectiveClosingProductIds],
   )
 
   const closingRows = useMemo(
     () =>
       draft.rows.filter(
         (row) =>
-          closingProductIds.has(row.product.productId) ||
+          effectiveClosingProductIds.has(row.product.productId) ||
           captureQuantityKg100(row.closingBalanceKg) > 0,
       ),
-    [closingProductIds, draft.rows],
+    [draft.rows, effectiveClosingProductIds],
+  )
+
+  const balanceProductIds = useMemo(
+    () => [...new Set(draft.balanceUses.map((balance) => balance.productId))],
+    [draft.balanceUses],
+  )
+
+  const nonReportProductIds = useMemo(
+    () => [
+      ...new Set([
+        ...effectiveTreatmentProductIds,
+        ...effectiveTunnelProductIds,
+        ...effectiveClosingProductIds,
+        ...balanceProductIds,
+      ]),
+    ],
+    [
+      balanceProductIds,
+      effectiveClosingProductIds,
+      effectiveTreatmentProductIds,
+      effectiveTunnelProductIds,
+    ],
   )
 
   // Helpers
   const addMovementProduct = (
     productId: string,
     resetSelection: () => void,
+    section?: ProductionCaptureSection,
   ) => {
     if (!productId) return
     if (draft.rows.some((row) => row.product.productId === productId)) {
+      if (section) {
+        setDraft((current) => ({
+          ...current,
+          rows: current.rows.map((row) =>
+            row.product.productId === productId
+              ? withCaptureSection(row, section, true)
+              : row,
+          ),
+        }))
+      }
       resetSelection()
       return
     }
@@ -154,7 +232,12 @@ export function useProductionSectionProducts({
     if (!row) return
     updateDraft('rows', [
       ...draft.rows,
-      { ...row, dayReportedKg: '0', nightReportedKg: '0' },
+      {
+        ...row,
+        dayReportedKg: '0',
+        nightReportedKg: '0',
+        ...(section ? { captureSections: [section] } : {}),
+      },
     ])
     resetSelection()
     setSaveError('')
@@ -180,6 +263,14 @@ export function useProductionSectionProducts({
 
   const addTreatmentProduct = (productId: string) => {
     if (draft.rows.some((row) => row.product.productId === productId)) {
+      setDraft((current) => ({
+        ...current,
+        rows: current.rows.map((row) =>
+          row.product.productId === productId
+            ? withCaptureSection(row, 'TREATMENT', true)
+            : row,
+        ),
+      }))
       setTreatmentProductIds((current) => new Set(current).add(productId))
       treatmentSearchInputRef.current?.focus()
       return
@@ -191,7 +282,7 @@ export function useProductionSectionProducts({
         return next
       })
       treatmentSearchInputRef.current?.focus()
-    })
+    }, 'TREATMENT')
   }
 
   const removeTreatmentProduct = (rowKey: string) => {
@@ -213,17 +304,20 @@ export function useProductionSectionProducts({
         captureQuantityKg100(row.tunnelNightKg) > 0 ||
         captureQuantityKg100(row.closingBalanceKg) > 0 ||
         captureQuantityKg100(row.finishedKg) > 0 ||
-        current.balanceUses.some((balance) => balance.productId === productId)
+        current.balanceUses.some((balance) => balance.productId === productId) ||
+        hasCaptureSection(row, 'TUNNEL') ||
+        hasCaptureSection(row, 'BALANCE')
 
       return {
         ...current,
         rows: hasOtherMovement
           ? current.rows.map((candidate) =>
               candidate.key === rowKey
-                ? {
-                    ...candidate,
-                    treatmentKg: '0',
-                  }
+                ? withCaptureSection(
+                    { ...candidate, treatmentKg: '0' },
+                    'TREATMENT',
+                    false,
+                  )
                 : candidate,
             )
           : current.rows.filter((candidate) => candidate.key !== rowKey),
@@ -241,6 +335,14 @@ export function useProductionSectionProducts({
 
   const addTunnelProduct = (productId: string) => {
     if (draft.rows.some((row) => row.product.productId === productId)) {
+      setDraft((current) => ({
+        ...current,
+        rows: current.rows.map((row) =>
+          row.product.productId === productId
+            ? withCaptureSection(row, 'TUNNEL', true)
+            : row,
+        ),
+      }))
       setTunnelProductIds((current) => new Set(current).add(productId))
       tunnelSearchInputRef.current?.focus()
       return
@@ -252,7 +354,7 @@ export function useProductionSectionProducts({
         return next
       })
       tunnelSearchInputRef.current?.focus()
-    })
+    }, 'TUNNEL')
   }
 
   const removeTunnelProduct = (rowKey: string) => {
@@ -266,13 +368,21 @@ export function useProductionSectionProducts({
         captureQuantityKg100(row.treatmentKg) > 0 ||
         captureQuantityKg100(row.closingBalanceKg) > 0 ||
         captureQuantityKg100(row.finishedKg) > 0 ||
-        current.balanceUses.some((balance) => balance.productId === row.product.productId)
+        current.balanceUses.some((balance) => balance.productId === row.product.productId) ||
+        hasCaptureSection(row, 'TREATMENT') ||
+        hasCaptureSection(row, 'BALANCE')
       return {
         ...current,
         rows: hasOtherMovement
-          ? current.rows.map((candidate) => candidate.key === rowKey
-            ? { ...candidate, tunnelDayKg: '0', tunnelNightKg: '0' }
-            : candidate)
+          ? current.rows.map((candidate) =>
+              candidate.key === rowKey
+                ? withCaptureSection(
+                    { ...candidate, tunnelDayKg: '0', tunnelNightKg: '0' },
+                    'TUNNEL',
+                    false,
+                  )
+                : candidate,
+            )
           : current.rows.filter((candidate) => candidate.key !== rowKey),
       }
     })
@@ -287,6 +397,14 @@ export function useProductionSectionProducts({
   const addClosingProduct = (productId: string) => {
     if (!productId) return
     if (draft.rows.some((row) => row.product.productId === productId)) {
+      setDraft((current) => ({
+        ...current,
+        rows: current.rows.map((row) =>
+          row.product.productId === productId
+            ? withCaptureSection(row, 'BALANCE', true)
+            : row,
+        ),
+      }))
       setClosingProductIds((current) => new Set(current).add(productId))
       closingSearchInputRef.current?.focus()
       return
@@ -294,7 +412,7 @@ export function useProductionSectionProducts({
     setClosingProductIds((current) => new Set(current).add(productId))
     addMovementProduct(productId, () => {
       closingSearchInputRef.current?.focus()
-    })
+    }, 'BALANCE')
   }
 
   const removeClosingProduct = (rowKey: string) => {
@@ -313,17 +431,20 @@ export function useProductionSectionProducts({
         captureQuantityKg100(row.tunnelNightKg) > 0 ||
         captureQuantityKg100(row.treatmentKg) > 0 ||
         captureQuantityKg100(row.finishedKg) > 0 ||
-        current.balanceUses.some((balance) => balance.productId === productId)
+        current.balanceUses.some((balance) => balance.productId === productId) ||
+        hasCaptureSection(row, 'TREATMENT') ||
+        hasCaptureSection(row, 'TUNNEL')
 
       return {
         ...current,
         rows: hasOtherMovement
           ? current.rows.map((candidate) =>
               candidate.key === rowKey
-                ? {
-                    ...candidate,
-                    closingBalanceKg: '0',
-                  }
+                ? withCaptureSection(
+                    { ...candidate, closingBalanceKg: '0' },
+                    'BALANCE',
+                    false,
+                  )
                 : candidate,
             )
           : current.rows.filter((candidate) => candidate.key !== rowKey),
@@ -387,6 +508,7 @@ export function useProductionSectionProducts({
     closingSearchInputRef,
     closingCatalogItems,
     closingRows,
+    nonReportProductIds,
     addClosingProduct,
     removeClosingProduct,
     clearSectionProduct,

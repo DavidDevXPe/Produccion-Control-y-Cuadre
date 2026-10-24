@@ -2,11 +2,14 @@ import { AlertTriangle, CheckCircle2, Save } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { formatCentiKg } from '../../../utils/formatters'
+import { kg100 } from '../model/calculations'
 import type { Kg100 } from '../model/types'
 
 export interface ShiftSummaryData {
   reportedKg100: Kg100
+  /** Kept for API compatibility; footer reconciliation uses the report detail. */
   ownProductionKg100?: Kg100
+  tunnelProductionKg100?: Kg100
   declaredReportedKg100: Kg100
   detailDifferenceKg100: Kg100
 }
@@ -32,7 +35,10 @@ interface ShiftIndicatorProps {
 
 function ShiftIndicator({ label, shift, hasData }: ShiftIndicatorProps) {
   const reconciled = hasData && shift.detailDifferenceKg100 === 0
-  const registered = formatCentiKg(shift.ownProductionKg100 ?? shift.reportedKg100)
+  const reconciledTotalKg100 = kg100(
+    shift.reportedKg100 + (shift.tunnelProductionKg100 ?? 0),
+  )
+  const registered = formatCentiKg(reconciledTotalKg100)
   const reported = hasData ? formatCentiKg(shift.declaredReportedKg100) : '—'
   const difference = hasData ? formatCentiKg(shift.detailDifferenceKg100) : '—'
   const tooltipText = reconciled
@@ -85,20 +91,28 @@ interface ActionBarStatusProps {
   readonly canClose: boolean
   readonly title: string
   readonly pendingLabel: string
+  readonly hasWarningsOnly: boolean
+  readonly description: string
 }
 
 function ActionBarStatus({
   canClose,
   title,
   pendingLabel,
+  hasWarningsOnly,
+  description,
 }: ActionBarStatusProps) {
+  const requiresAttention = !canClose || hasWarningsOnly
+
   return (
     <div
       className="production-entry-action-bar__status flex min-w-0 items-center gap-2.5"
       role="status"
       aria-live="polite"
+      aria-label={`${title}. ${description}`}
+      title={description}
     >
-      {canClose ? (
+      {!requiresAttention ? (
         <CheckCircle2
           className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
           aria-hidden="true"
@@ -129,7 +143,10 @@ interface ActionBarActionsProps {
   readonly hasWarningsOnly: boolean
   readonly isPendingPanelOpen: boolean
   readonly pendingTriggerRef: RefObject<HTMLButtonElement | null>
+  readonly pendingPanelRef: RefObject<HTMLDialogElement | null>
   readonly onTogglePendingPanel: () => void
+  readonly onClosePendingPanel: () => void
+  readonly onOpenReview: () => void
   readonly onSaveDraft: () => void
   readonly onCloseDay: () => void
   readonly canClose: boolean
@@ -141,13 +158,16 @@ function ActionBarActions({
   hasWarningsOnly,
   isPendingPanelOpen,
   pendingTriggerRef,
+  pendingPanelRef,
   onTogglePendingPanel,
   onSaveDraft,
   onCloseDay,
   canClose,
+  onClosePendingPanel,
+  onOpenReview,
 }: ActionBarActionsProps) {
   return (
-    <div className="production-entry-action-bar__actions flex min-w-0 items-center gap-2">
+    <div className="production-entry-action-bar__actions relative flex min-w-0 items-center gap-2">
       {reviewReasons.length > 0 ? (
         <button
           ref={pendingTriggerRef}
@@ -179,6 +199,14 @@ function ActionBarActions({
         <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
         Cerrar jornada
       </button>
+      <PendingPanel
+        isOpen={isPendingPanelOpen}
+        reasons={reviewReasons}
+        hasWarningsOnly={hasWarningsOnly}
+        pendingPanelRef={pendingPanelRef}
+        onClose={onClosePendingPanel}
+        onOpenReview={onOpenReview}
+      />
     </div>
   )
 }
@@ -214,7 +242,7 @@ function PendingPanel({
       aria-label={
         hasWarningsOnly ? 'Observaciones para revisar' : 'Validaciones para el cierre'
       }
-      className="absolute bottom-full right-4 m-0 max-h-[min(60vh,22rem)] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-ui-line-dark dark:bg-ui-surface-dark-deep xl:right-7"
+      className="absolute bottom-[calc(100%+0.75rem)] left-auto top-auto right-0 m-0 max-h-[min(60vh,22rem)] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-ui-line-dark dark:bg-ui-surface-dark-deep"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
@@ -259,6 +287,7 @@ function PendingPanel({
 
 export function ProductionEntryActionBar({
   canClose,
+  footerStatus,
   pendingClosureReasons,
   reviewReasons: providedReviewReasons,
   dayShift,
@@ -330,6 +359,8 @@ export function ProductionEntryActionBar({
           canClose={canClose}
           title={generalTitle}
           pendingLabel={pendingLabel}
+          hasWarningsOnly={hasWarningsOnly}
+        description={footerStatus.description}
         />
 
         <div className="production-entry-action-bar__shifts flex items-center justify-start gap-2" role="group" aria-label="Estado de turnos">
@@ -344,19 +375,13 @@ export function ProductionEntryActionBar({
           hasWarningsOnly={hasWarningsOnly}
           isPendingPanelOpen={isPendingPanelOpen}
           pendingTriggerRef={pendingTriggerRef}
+          pendingPanelRef={pendingPanelRef}
           onTogglePendingPanel={() => setIsPendingPanelOpen((open) => !open)}
+          onClosePendingPanel={() => setIsPendingPanelOpen(false)}
+          onOpenReview={openPendingDetails}
           onSaveDraft={onSaveDraft}
           onCloseDay={onCloseDay}
           canClose={canClose}
-        />
-
-        <PendingPanel
-          isOpen={isPendingPanelOpen}
-          reasons={reviewReasons}
-          hasWarningsOnly={hasWarningsOnly}
-          pendingPanelRef={pendingPanelRef}
-          onClose={() => setIsPendingPanelOpen(false)}
-          onOpenReview={openPendingDetails}
         />
       </div>
     </div>

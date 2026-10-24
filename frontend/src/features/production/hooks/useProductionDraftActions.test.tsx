@@ -75,6 +75,55 @@ describe('useProductionDraftActions', () => {
     expect(updateDraft).toHaveBeenCalledWith('rows', expect.any(Array))
   })
 
+  it('persists the section when a tunnel quantity is entered and cleared', () => {
+    let draft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'tunnel-row',
+          product: catalogItems[0]!,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+        },
+      ],
+    }
+    const setDraft = vi.fn((updater) => {
+      if (typeof updater === 'function') draft = updater(draft)
+    })
+
+    const { result } = renderHook(() =>
+      useProductionDraftActions({
+        draft,
+        setDraft,
+        catalogItems,
+        isFreezing: false,
+        isBalanceOnly: false,
+        isEditingAllowed: true,
+        freezingAutomaticOriginPositions: [],
+        clearSectionProduct: vi.fn(),
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      }),
+    )
+
+    act(() => {
+      result.current.updateRow('tunnel-row', 'tunnelDayKg', '40')
+    })
+    expect(draft.rows[0]?.captureSections).toEqual(['TUNNEL'])
+
+    act(() => {
+      result.current.updateRow('tunnel-row', 'tunnelDayKg', '0')
+    })
+    expect(draft.rows[0]?.captureSections).toEqual(['TUNNEL'])
+  })
+
   it('removes row and allows undoing removal', () => {
     let draft: ProductionCaptureDraft = {
       ...initialDraft,
@@ -299,6 +348,7 @@ describe('useProductionDraftActions', () => {
     expect(draft.balanceUses[0]?.originDate).toBe('2026-10-08')
     expect(draft.rows).toHaveLength(1) // Rows not increased!
     expect(draft.rows[0]?.dayReportedKg).toBe('150')
+    expect(draft.rows[0]?.captureSections).toEqual(['BALANCE'])
     expect(draft.rows[0]?.nightReportedKg).toBe('50')
     expect(draft.declaredDayTotalKg).toBe('150')
     expect(draft.declaredNightTotalKg).toBe('50')

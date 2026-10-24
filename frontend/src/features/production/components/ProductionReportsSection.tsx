@@ -21,6 +21,7 @@ export interface ProductionReportsSectionProps {
   readonly freezingAvailabilityByProduct: ReadonlyMap<string, Kg100>
   readonly reportFamilySubtotals: readonly ReportFamilySubtotal[]
   readonly orderedProductIds: readonly string[]
+  readonly nonReportProductIds?: readonly string[]
   readonly tunnelProductIds?: readonly string[]
   readonly dayHasReportData: boolean
   readonly nightHasReportData: boolean
@@ -53,6 +54,7 @@ export function ProductionReportsSection({
   freezingAvailabilityByProduct,
   reportFamilySubtotals,
   orderedProductIds,
+  nonReportProductIds = EMPTY_TUNNEL_PRODUCT_IDS,
   tunnelProductIds = EMPTY_TUNNEL_PRODUCT_IDS,
   dayHasReportData,
   nightHasReportData,
@@ -92,6 +94,7 @@ export function ProductionReportsSection({
         nightShift={calculation.night}
         dayHasReportData={dayHasReportData}
         nightHasReportData={nightHasReportData}
+        showTunnel={calculation.tunnel.totalKg100 !== 0}
       />
 
       {mode === 'MANUAL' ? (
@@ -130,6 +133,7 @@ export function ProductionReportsSection({
           calculation={calculation}
           reportFamilySubtotals={reportFamilySubtotals}
           orderedProductIds={orderedProductIds}
+          nonReportProductIds={nonReportProductIds}
           tunnelProductIds={tunnelProductIds}
           isFreezing={isFreezing}
           isBalanceOnly={isBalanceOnly}

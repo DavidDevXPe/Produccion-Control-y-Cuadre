@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetActiveProductCatalogForTests } from '../../production/capture/productCatalogRepository'
+import { TRABUNDA_STORAGE_KEYS } from '../../../storage/trabundaStorage'
 import { useCatalogsData } from './useCatalogsData'
 
 afterEach(() => {
@@ -68,6 +69,30 @@ describe('useCatalogsData', () => {
     })
 
     expect(result.current.isModalOpen).toBe(false)
+  })
+
+  it('refreshes the catalog after a storage change from another tab', () => {
+    const { result } = renderHook(() => useCatalogsData())
+    const product = {
+      productId: 'catalog-cross-tab',
+      productName: 'CATALOG CROSS TAB',
+      familyId: 'manto-crudo',
+      familyName: 'MANTO CRUDO',
+      summaryGroupId: 'MANTO',
+    }
+    const storedProducts = JSON.stringify([product])
+
+    localStorage.setItem(TRABUNDA_STORAGE_KEYS.productCatalog, storedProducts)
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: TRABUNDA_STORAGE_KEYS.productCatalog,
+          newValue: storedProducts,
+        }),
+      )
+    })
+
+    expect(result.current.products.some((item) => item.productId === product.productId)).toBe(true)
   })
 })
 

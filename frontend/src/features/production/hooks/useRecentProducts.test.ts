@@ -50,4 +50,21 @@ describe("useRecentProducts", () => {
       "product-1",
     ]);
   });
+
+  it("refreshes recent items after another tab changes local storage", () => {
+    const { result } = renderHook(() => useRecentProducts("shared-scope"));
+    const stored = JSON.stringify({ "shared-scope": ["external-product"] });
+
+    localStorage.setItem("trabunda-recent-products-v1", stored);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "trabunda-recent-products-v1",
+          newValue: stored,
+        }),
+      );
+    });
+
+    expect(result.current.recentIds).toEqual(["external-product"]);
+  });
 });

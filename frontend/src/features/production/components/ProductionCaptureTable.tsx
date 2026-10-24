@@ -17,6 +17,7 @@ export interface ProductionCaptureTableProps {
   readonly calculation: ProductionDayCalculation
   readonly reportFamilySubtotals: readonly ReportFamilySubtotal[]
   readonly orderedProductIds: readonly string[]
+  readonly nonReportProductIds?: readonly string[]
   readonly tunnelProductIds?: readonly string[]
   readonly isFreezing: boolean
   readonly isBalanceOnly: boolean
@@ -40,6 +41,7 @@ export function ProductionCaptureTable({
   calculation,
   reportFamilySubtotals,
   orderedProductIds,
+  nonReportProductIds = EMPTY_TUNNEL_PRODUCT_IDS,
   tunnelProductIds,
   isFreezing,
   isBalanceOnly,
@@ -63,6 +65,10 @@ export function ProductionCaptureTable({
     () => new Set(resolvedTunnelProductIds),
     [resolvedTunnelProductIds],
   )
+  const nonReportProductIdSet = useMemo(
+    () => new Set(nonReportProductIds),
+    [nonReportProductIds],
+  )
 
   return (
     <DataTableScroll label="Captura por producto y turno" showEdgeIndicators={false} className="data-scroll-clean-edge">
@@ -76,14 +82,18 @@ export function ProductionCaptureTable({
               const hasNormalMovement =
                 captureQuantityKg100(candidate.dayReportedKg) > 0 ||
                 captureQuantityKg100(candidate.nightReportedKg) > 0 ||
-                captureQuantityKg100(candidate.treatmentKg) > 0 ||
-                captureQuantityKg100(candidate.closingBalanceKg) > 0 ||
                 captureQuantityKg100(candidate.finishedKg) > 0
+              const hasReportShiftMovement =
+                captureQuantityKg100(candidate.dayReportedKg) > 0 ||
+                captureQuantityKg100(candidate.nightReportedKg) > 0
               const hasTunnelMovement =
                 captureQuantityKg100(candidate.tunnelDayKg) > 0 ||
                 captureQuantityKg100(candidate.tunnelNightKg) > 0
-              return hasNormalMovement ||
-                (!hasTunnelMovement && !tunnelProductIdSet.has(productId))
+              const isOnlyRegisteredInAnotherSection =
+                nonReportProductIdSet.has(productId) && !hasReportShiftMovement
+              return !isOnlyRegisteredInAnotherSection &&
+                (hasNormalMovement ||
+                  (!hasTunnelMovement && !tunnelProductIdSet.has(productId)))
             })
             if (visibleProductIds.length === 0) return null
 

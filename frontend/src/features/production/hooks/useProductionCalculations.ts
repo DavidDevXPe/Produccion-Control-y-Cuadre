@@ -42,6 +42,7 @@ export interface UseProductionCalculationsParams {
   catalogItems: readonly ProductionCatalogItem[]
   isFreezing: boolean
   usesExternalAvailability: boolean
+  nonReportProductIds?: readonly string[]
 }
 
 type ProductionCaptureRow = ProductionCaptureDraft['rows'][number]
@@ -75,7 +76,9 @@ function hasCaptureMovement(row: ProductionCaptureRow) {
 function getOrderedProductIds(
   reportFamilySubtotals: ReportFamilySubtotals,
   rows: readonly ProductionCaptureRow[],
+  nonReportProductIds: readonly string[],
 ) {
+  const nonReportProductIdSet = new Set(nonReportProductIds)
   return reportFamilySubtotals.flatMap((subtotal) =>
     subtotal.productIds.filter((productId) => {
       const row = rows.find(
@@ -83,7 +86,12 @@ function getOrderedProductIds(
       )
       if (!row) return false
       const { hasNormalMovement, hasTunnelMovement } = hasCaptureMovement(row)
-      return hasNormalMovement || !hasTunnelMovement
+      const hasReportMovement =
+        captureQuantityKg100(row.dayReportedKg) > 0 ||
+        captureQuantityKg100(row.nightReportedKg) > 0
+      return (
+        !nonReportProductIdSet.has(productId) || hasReportMovement
+      ) && (hasNormalMovement || !hasTunnelMovement)
     }),
   )
 }
@@ -230,6 +238,7 @@ export function useProductionCalculations({
   catalogItems,
   isFreezing,
   usesExternalAvailability,
+  nonReportProductIds = [],
 }: UseProductionCalculationsParams) {
   const buildResult = useMemo(
     () =>
@@ -262,8 +271,8 @@ export function useProductionCalculations({
   )
 
   const orderedProductIds = useMemo(
-    () => getOrderedProductIds(reportFamilySubtotals, draft.rows),
-    [draft.rows, reportFamilySubtotals],
+    () => getOrderedProductIds(reportFamilySubtotals, draft.rows, nonReportProductIds),
+    [draft.rows, nonReportProductIds, reportFamilySubtotals],
   )
 
   const { getGridCellProps: getCaptureCellProps } = useGridKeyboardNavigation({

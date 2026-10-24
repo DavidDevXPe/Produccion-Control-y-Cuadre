@@ -69,4 +69,22 @@ describe('usePerformanceRecords', () => {
     expect(result.current.records).toHaveLength(1)
     expect(result.current.records[0]?.workerCount).toBe(35)
   })
+
+  it('refreshes records after another tab changes shared storage', () => {
+    const { result } = renderHook(() => usePerformanceRecords())
+    const externalRecord = createRecordInput('rec-external')
+    const storedRecords = JSON.stringify([externalRecord])
+
+    localStorage.setItem(PERFORMANCE_STORAGE_KEY, storedRecords)
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: PERFORMANCE_STORAGE_KEY,
+          newValue: storedRecords,
+        }),
+      )
+    })
+
+    expect(result.current.records).toEqual([externalRecord])
+  })
 })

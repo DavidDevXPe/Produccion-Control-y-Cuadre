@@ -40,7 +40,7 @@ export interface ComboboxProps {
 }
 
 import { groupOptions, normalizeSearch } from './comboboxUtils'
-import { ComboboxOptionRow } from './ComboboxOptionRow'
+import { ComboboxDropdown } from './ComboboxDropdown'
 
 const EMPTY_RECENT_VALUES: string[] = []
 
@@ -241,8 +241,6 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
   const activeOption = activeIndex >= 0 ? flatSelectable[activeIndex] : undefined
   const activeDescendantId = activeOption ? `${listboxId}-opt-${activeIndex}` : undefined
 
-  let optionIndexCounter = 0
-
   return (
     <div className={`relative w-full ${className}`}>
       <label htmlFor={inputId} className="sr-only">
@@ -304,71 +302,32 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
         </button>
       </div>
 
-      {isOpen && typeof document !== 'undefined' ? createPortal(
-        <div
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          tabIndex={-1}
-          onMouseDown={(e) => e.preventDefault()}
-          style={listboxStyle}
-          className="z-[1000] max-h-60 overflow-auto rounded-lg border border-slate-300 bg-white py-1 shadow-lg ring-1 ring-black/5 scrollbar-subtle dark:border-ui-line-dark dark:bg-ui-surface-dark-deep dark:ring-white/10 [color-scheme:light] dark:[color-scheme:dark]"
-        >
-          {flatSelectable.length === 0 ? (
-            <>
-              <div className="px-3 py-2 text-center text-xs text-slate-600 dark:text-ui-text-dark-soft">{noResultsText}</div>
-              {onCreateFromQuery && query.trim() ? <button type="button" className="w-full border-t border-slate-200 px-3 py-2 text-left text-xs font-bold text-brand-700 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-accent-cyan dark:hover:bg-ui-surface-dark" onClick={() => { onCreateFromQuery(query.trim()); setQuery(''); setIsOpen(false) }}>+ Crear producto “{query.trim()}”</button> : null}
-            </>
-          ) : (
-            <>
-              {displayItems.recents.length > 0 && (
-                <div className="border-b border-slate-200 pb-1 dark:border-ui-line-dark-grid">
-                  <div className="px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider text-brand-800 dark:text-ui-text-dark-brand">
-                    {recentSectionTitle}
-                  </div>
-                  {displayItems.recents.map((opt) => {
-                    const idx = optionIndexCounter++
-                    return (
-                      <ComboboxOptionRow
-                        key={`recent-${opt.value}`}
-                        id={`${listboxId}-opt-${idx}`}
-                        opt={opt}
-                        index={idx}
-                        isSelected={activeIndex === idx}
-                        onSelect={handleSelectOption}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-
-              {displayItems.groups.map((group) => (
-                <div key={`group-${group.name}`} className="py-1">
-                  {group.name && (
-                    <div className="px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider text-brand-900 dark:text-ui-accent-cyan">
-                      {group.name}
-                    </div>
-                  )}
-                  {group.items.map((opt) => {
-                    const idx = optionIndexCounter++
-                    return (
-                      <ComboboxOptionRow
-                        key={opt.value}
-                        id={`${listboxId}-opt-${idx}`}
-                        opt={opt}
-                        index={idx}
-                        isSelected={activeIndex === idx}
-                        onSelect={handleSelectOption}
-                      />
-                    )
-                  })}
-                </div>
-              ))}
-            </>
-          )}
-        </div>,
-        document.body,
-      ) : null}
+      {isOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <ComboboxDropdown
+              listRef={listRef}
+              listboxId={listboxId}
+              listboxStyle={listboxStyle}
+              noResultsText={noResultsText}
+              onCreateFromQuery={
+                onCreateFromQuery
+                  ? (value) => {
+                      onCreateFromQuery(value)
+                      setQuery('')
+                      setIsOpen(false)
+                    }
+                  : undefined
+              }
+              query={query}
+              displayItems={displayItems}
+              flatSelectable={flatSelectable}
+              activeIndex={activeIndex}
+              onSelect={handleSelectOption}
+              recentSectionTitle={recentSectionTitle}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   )
 })

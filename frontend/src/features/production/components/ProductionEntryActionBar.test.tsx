@@ -83,7 +83,7 @@ describe('ProductionEntryActionBar', () => {
   })
 
   it('keeps non-blocking observations available after the journey is closable', () => {
-    render(
+    const { container } = render(
       <ProductionEntryActionBar
         canClose
         footerStatus={{ title: 'Lista con observaciones', description: 'Revisar antes de cerrar' }}
@@ -100,8 +100,14 @@ describe('ProductionEntryActionBar', () => {
 
     expect(screen.getByText('Lista con observaciones')).toBeInTheDocument()
     expect(screen.getByText('1 observación para revisar')).toBeInTheDocument()
+    expect(container.querySelector('.production-entry-action-bar__status svg')).toHaveClass(
+      'text-amber-600',
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Revisar observaciones (1)' }))
-    expect(screen.getByRole('dialog', { name: 'Observaciones para revisar' })).toBeInTheDocument()
+    const panel = screen.getByRole('dialog', { name: 'Observaciones para revisar' })
+    expect(panel).toBeInTheDocument()
+    expect(panel).toHaveClass('left-auto', 'top-auto', 'right-0')
+    expect(panel.closest('.production-entry-action-bar__actions')).toBeInTheDocument()
     expect(screen.getByText(/reconstrucción teórica de las Anillas/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeEnabled()
   })

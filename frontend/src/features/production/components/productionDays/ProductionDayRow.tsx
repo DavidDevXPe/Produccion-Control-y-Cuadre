@@ -24,6 +24,108 @@ function QuantityValue({ value }: { value: number }) {
   )
 }
 
+function getRowAccentClass(tone: string) {
+  if (tone === 'danger') return 'before:bg-rose-500'
+  if (tone === 'warning') return 'before:bg-amber-500'
+  return 'before:bg-emerald-500'
+}
+
+function getDifferenceClass(
+  differenceKg100: number,
+  journeyStatus: string,
+  freezingDifferenceKg100?: number,
+) {
+  if (freezingDifferenceKg100 !== undefined) {
+    if (freezingDifferenceKg100 === 0) return 'text-emerald-700'
+    return freezingDifferenceKg100 < 0 ? 'text-rose-700' : 'text-amber-700'
+  }
+  if (differenceKg100 === 0) return 'text-emerald-700'
+  return journeyStatus === 'NOT_BALANCED' ? 'text-rose-700' : 'text-amber-700'
+}
+
+function getReportedQuantities(
+  item: RegisteredProductionDayItem,
+  isFreezing: boolean,
+): [number, number, number, number] {
+  if (isFreezing) {
+    return [
+      item.day.declaredShiftTotalsKg100.DAY,
+      item.day.declaredShiftTotalsKg100.NIGHT,
+      item.day.declaredShiftTotalsKg100.DAY +
+        item.day.declaredShiftTotalsKg100.NIGHT,
+      item.freezingDifferenceKg100,
+    ]
+  }
+
+  return [
+    item.day.declaredRawMaterialKg100,
+    item.calculation.declaredFinishedKg100,
+    item.calculation.newClosingBalanceKg100,
+    item.calculation.differenceKg100,
+  ]
+}
+
+function PerformanceCell({
+  item,
+  isFreezing,
+  isBalanceOnly,
+}: {
+  readonly item: RegisteredProductionDayItem
+  readonly isFreezing: boolean
+  readonly isBalanceOnly: boolean
+}) {
+  if (isFreezing) {
+    return (
+      <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700">
+        <QuantityValue value={item.freezingLinkedKg100} />
+      </div>
+    )
+  }
+
+  if (isBalanceOnly) {
+    return (
+      <div
+        className="flex w-full flex-col items-center justify-center gap-1 text-center"
+        aria-label="Aprovechamiento no aplicable. Jornada de saldos."
+      >
+        <span className="text-xs font-bold text-slate-600">NO APLICA</span>
+        <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
+      </div>
+    )
+  }
+
+  const yieldStatus = getYieldStatus(item.calculation.performance.percent)
+  const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
+  return (
+    <div
+      className="flex w-full flex-col items-center justify-center gap-1 text-center"
+      title={`${formatRatioAsPercent(item.calculation.performance.ratio)} · ${yieldStatus.label}: ${yieldStatus.interpretation}`}
+      aria-label={`Aprovechamiento ${formatRatioAsPercent(item.calculation.performance.ratio)}. Estado ${yieldStatus.label}. ${yieldStatus.interpretation}`}
+    >
+      <span
+        className={`number-tabular whitespace-nowrap text-xs font-bold ${yieldStyles.textClass}`}
+      >
+        {formatRatioAsPercent(item.calculation.performance.ratio)}
+      </span>
+      <StatusBadge tone={yieldStyles.badgeTone}>{yieldStatus.label}</StatusBadge>
+    </div>
+  )
+}
+
+function ActionLabel({
+  isClosed,
+  activeWeekReadOnly,
+  isReadyToClose,
+}: {
+  readonly isClosed: boolean
+  readonly activeWeekReadOnly: boolean
+  readonly isReadyToClose: boolean
+}) {
+  if (isClosed || activeWeekReadOnly) return 'Ver detalle'
+  if (isReadyToClose) return 'Revisar y cerrar'
+  return 'Seguir cuadrando'
+}
+
 export interface ProductionDayRowProps {
   readonly item: RegisteredProductionDayItem
   readonly idx: number
@@ -50,7 +152,6 @@ export function ProductionDayRow({
   const isClosed = operationalState.lifecycle === 'CLOSED'
   const isReadyToClose = operationalState.state === 'READY_TO_CLOSE'
   const isBalanceOnly = isBalanceOnlyProductionDay(day)
-  const yieldStatus = getYieldStatus(calculation.performance.percent)
   const performancePercent = calculation.performance.percent
   const hasInvalidYield =
     !isFreezing &&
@@ -61,26 +162,14 @@ export function ProductionDayRow({
   const squareStatus = hasInvalidYield
     ? { tone: 'danger' as const, label: 'REVISAR INTEGRIDAD' }
     : { tone: journey.tone, label: journey.label }
-  const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
-  const rowAccentClass =
-    squareStatus.tone === 'danger'
-      ? 'before:bg-rose-500'
-      : squareStatus.tone === 'warning'
-        ? 'before:bg-amber-500'
-        : 'before:bg-emerald-500'
-
-  const differenceClass =
-    calculation.differenceKg100 === 0
-      ? 'text-emerald-700'
-      : journey.status === 'NOT_BALANCED'
-        ? 'text-rose-700'
-        : 'text-amber-700'
-  const freezingDifferenceClass =
-    item.freezingDifferenceKg100 === 0
-      ? 'text-emerald-700'
-      : item.freezingDifferenceKg100 < 0
-        ? 'text-rose-700'
-        : 'text-amber-700'
+  const rowAccentClass = getRowAccentClass(squareStatus.tone)
+  const [dayValue, nightValue, totalValue, differenceValue] =
+    getReportedQuantities(item, isFreezing)
+  const differenceClass = getDifferenceClass(
+    calculation.differenceKg100,
+    journey.status,
+    isFreezing ? item.freezingDifferenceKg100 : undefined,
+  )
 
   return (
     <tr
@@ -109,47 +198,20 @@ export function ProductionDayRow({
         </span>
       </th>
       <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
-        <QuantityValue
-          value={
-            isFreezing
-              ? day.declaredShiftTotalsKg100.DAY
-              : day.declaredRawMaterialKg100
-          }
-        />
+        <QuantityValue value={dayValue} />
       </td>
       <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-950">
-        <QuantityValue
-          value={
-            isFreezing
-              ? day.declaredShiftTotalsKg100.NIGHT
-              : calculation.declaredFinishedKg100
-          }
-        />
+        <QuantityValue value={nightValue} />
       </td>
       <td className="number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold text-slate-700">
-        <QuantityValue
-          value={
-            isFreezing
-              ? day.declaredShiftTotalsKg100.DAY +
-                day.declaredShiftTotalsKg100.NIGHT
-              : calculation.newClosingBalanceKg100
-          }
-        />
+        <QuantityValue value={totalValue} />
       </td>
       <td
         className={`number-tabular whitespace-nowrap px-3 py-3 text-center align-middle text-xs font-semibold ${
-          isFreezing
-            ? freezingDifferenceClass
-            : differenceClass
+          differenceClass
         }`}
       >
-        <QuantityValue
-          value={
-            isFreezing
-              ? item.freezingDifferenceKg100
-              : calculation.differenceKg100
-          }
-        />
+        <QuantityValue value={differenceValue} />
       </td>
       <td className="px-3 py-3 text-center align-middle">
         <div className="flex w-full items-center justify-center">
@@ -159,36 +221,11 @@ export function ProductionDayRow({
         </div>
       </td>
       <td className="px-3 py-3 text-center align-middle">
-        {isFreezing ? (
-          <div className="number-tabular flex w-full items-center justify-center whitespace-nowrap text-center text-xs font-semibold text-slate-700">
-            <QuantityValue
-              value={item.freezingLinkedKg100}
-            />
-          </div>
-        ) : isBalanceOnly ? (
-          <div
-            className="flex w-full flex-col items-center justify-center gap-1 text-center"
-            aria-label="Aprovechamiento no aplicable. Jornada de saldos."
-          >
-            <span className="text-xs font-bold text-slate-600">NO APLICA</span>
-            <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
-          </div>
-        ) : (
-          <div
-            className="flex w-full flex-col items-center justify-center gap-1 text-center"
-            title={`${formatRatioAsPercent(calculation.performance.ratio)} · ${yieldStatus.label}: ${yieldStatus.interpretation}`}
-            aria-label={`Aprovechamiento ${formatRatioAsPercent(calculation.performance.ratio)}. Estado ${yieldStatus.label}. ${yieldStatus.interpretation}`}
-          >
-            <span
-              className={`number-tabular whitespace-nowrap text-xs font-bold ${yieldStyles.textClass}`}
-            >
-              {formatRatioAsPercent(calculation.performance.ratio)}
-            </span>
-            <StatusBadge tone={yieldStyles.badgeTone}>
-              {yieldStatus.label}
-            </StatusBadge>
-          </div>
-        )}
+        <PerformanceCell
+          item={item}
+          isFreezing={isFreezing}
+          isBalanceOnly={isBalanceOnly}
+        />
       </td>
       <td className="px-3 py-3 text-center align-middle">
         <div className="flex w-full items-center justify-center">
@@ -201,11 +238,11 @@ export function ProductionDayRow({
             variant="ghost"
             size="sm"
           >
-            {isClosed || activeWeekReadOnly
-              ? 'Ver detalle'
-              : isReadyToClose
-                ? 'Revisar y cerrar'
-                : 'Seguir cuadrando'}
+            <ActionLabel
+              isClosed={isClosed}
+              activeWeekReadOnly={activeWeekReadOnly}
+              isReadyToClose={isReadyToClose}
+            />
             <ArrowRight className="size-4" aria-hidden="true" />
           </ActionLink>
         </div>

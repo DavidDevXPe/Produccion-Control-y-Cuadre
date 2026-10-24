@@ -1,8 +1,10 @@
 import { renderHook, act } from '@testing-library/react'
+import type { SetStateAction } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useProductionSectionProducts } from './useProductionSectionProducts'
 import { createEmptyCaptureDraft, type ProductionCaptureDraft } from '../capture/productionCapture'
 import { getActiveProducts } from '../capture/productCatalogRepository'
+import { kg100 } from '../model/calculations'
 
 describe('useProductionSectionProducts', () => {
   const catalogItems = getActiveProducts()
@@ -65,6 +67,9 @@ describe('useProductionSectionProducts', () => {
       }),
     )
 
+    expect(result.current.tunnelRows).toHaveLength(1)
+    expect(result.current.nonReportProductIds).toContain(catalogItems[0]!.productId)
+
     act(() => {
       result.current.updateTunnelCondition(false)
     })
@@ -76,6 +81,46 @@ describe('useProductionSectionProducts', () => {
       result.current.updateTunnelCondition(true)
     })
     expect(updateDraft).toHaveBeenCalledWith('hasTunnelProduction', true)
+  })
+
+  it('persists section membership when an existing row is added to Tunnel', () => {
+    let draft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'shared-row',
+          product: catalogItems[0]!,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+        },
+      ],
+    }
+    const setDraft = vi.fn((updater: SetStateAction<ProductionCaptureDraft>) => {
+      draft = typeof updater === 'function' ? updater(draft) : updater
+    })
+
+    const { result } = renderHook(() =>
+      useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      }),
+    )
+
+    act(() => {
+      result.current.addTunnelProduct(catalogItems[0]!.productId)
+    })
+
+    expect(draft.rows[0]?.captureSections).toEqual(['TUNNEL'])
   })
 
   it('adds movement product when adding to closing or treatment', () => {
@@ -107,5 +152,119 @@ describe('useProductionSectionProducts', () => {
     })
 
     expect(updateDraft).toHaveBeenCalledWith('rows', expect.any(Array))
+    expect(result.current.nonReportProductIds).toContain(productToAdd.productId)
+  })
+
+  it('recovers historical treatment-only rows without showing them in reports', () => {
+    const treatmentProduct = catalogItems.find((product) =>
+      product.productName.includes('EN TRATAMIENTO'),
+    )
+    expect(treatmentProduct).toBeDefined()
+
+    const historicalDraft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'historical-treatment-row',
+          product: treatmentProduct!,
+          dayReportedKg: '0',
+          nightReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '1300.2',
+        },
+      ],
+    }
+
+    const { result } = renderHook(() =>
+      useProductionSectionProducts({
+        draft: historicalDraft,
+        setDraft: vi.fn(),
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      }),
+    )
+
+    expect(result.current.treatmentRows).toHaveLength(1)
+    expect(result.current.nonReportProductIds).toContain(
+      treatmentProduct!.productId,
+    )
+  })
+
+  it('recovers imported closing-balance rows as non-report products', () => {
+    const balanceProduct = catalogItems[0]!
+    const historicalDraft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'historical-closing-row',
+          product: balanceProduct,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '35',
+          finishedKg: '0',
+        },
+      ],
+    }
+
+    const { result } = renderHook(() =>
+      useProductionSectionProducts({
+        draft: historicalDraft,
+        setDraft: vi.fn(),
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      }),
+    )
+
+    expect(result.current.closingRows).toHaveLength(1)
+    expect(result.current.nonReportProductIds).toContain(
+      balanceProduct.productId,
+    )
+  })
+
+  it('keeps products linked to previous balances out of the daily report', () => {
+    const balanceProduct = catalogItems[0]!
+    const historicalDraft: ProductionCaptureDraft = {
+      ...initialDraft,
+      balanceUses: [
+        {
+          key: 'balance-origin-product',
+          originDayId: 'production-day-2026-09-14',
+          originDate: '2026-09-14',
+          familyId: balanceProduct.familyId,
+          familyName: balanceProduct.familyName,
+          productId: balanceProduct.productId,
+          productName: balanceProduct.productName,
+          availableKg100: kg100(2500),
+          dayKg: '25',
+          nightKg: '0',
+        },
+      ],
+    }
+
+    const { result } = renderHook(() =>
+      useProductionSectionProducts({
+        draft: historicalDraft,
+        setDraft: vi.fn(),
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      }),
+    )
+
+    expect(result.current.nonReportProductIds).toContain(
+      balanceProduct.productId,
+    )
   })
 })

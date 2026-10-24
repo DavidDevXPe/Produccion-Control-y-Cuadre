@@ -212,3 +212,12 @@ export function addAliasToActiveProduct(productId: string, alias: string): void 
 export function resetActiveProductCatalogForTests(): void {
   dynamicProducts.splice(0, dynamicProducts.length, ...readDynamicProducts())
 }
+
+/**
+ * Re-read dynamic products after a change made by another browser tab.
+ * Writes in the current tab already update the in-memory collection through
+ * the mutation functions above; this function is only for the storage event.
+ */
+export function reloadActiveProductCatalog(): void {
+  dynamicProducts.splice(0, dynamicProducts.length, ...readDynamicProducts())
+}

@@ -8,6 +8,8 @@ export interface ProductionShiftCardsProps {
   readonly nightShift: ShiftCalculation
   readonly dayHasReportData: boolean
   readonly nightHasReportData: boolean
+  /** Explicit visibility for Tunnel metrics; omitted means infer from movement. */
+  readonly showTunnel?: boolean
   readonly className?: string
 }
 
@@ -16,8 +18,15 @@ export function ProductionShiftCards({
   nightShift,
   dayHasReportData,
   nightHasReportData,
+  showTunnel,
   className = '',
 }: ProductionShiftCardsProps) {
+  const displayTunnel =
+    showTunnel === undefined
+      ? dayShift.tunnelProductionKg100 !== 0 ||
+        nightShift.tunnelProductionKg100 !== 0
+      : showTunnel
+
   const shifts = [
     {
       label: 'Día',
@@ -37,15 +46,23 @@ export function ProductionShiftCards({
 
   return (
     <div
+      data-testid="production-shift-cards"
       className={`grid gap-3 border-b border-slate-200 bg-slate-50/55 p-4 sm:grid-cols-2 sm:p-5 ${className}`.trim()}
     >
       {shifts.map(({ label, shift, hasShiftData, schedule, dotColor }) => {
         const isSquared = shift.detailDifferenceKg100 === 0
         const isExceeded = shift.detailDifferenceKg100 < 0
         const hasReport = hasShiftData && shift.declaredReportedKg100 > 0
+        // Reconciliation compares the supervisor detail with the normal
+        // report plus Tunnel. `ownProductionKg100` is net production after
+        // previous-balance consumption and is kept for yield calculations.
+        const normalFlowKg100 = shift.reportedKg100
+        const reconciledTotalKg100 = kg100(
+          normalFlowKg100 + shift.tunnelProductionKg100,
+        )
 
         const progressPercent = hasReport
-          ? (shift.ownProductionKg100 / shift.declaredReportedKg100) * 100
+          ? (reconciledTotalKg100 / shift.declaredReportedKg100) * 100
           : 0
         const clampedPercent = Math.min(100, Math.max(0, progressPercent))
 
@@ -80,7 +97,9 @@ export function ProductionShiftCards({
               </StatusBadge>
             </div>
 
-            <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-xs dark:border-slate-200 sm:grid-cols-5">
+            <dl
+              className={`mt-4 grid grid-cols-2 gap-3 border-y border-slate-100 py-3 text-xs dark:border-slate-200 ${displayTunnel ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}
+            >
               <div>
                 <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
                   Reporte supervisor
@@ -105,7 +124,7 @@ export function ProductionShiftCards({
                 <dd className="number-tabular mt-1 text-base sm:text-lg font-extrabold text-brand-600 dark:text-sky-400">
                   {hasShiftData ? (
                     <>
-                      <span>{formatCentiKgValue(shift.ownProductionKg100)}</span>
+                      <span>{formatCentiKgValue(reconciledTotalKg100)}</span>
                       <span className="ml-1 text-[0.6875rem] font-normal text-slate-400 dark:text-ui-text-subtle">
                         kg
                       </span>
@@ -120,17 +139,19 @@ export function ProductionShiftCards({
                   Flujo normal
                 </dt>
                 <dd className="number-tabular mt-1 text-base font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
-                  {hasShiftData ? `${formatCentiKgValue(shift.normalProductionKg100)} kg` : '—'}
+                  {hasShiftData ? `${formatCentiKgValue(normalFlowKg100)} kg` : '—'}
                 </dd>
               </div>
-              <div>
-                <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
-                  Túnel
-                </dt>
-                <dd className="number-tabular mt-1 text-base font-extrabold text-sky-600 dark:text-sky-400">
-                  {hasShiftData ? `${formatCentiKgValue(shift.tunnelProductionKg100)} kg` : '—'}
-                </dd>
-              </div>
+              {displayTunnel ? (
+                <div>
+                  <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
+                    Túnel
+                  </dt>
+                  <dd className="number-tabular mt-1 text-base font-extrabold text-sky-600 dark:text-sky-400">
+                    {hasShiftData ? `${formatCentiKgValue(shift.tunnelProductionKg100)} kg` : '—'}
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 dark:text-ui-text-dark-soft">
                   Diferencia
@@ -198,13 +219,17 @@ export function ProductionShiftCards({
                   className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-50 dark:ring-1 dark:ring-slate-200/50"
                 >
                   <div className="flex h-full transition-[width] duration-300" style={{ width: `${clampedPercent}%` }}>
-                    <div className="h-full bg-emerald-500" style={{ width: `${shift.ownProductionKg100 ? (shift.normalProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
-                    <div className="h-full bg-sky-400" style={{ width: `${shift.ownProductionKg100 ? (shift.tunnelProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
+                    <div className="h-full bg-emerald-500" style={{ width: `${reconciledTotalKg100 ? (normalFlowKg100 / reconciledTotalKg100) * 100 : 0}%` }} />
+                    {displayTunnel ? (
+                      <div className="h-full bg-sky-400" style={{ width: `${reconciledTotalKg100 ? (shift.tunnelProductionKg100 / reconciledTotalKg100) * 100 : 0}%` }} />
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-1 flex gap-3 text-[0.625rem] text-slate-500 dark:text-ui-text-dark-soft">
-                  <span>Normal {hasReport ? `${((shift.normalProductionKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
-                  <span>Túnel {hasReport ? `${((shift.tunnelProductionKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
+                  <span>Normal {hasReport ? `${((normalFlowKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
+                  {displayTunnel ? (
+                    <span>Túnel {hasReport ? `${((shift.tunnelProductionKg100 / shift.declaredReportedKg100) * 100).toFixed(1)}%` : '—'}</span>
+                  ) : null}
                 </div>
               </div>
             )}
