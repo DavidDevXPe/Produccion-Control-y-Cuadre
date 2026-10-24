@@ -22,6 +22,14 @@ interface DashboardProcessComparisonProps {
 
 type TileTone = 'packing' | 'freezing' | 'pending' | 'success' | 'danger'
 
+interface ComparisonTile {
+  label: string
+  value: number
+  tone: TileTone
+  caption: string
+  Icon: LucideIcon
+}
+
 const tileToneClasses: Record<
   TileTone,
   { box: string; icon: string; value: string }
@@ -55,40 +63,11 @@ const tileToneClasses: Record<
   },
 }
 
-export function DashboardProcessComparison({
-  comparison,
-  hasFreezingData,
-}: DashboardProcessComparisonProps) {
-  const reviewReasons = describeFreezingReviewReasons(comparison)
-  // The tile shows the net difference, but its status follows the comparison:
-  // a link above the physical report is a review even when the net is zero.
-  const needsReview = comparison.status === 'REVIEW'
-
-  const packedTotal = comparison.packedKg100
-  const frozenPercent =
-    packedTotal > 0
-      ? Math.min(100, Math.max(0, (comparison.frozenKg100 / packedTotal) * 100))
-      : 0
-  const pendingPercent =
-    packedTotal > 0
-      ? Math.min(
-          100 - frozenPercent,
-          Math.max(0, (comparison.pendingKg100 / packedTotal) * 100),
-        )
-      : 0
-  const explainedKg100 = comparison.frozenKg100 + comparison.pendingKg100
-  const explainedPercent =
-    packedTotal > 0
-      ? Math.min(100, Math.max(0, (explainedKg100 / packedTotal) * 100))
-      : 100
-
-  const tiles: readonly {
-    label: string
-    value: number
-    tone: TileTone
-    caption: string
-    Icon: LucideIcon
-  }[] = [
+function buildComparisonTiles(
+  comparison: FreezingComparison,
+  needsReview: boolean,
+): readonly ComparisonTile[] {
+  return [
     {
       label: 'Envasado',
       value: comparison.packedKg100,
@@ -118,6 +97,190 @@ export function DashboardProcessComparison({
       Icon: needsReview ? AlertTriangle : CheckCircle2,
     },
   ]
+}
+
+interface VolumeStructureProps {
+  packedTotal: number
+  frozenPercent: number
+  pendingPercent: number
+  explainedPercent: number
+  needsReview: boolean
+}
+
+function VolumeStructure({
+  packedTotal,
+  frozenPercent,
+  pendingPercent,
+  explainedPercent,
+  needsReview,
+}: VolumeStructureProps) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-bold text-slate-800">
+          Estructura del volumen ({formatCentiKg(packedTotal)})
+        </span>
+        <span
+          className={`number-tabular font-bold ${
+            needsReview
+              ? 'text-rose-700 dark:text-rose-300'
+              : 'text-emerald-700 dark:text-emerald-300'
+          }`}
+        >
+          {explainedPercent.toFixed(1)}% explicado
+        </span>
+      </div>
+
+      <div
+        className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-slate-100"
+        aria-label="Distribución de volumen entre Congelado y Saldo pendiente"
+      >
+        <div
+          className="h-full bg-sky-500 transition-[width]"
+          style={{ width: `${frozenPercent}%` }}
+        />
+        <div
+          className="h-full bg-amber-500 transition-[width]"
+          style={{ width: `${pendingPercent}%` }}
+        />
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-medium text-slate-500">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-sky-500" aria-hidden="true" />
+          Congelado ({frozenPercent.toFixed(1)}%)
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-amber-500" aria-hidden="true" />
+          Saldo pendiente ({pendingPercent.toFixed(1)}%)
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function ComparisonTiles({ tiles }: { tiles: readonly ComparisonTile[] }) {
+  return (
+    <ol aria-label="Flujo del cuadre" className="grid gap-2 sm:grid-cols-2">
+      {tiles.map((item, index) => (
+        <li key={item.label} className="contents">
+          {index > 0 ? (
+            <span className="sr-only" aria-hidden="true">
+              <ChevronRight className="size-4" />
+            </span>
+          ) : null}
+          <div
+            className={`min-w-0 rounded-lg border px-3 py-3 ${tileToneClasses[item.tone].box}`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={`grid size-7 shrink-0 place-items-center rounded-md ${tileToneClasses[item.tone].icon}`}
+                aria-hidden="true"
+              >
+                <item.Icon className="size-4" />
+              </span>
+              <p className="min-w-0 text-[0.6875rem] font-bold uppercase leading-tight tracking-[0.05em] text-slate-600">
+                {item.label}
+              </p>
+            </div>
+            <p
+              className={`number-tabular mt-2 whitespace-nowrap text-[0.95rem] font-extrabold min-[1800px]:text-lg ${tileToneClasses[item.tone].value}`}
+            >
+              {formatCentiKg(item.value)}
+            </p>
+            <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-600">
+              {item.caption}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function ReviewReasons({
+  reasons,
+}: {
+  reasons: ReturnType<typeof describeFreezingReviewReasons>
+}) {
+  if (reasons.length === 0) return null
+
+  return (
+    <div className="flex gap-3 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-3 dark:border-rose-400/40 dark:bg-rose-500/10">
+      <AlertTriangle
+        className="mt-0.5 size-5 shrink-0 text-rose-700 dark:text-rose-300"
+        aria-hidden="true"
+      />
+      <ul
+        aria-label="Motivos de revisión del comparativo"
+        className="space-y-1 text-xs leading-5 text-rose-900 dark:text-rose-100"
+      >
+        {reasons.map(({ reason, title, message }) => (
+          <li key={reason}>
+            <strong className="text-rose-700 dark:text-rose-300">{title}:</strong>{' '}
+            {message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function NoFreezingData() {
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <span
+          className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-white"
+          aria-hidden="true"
+        >
+          <Snowflake className="size-4" />
+        </span>
+        <div>
+          <p className="text-sm font-bold text-slate-900">
+            Aún no hay jornadas de Congelamiento
+          </p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-600">
+            El cuadre se activará cuando se registre producto congelado.
+          </p>
+        </div>
+      </div>
+      <ActionLink to="/jornadas?process=FREEZING" variant="secondary" size="sm">
+        Ver Congelamiento
+        <ArrowRight className="size-4" aria-hidden="true" />
+      </ActionLink>
+    </div>
+  )
+}
+
+export function DashboardProcessComparison({
+  comparison,
+  hasFreezingData,
+}: DashboardProcessComparisonProps) {
+  const reviewReasons = describeFreezingReviewReasons(comparison)
+  // The tile shows the net difference, but its status follows the comparison:
+  // a link above the physical report is a review even when the net is zero.
+  const needsReview = comparison.status === 'REVIEW'
+
+  const packedTotal = comparison.packedKg100
+  const frozenPercent =
+    packedTotal > 0
+      ? Math.min(100, Math.max(0, (comparison.frozenKg100 / packedTotal) * 100))
+      : 0
+  const pendingPercent =
+    packedTotal > 0
+      ? Math.min(
+          100 - frozenPercent,
+          Math.max(0, (comparison.pendingKg100 / packedTotal) * 100),
+        )
+      : 0
+  const explainedKg100 = comparison.frozenKg100 + comparison.pendingKg100
+  const explainedPercent =
+    packedTotal > 0
+      ? Math.min(100, Math.max(0, (explainedKg100 / packedTotal) * 100))
+      : 100
+
+  const tiles = buildComparisonTiles(comparison, needsReview)
 
   return (
     <SectionCard
@@ -134,116 +297,20 @@ export function DashboardProcessComparison({
       contentClassName="space-y-3 p-4"
     >
       {packedTotal > 0 ? (
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="font-bold text-slate-800">
-              Estructura del volumen ({formatCentiKg(packedTotal)})
-            </span>
-            <span
-              className={`number-tabular font-bold ${
-                needsReview
-                  ? 'text-rose-700 dark:text-rose-300'
-                  : 'text-emerald-700 dark:text-emerald-300'
-              }`}
-            >
-              {explainedPercent.toFixed(1)}% explicado
-            </span>
-          </div>
-
-          <div
-            className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-slate-100"
-            aria-label="Distribución de volumen entre Congelado y Saldo pendiente"
-          >
-            <div
-              className="h-full bg-sky-500 transition-all"
-              style={{ width: `${frozenPercent}%` }}
-            />
-            <div
-              className="h-full bg-amber-500 transition-all"
-              style={{ width: `${pendingPercent}%` }}
-            />
-          </div>
-
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-medium text-slate-500">
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-full bg-sky-500"
-                aria-hidden="true"
-              />
-              Congelado ({frozenPercent.toFixed(1)}%)
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-full bg-amber-500"
-                aria-hidden="true"
-              />
-              Saldo pendiente ({pendingPercent.toFixed(1)}%)
-            </span>
-          </div>
-        </div>
+        <VolumeStructure
+          packedTotal={packedTotal}
+          frozenPercent={frozenPercent}
+          pendingPercent={pendingPercent}
+          explainedPercent={explainedPercent}
+          needsReview={needsReview}
+        />
       ) : null}
 
       {hasFreezingData ? (
         <>
-          <ol
-            aria-label="Flujo del cuadre"
-            className="grid gap-2 sm:grid-cols-2"
-          >
-            {tiles.map((item, index) => (
-              <li key={item.label} className="contents">
-                {index > 0 ? (
-                  <span className="sr-only" aria-hidden="true">
-                    <ChevronRight className="size-4" />
-                  </span>
-                ) : null}
-                <div
-                  className={`min-w-0 rounded-lg border px-3 py-3 ${tileToneClasses[item.tone].box}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`grid size-7 shrink-0 place-items-center rounded-md ${tileToneClasses[item.tone].icon}`}
-                      aria-hidden="true"
-                    >
-                      <item.Icon className="size-4" />
-                    </span>
-                    <p className="min-w-0 text-[0.6875rem] font-bold uppercase leading-tight tracking-[0.05em] text-slate-600">
-                      {item.label}
-                    </p>
-                  </div>
-                  <p
-                    className={`number-tabular mt-2 whitespace-nowrap text-[0.95rem] font-extrabold min-[1800px]:text-lg ${tileToneClasses[item.tone].value}`}
-                  >
-                    {formatCentiKg(item.value)}
-                  </p>
-                  <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-600">
-                    {item.caption}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <ComparisonTiles tiles={tiles} />
 
-          {reviewReasons.length > 0 ? (
-            <div className="flex gap-3 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-3 dark:border-rose-400/40 dark:bg-rose-500/10">
-              <AlertTriangle
-                className="mt-0.5 size-5 shrink-0 text-rose-700 dark:text-rose-300"
-                aria-hidden="true"
-              />
-              <ul
-                aria-label="Motivos de revisión del comparativo"
-                className="space-y-1 text-xs leading-5 text-rose-900 dark:text-rose-100"
-              >
-                {reviewReasons.map(({ reason, title, message }) => (
-                  <li key={reason}>
-                    <strong className="text-rose-700 dark:text-rose-300">
-                      {title}:
-                    </strong>{' '}
-                    {message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <ReviewReasons reasons={reviewReasons} />
 
           <div className="flex flex-wrap items-center gap-x-4 border-t border-slate-100 pt-2">
             <ActionLink
@@ -262,28 +329,7 @@ export function DashboardProcessComparison({
           </div>
         </>
       ) : (
-        <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span
-              className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-white"
-              aria-hidden="true"
-            >
-              <Snowflake className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-slate-900">
-                Aún no hay jornadas de Congelamiento
-              </p>
-              <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                El cuadre se activará cuando se registre producto congelado.
-              </p>
-            </div>
-          </div>
-          <ActionLink to="/jornadas?process=FREEZING" variant="secondary" size="sm">
-            Ver Congelamiento
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </ActionLink>
-        </div>
+        <NoFreezingData />
       )}
     </SectionCard>
   )

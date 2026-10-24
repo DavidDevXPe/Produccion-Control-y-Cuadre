@@ -1,4 +1,5 @@
 import { Check, LockKeyhole } from 'lucide-react'
+import type { KeyboardEvent } from 'react'
 import type { WeekSelectorOption } from './weekSelectorTypes'
 
 export interface WeekSelectorOptionItemProps {
@@ -9,6 +10,61 @@ export interface WeekSelectorOptionItemProps {
   readonly onFocusEdge: (edge: 'first' | 'last') => void
   readonly onClose: (restoreFocus?: boolean) => void
   readonly onSetRef: (element: HTMLButtonElement | null) => void
+}
+
+interface WeekOptionKeyHandlers {
+  readonly onSelect: (option: WeekSelectorOption) => void
+  readonly onFocusRelative: (direction: 1 | -1) => void
+  readonly onFocusEdge: (edge: 'first' | 'last') => void
+  readonly onClose: (restoreFocus?: boolean) => void
+}
+
+function handleWeekOptionKeyDown(
+  event: KeyboardEvent<HTMLButtonElement>,
+  option: WeekSelectorOption,
+  handlers: WeekOptionKeyHandlers,
+) {
+  const { onSelect, onFocusRelative, onFocusEdge, onClose } = handlers
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    onFocusRelative(event.key === 'ArrowDown' ? 1 : -1)
+  } else if (event.key === 'Home' || event.key === 'End') {
+    event.preventDefault()
+    onFocusEdge(event.key === 'Home' ? 'first' : 'last')
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    onSelect(option)
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    onClose(true)
+  } else if (event.key === 'Tab') {
+    onClose()
+  }
+}
+
+function WeekOptionStatus({
+  option,
+  isSelected,
+}: Pick<WeekSelectorOptionItemProps, 'option' | 'isSelected'>) {
+  const tone = isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'
+  if (option.isClosed) {
+    return (
+      <span className={`mt-1.5 flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${tone}`}>
+        <LockKeyhole className="size-2.5" aria-hidden="true" />
+        Cerrada · Solo lectura
+      </span>
+    )
+  }
+  if (option.hasRecords === false) {
+    return <span className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-soft ${tone}`}>Sin registros</span>
+  }
+  if (option.businessStatus === 'OPEN') {
+    return <span className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-brand-text ${tone}`}>Abierta · {option.recordCount ?? 0} de 7 registros</span>
+  }
+  if (option.isReadOnly) {
+    return <span className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${tone}`}>Solo lectura</span>
+  }
+  return null
 }
 
 export function WeekSelectorOptionItem({
@@ -34,23 +90,14 @@ export function WeekSelectorOptionItem({
           : 'text-ui-text hover:bg-ui-surface-hover dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark-hover-strong'
       } disabled:cursor-not-allowed disabled:opacity-50`}
       onClick={() => onSelect(option)}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-          event.preventDefault()
-          onFocusRelative(event.key === 'ArrowDown' ? 1 : -1)
-        } else if (event.key === 'Home' || event.key === 'End') {
-          event.preventDefault()
-          onFocusEdge(event.key === 'Home' ? 'first' : 'last')
-        } else if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onSelect(option)
-        } else if (event.key === 'Escape') {
-          event.preventDefault()
-          onClose(true)
-        } else if (event.key === 'Tab') {
-          onClose()
-        }
-      }}
+      onKeyDown={(event) =>
+        handleWeekOptionKeyDown(event, option, {
+          onSelect,
+          onFocusRelative,
+          onFocusEdge,
+          onClose,
+        })
+      }
     >
       <span
         className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${
@@ -80,32 +127,7 @@ export function WeekSelectorOptionItem({
         >
           {option.periodLabel}
         </span>
-        {option.isClosed ? (
-          <span
-            className={`mt-1.5 flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
-          >
-            <LockKeyhole className="size-2.5" aria-hidden="true" />
-            Cerrada · Solo lectura
-          </span>
-        ) : option.hasRecords === false ? (
-          <span
-            className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-soft ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
-          >
-            Sin registros
-          </span>
-        ) : option.businessStatus === 'OPEN' ? (
-          <span
-            className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-brand-text ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
-          >
-            Abierta · {option.recordCount ?? 0} de 7 registros
-          </span>
-        ) : option.isReadOnly ? (
-          <span
-            className={`mt-1.5 block text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-ui-text-subtle ${isSelected ? 'dark:text-ui-text-dark-soft' : 'dark:text-ui-text-soft'}`}
-          >
-            Solo lectura
-          </span>
-        ) : null}
+        <WeekOptionStatus option={option} isSelected={isSelected} />
       </span>
     </button>
   )

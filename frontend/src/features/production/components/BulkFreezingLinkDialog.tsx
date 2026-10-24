@@ -28,11 +28,11 @@ export function BulkFreezingLinkDialog({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">
-      <section
-        role="dialog"
+      <dialog
+        open
         aria-modal="true"
         aria-labelledby="bulk-freezing-link-title"
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] shadow-2xl"
+        className="m-0 w-full max-w-lg overflow-hidden rounded-2xl border border-[#203E50] bg-[#0D2534] p-0 shadow-2xl"
       >
         <div className="px-5 py-5">
           <h2
@@ -75,7 +75,7 @@ export function BulkFreezingLinkDialog({
             Vincular todos FIFO
           </button>
         </div>
-      </section>
+      </dialog>
     </div>
   )
 }

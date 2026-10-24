@@ -31,6 +31,166 @@ interface ProductionComparisonViewProps {
   selector: React.ReactNode
 }
 
+type FreezingComparisonResult = ReturnType<typeof calculateFreezingComparison>
+type ExportState = 'IDLE' | 'EXPORTING' | 'ERROR'
+
+function getCycleStatusLabel(
+  cycleClosed: boolean,
+  comparisonStatus: FreezingComparisonResult['status'],
+) {
+  if (cycleClosed) return 'CICLO CERRADO'
+  return comparisonStatus === 'BALANCED' ? 'CONCILIADO' : 'REVISAR'
+}
+
+interface ComparisonHeaderActionsProps {
+  readonly packingClosed: boolean
+  readonly freezingClosed: boolean
+  readonly comparisonStatus: FreezingComparisonResult['status']
+  readonly cycleClosed: boolean
+  readonly exportState: ExportState
+  readonly onExport: () => void
+  readonly onExportPdf: () => void
+}
+
+function ComparisonHeaderActions({
+  packingClosed,
+  freezingClosed,
+  comparisonStatus,
+  cycleClosed,
+  exportState,
+  onExport,
+  onExportPdf,
+}: ComparisonHeaderActionsProps) {
+  const isExporting = exportState === 'EXPORTING'
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <StatusBadge tone={packingClosed ? 'success' : 'info'}>
+        ENVASADO {packingClosed ? 'CERRADO' : 'ABIERTO'}
+      </StatusBadge>
+      <StatusBadge tone={freezingClosed ? 'success' : 'info'}>
+        CONGELAMIENTO {freezingClosed ? 'CERRADO' : 'ABIERTO'}
+      </StatusBadge>
+      <StatusBadge tone={comparisonStatus === 'BALANCED' ? 'success' : 'danger'}>
+        {getCycleStatusLabel(cycleClosed, comparisonStatus)}
+      </StatusBadge>
+      <button
+        type="button"
+        className={buttonStyles('secondary', 'sm')}
+        onClick={onExport}
+        disabled={isExporting}
+        title="Descargar el comparativo de la semana en Excel"
+      >
+        {isExporting ? (
+          <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <Download className="size-4" aria-hidden="true" />
+        )}
+        {isExporting ? 'Generando…' : 'Exportar Excel'}
+      </button>
+      <button
+        type="button"
+        className={buttonStyles('secondary', 'sm')}
+        onClick={onExportPdf}
+        title="Imprimir o exportar comparativo a PDF"
+      >
+        <Printer className="size-4" aria-hidden="true" />
+        Exportar PDF
+      </button>
+    </div>
+  )
+}
+
+function ComparisonMetrics({
+  comparison,
+}: {
+  readonly comparison: FreezingComparisonResult
+}) {
+  return (
+    <>
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label="Comparativo entre procesos"
+      >
+        <MetricCard
+          label="Envasado semanal"
+          value={formatCentiKg(comparison.packedKg100)}
+          icon={<PackageCheck className="size-5" />}
+          tone="brand"
+        />
+        <MetricCard
+          label="Congelado atribuible"
+          value={formatCentiKg(comparison.frozenKg100)}
+          icon={<Snowflake className="size-5" />}
+        />
+        <MetricCard
+          label="Pendiente de congelar"
+          value={formatCentiKg(comparison.pendingKg100)}
+          icon={<Scale className="size-5" />}
+          tone="warning"
+        />
+        <MetricCard
+          label="Diferencia no explicada"
+          value={formatCentiKg(comparison.unexplainedDifferenceKg100)}
+          icon={<CheckCircle2 className="size-5" />}
+          tone={comparison.unexplainedDifferenceKg100 === 0 ? 'success' : 'danger'}
+        />
+      </section>
+      <section
+        className="grid gap-3 sm:grid-cols-3"
+        aria-label="Conciliación física de Congelamiento"
+      >
+        <MetricCard
+          label="Congelado físico reportado"
+          value={formatCentiKg(comparison.physicalReportedKg100)}
+          description="Reportes Día/Noche de Congelamiento"
+          icon={<Snowflake className="size-5" />}
+        />
+        <MetricCard
+          label="Vinculado a Envasado"
+          value={formatCentiKg(comparison.linkedKg100)}
+          description="Producto congelado con origen trazable"
+          icon={<Link2 className="size-5" />}
+        />
+        <MetricCard
+          label="Exceso de vinculación"
+          value={formatCentiKg(comparison.linkageExcessKg100)}
+          description="Vinculado por encima de lo reportado"
+          icon={<AlertTriangle className="size-5" />}
+          tone={comparison.linkageExcessKg100 > 0 ? 'danger' : 'success'}
+        />
+      </section>
+    </>
+  )
+}
+
+function ComparisonReviewReasons({
+  reasons,
+}: {
+  readonly reasons: ReturnType<typeof describeFreezingReviewReasons>
+}) {
+  if (reasons.length === 0) return null
+
+  return (
+    <section
+      aria-label="Motivos de revisión del comparativo"
+      className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900"
+    >
+      <h2 className="flex items-center gap-2 text-sm font-bold">
+        <AlertTriangle className="size-4" aria-hidden="true" />
+        El comparativo requiere revisión
+      </h2>
+      <ul className="mt-2 space-y-1.5 text-xs leading-5">
+        {reasons.map(({ reason, title, message }) => (
+          <li key={reason}>
+            <strong>{title}:</strong> {message}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function ComparisonTable({
   title,
   rows,
@@ -83,7 +243,7 @@ export function ProductionComparisonView({
   const reviewReasons = describeFreezingReviewReasons(comparison)
   const cycleClosed =
     packingClosed && freezingClosed && comparison.status === 'BALANCED'
-  const [exportState, setExportState] = useState<'IDLE' | 'EXPORTING' | 'ERROR'>('IDLE')
+  const [exportState, setExportState] = useState<ExportState>('IDLE')
 
   const handleExport = async () => {
     if (exportState === 'EXPORTING') return
@@ -120,44 +280,15 @@ export function ProductionComparisonView({
         title="Envasado vs Congelamiento"
         description={`Semana ${weekNumber} · Comparación por origen productivo, no solamente por fecha física.`}
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <StatusBadge tone={packingClosed ? 'success' : 'info'}>
-              ENVASADO {packingClosed ? 'CERRADO' : 'ABIERTO'}
-            </StatusBadge>
-            <StatusBadge tone={freezingClosed ? 'success' : 'info'}>
-              CONGELAMIENTO {freezingClosed ? 'CERRADO' : 'ABIERTO'}
-            </StatusBadge>
-            <StatusBadge tone={comparison.status === 'BALANCED' ? 'success' : 'danger'}>
-              {cycleClosed
-                ? 'CICLO CERRADO'
-                : comparison.status === 'BALANCED'
-                  ? 'CONCILIADO'
-                  : 'REVISAR'}
-            </StatusBadge>
-            <button
-              type="button"
-              className={buttonStyles('secondary', 'sm')}
-              onClick={handleExport}
-              disabled={exportState === 'EXPORTING'}
-              title="Descargar el comparativo de la semana en Excel"
-            >
-              {exportState === 'EXPORTING' ? (
-                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="size-4" aria-hidden="true" />
-              )}
-              {exportState === 'EXPORTING' ? 'Generando…' : 'Exportar Excel'}
-            </button>
-            <button
-              type="button"
-              className={buttonStyles('secondary', 'sm')}
-              onClick={handleExportPdf}
-              title="Imprimir o exportar comparativo a PDF"
-            >
-              <Printer className="size-4" aria-hidden="true" />
-              Exportar PDF
-            </button>
-          </div>
+          <ComparisonHeaderActions
+            packingClosed={packingClosed}
+            freezingClosed={freezingClosed}
+            comparisonStatus={comparison.status}
+            cycleClosed={cycleClosed}
+            exportState={exportState}
+            onExport={handleExport}
+            onExportPdf={handleExportPdf}
+          />
         }
       />
       {exportState === 'ERROR' ? (
@@ -166,35 +297,8 @@ export function ProductionComparisonView({
         </p>
       ) : null}
       {selector}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Comparativo entre procesos">
-        <MetricCard label="Envasado semanal" value={formatCentiKg(comparison.packedKg100)} icon={<PackageCheck className="size-5" />} tone="brand" />
-        <MetricCard label="Congelado atribuible" value={formatCentiKg(comparison.frozenKg100)} icon={<Snowflake className="size-5" />} />
-        <MetricCard label="Pendiente de congelar" value={formatCentiKg(comparison.pendingKg100)} icon={<Scale className="size-5" />} tone="warning" />
-        <MetricCard label="Diferencia no explicada" value={formatCentiKg(comparison.unexplainedDifferenceKg100)} icon={<CheckCircle2 className="size-5" />} tone={comparison.unexplainedDifferenceKg100 === 0 ? 'success' : 'danger'} />
-      </section>
-      <section className="grid gap-3 sm:grid-cols-3" aria-label="Conciliación física de Congelamiento">
-        <MetricCard label="Congelado físico reportado" value={formatCentiKg(comparison.physicalReportedKg100)} description="Reportes Día/Noche de Congelamiento" icon={<Snowflake className="size-5" />} />
-        <MetricCard label="Vinculado a Envasado" value={formatCentiKg(comparison.linkedKg100)} description="Producto congelado con origen trazable" icon={<Link2 className="size-5" />} />
-        <MetricCard label="Exceso de vinculación" value={formatCentiKg(comparison.linkageExcessKg100)} description="Vinculado por encima de lo reportado" icon={<AlertTriangle className="size-5" />} tone={comparison.linkageExcessKg100 > 0 ? 'danger' : 'success'} />
-      </section>
-      {reviewReasons.length > 0 ? (
-        <section
-          aria-label="Motivos de revisión del comparativo"
-          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900"
-        >
-          <h2 className="flex items-center gap-2 text-sm font-bold">
-            <AlertTriangle className="size-4" aria-hidden="true" />
-            El comparativo requiere revisión
-          </h2>
-          <ul className="mt-2 space-y-1.5 text-xs leading-5">
-            {reviewReasons.map(({ reason, title, message }) => (
-              <li key={reason}>
-                <strong>{title}:</strong> {message}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <ComparisonMetrics comparison={comparison} />
+      <ComparisonReviewReasons reasons={reviewReasons} />
       <ComparisonTable title="Comparativo por familia" rows={comparison.byFamily} />
       <ComparisonTable title="Comparativo por producto" rows={comparison.byProduct} />
     </div>

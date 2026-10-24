@@ -30,7 +30,7 @@ export function FreezingBulkLinkBanner({
         <button
           type="button"
           onClick={onOpenBulkFreezingLink}
-          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-400 bg-white px-3 text-xs font-extrabold text-amber-900 shadow-sm transition-all hover:border-amber-500 hover:bg-amber-100 hover:shadow-md active:scale-[0.98] dark:border-ui-amber-border-dark dark:bg-ui-surface-dark dark:text-ui-amber-text-dark-bright dark:hover:border-ui-amber-text-dark dark:hover:bg-ui-amber-surface-dark dark:hover:text-ui-amber-text-dark-pale"
+          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-amber-400 bg-white px-3 text-xs font-extrabold text-amber-900 shadow-sm transition-[border-color,background-color,box-shadow,transform] hover:border-amber-500 hover:bg-amber-100 hover:shadow-md active:scale-[0.98] dark:border-ui-amber-border-dark dark:bg-ui-surface-dark dark:text-ui-amber-text-dark-bright dark:hover:border-ui-amber-text-dark dark:hover:bg-ui-amber-surface-dark dark:hover:text-ui-amber-text-dark-pale"
         >
           Vincular todos FIFO
         </button>

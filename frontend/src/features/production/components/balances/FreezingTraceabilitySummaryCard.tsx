@@ -8,6 +8,22 @@ export interface FreezingTraceabilitySummaryCardProps {
   readonly currentProcessName?: string
 }
 
+function getTraceabilityOverview(summary: FreezingTraceabilitySummary) {
+  if (summary.problemProducts > 0 || summary.excessLinkedKg100 > 0) {
+    return { tone: 'danger' as const, label: 'REVISAR TRAZABILIDAD' }
+  }
+  if (summary.pendingProducts > 0) {
+    return { tone: 'warning' as const, label: 'VINCULACIÓN PENDIENTE' }
+  }
+  return { tone: 'success' as const, label: 'TRAZABILIDAD COMPLETA' }
+}
+
+function getTraceabilityProgressClass(tone: ReturnType<typeof getTraceabilityOverview>['tone']) {
+  if (tone === 'danger') return 'bg-rose-500'
+  if (tone === 'warning') return 'bg-amber-500'
+  return 'bg-emerald-500'
+}
+
 export function FreezingTraceabilitySummaryCard({
   summary,
   prevProcessName = 'Envasado',
@@ -22,35 +38,8 @@ export function FreezingTraceabilitySummaryCard({
       ? Math.min(100, (summary.tracedKg100 / summary.reportedKg100) * 100)
       : null
 
-  const overview =
-    summary.totalProducts === 0
-      ? {
-          tone: 'neutral' as const,
-          label: 'SIN MOVIMIENTOS',
-        }
-      : summary.problemProducts > 0 || summary.excessLinkedKg100 > 0
-        ? {
-            tone: 'danger' as const,
-            label: 'REVISAR TRAZABILIDAD',
-          }
-        : summary.pendingProducts > 0
-          ? {
-              tone: 'warning' as const,
-              label: 'VINCULACIÓN PENDIENTE',
-            }
-          : {
-              tone: 'success' as const,
-              label: 'TRAZABILIDAD COMPLETA',
-            }
-
-  const progressClass =
-    overview.tone === 'danger'
-      ? 'bg-rose-500'
-      : overview.tone === 'warning'
-        ? 'bg-amber-500'
-        : overview.tone === 'success'
-          ? 'bg-emerald-500'
-          : 'bg-slate-400'
+  const overview = getTraceabilityOverview(summary)
+  const progressClass = getTraceabilityProgressClass(overview.tone)
 
   return (
     <div

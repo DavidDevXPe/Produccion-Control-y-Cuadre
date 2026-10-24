@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
 import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
@@ -9,6 +9,8 @@ import { CaptureFamilyBand } from './captureTable/CaptureFamilyBand'
 import { CaptureProductRow } from './captureTable/CaptureProductRow'
 import { CaptureSubtotalRow } from './captureTable/CaptureSubtotalRow'
 import { CaptureTableHeader } from './captureTable/CaptureTableHeader'
+
+const EMPTY_TUNNEL_PRODUCT_IDS: readonly string[] = []
 
 export interface ProductionCaptureTableProps {
   readonly draft: ProductionCaptureDraft
@@ -38,7 +40,7 @@ export function ProductionCaptureTable({
   calculation,
   reportFamilySubtotals,
   orderedProductIds,
-  tunnelProductIds = [],
+  tunnelProductIds,
   isFreezing,
   isBalanceOnly,
   isEditingAllowed,
@@ -48,6 +50,20 @@ export function ProductionCaptureTable({
   removeRow,
   getCaptureCellProps,
 }: ProductionCaptureTableProps) {
+  const resolvedTunnelProductIds = tunnelProductIds ?? EMPTY_TUNNEL_PRODUCT_IDS
+  const rowsByProductId = useMemo(
+    () => new Map(draft.rows.map((row) => [row.product.productId, row])),
+    [draft.rows],
+  )
+  const calculatedProductsById = useMemo(
+    () => new Map(calculation.products.map((product) => [product.productId, product])),
+    [calculation.products],
+  )
+  const tunnelProductIdSet = useMemo(
+    () => new Set(resolvedTunnelProductIds),
+    [resolvedTunnelProductIds],
+  )
+
   return (
     <DataTableScroll label="Captura por producto y turno" showEdgeIndicators={false} className="data-scroll-clean-edge">
       <table className="erp-table w-full min-w-[76rem] table-fixed border-collapse text-left">
@@ -55,9 +71,7 @@ export function ProductionCaptureTable({
         <tbody>
           {reportFamilySubtotals.map((subtotal) => {
             const visibleProductIds = subtotal.productIds.filter((productId) => {
-              const candidate = draft.rows.find(
-                (row) => row.product.productId === productId,
-              )
+              const candidate = rowsByProductId.get(productId)
               if (!candidate) return false
               const hasNormalMovement =
                 captureQuantityKg100(candidate.dayReportedKg) > 0 ||
@@ -69,15 +83,13 @@ export function ProductionCaptureTable({
                 captureQuantityKg100(candidate.tunnelDayKg) > 0 ||
                 captureQuantityKg100(candidate.tunnelNightKg) > 0
               return hasNormalMovement ||
-                (!hasTunnelMovement && !tunnelProductIds.includes(productId))
+                (!hasTunnelMovement && !tunnelProductIdSet.has(productId))
             })
             if (visibleProductIds.length === 0) return null
 
             const familyTraceability = subtotal.productIds.reduce(
               (total, productId) => {
-                const row = draft.rows.find(
-                  (candidate) => candidate.product.productId === productId,
-                )
+                const row = rowsByProductId.get(productId)
                 const productReportedKg100 = row
                   ? sumKg100([
                       captureQuantityKg100(row.dayReportedKg),
@@ -110,12 +122,8 @@ export function ProductionCaptureTable({
                   count={visibleProductIds.length}
                 />
                 {visibleProductIds.map((productId) => {
-                  const row = draft.rows.find(
-                    (candidate) => candidate.product.productId === productId,
-                  )!
-                  const calculated = calculation.products.find(
-                    (candidate) => candidate.productId === productId,
-                  )
+                  const row = rowsByProductId.get(productId)!
+                  const calculated = calculatedProductsById.get(productId)
                   const productReportedKg100 = sumKg100([
                     captureQuantityKg100(row.dayReportedKg),
                     captureQuantityKg100(row.nightReportedKg),

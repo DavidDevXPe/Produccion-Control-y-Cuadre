@@ -926,6 +926,7 @@ export function calculateOutstandingBalances(
       ),
       ...packingSubsequentLots,
     ];
+    const packingSubsequentLotSet = new Set(packingSubsequentLots);
 
     for (const product of originCalculation.products) {
       if (product.newClosingBalanceKg100 <= 0) continue;
@@ -946,7 +947,7 @@ export function calculateOutstandingBalances(
           ? lot.uses.filter(
               (use) =>
                 laterDayIds.has(use.targetDayId) ||
-                packingSubsequentLots.includes(lot),
+                packingSubsequentLotSet.has(lot),
             )
           : [],
       );

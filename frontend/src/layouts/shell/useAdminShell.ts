@@ -26,7 +26,7 @@ export function useAdminShell() {
   const [showReconnected, setShowReconnected] = useState(false)
   const wasOfflineRef = useRef(!navigator.onLine)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const mobileNavigationRef = useRef<HTMLElement>(null)
+  const mobileNavigationRef = useRef<HTMLDialogElement>(null)
   const location = useLocation()
 
   const {

@@ -27,7 +27,7 @@ interface ModalProps {
  * discard a confirmation.
  */
 export function Modal({ titleId, onClose, size = 'lg', children }: ModalProps) {
-  const dialogRef = useRef<HTMLElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const onCloseRef = useRef(onClose)
 
   useEffect(() => {
@@ -86,16 +86,16 @@ export function Modal({ titleId, onClose, size = 'lg', children }: ModalProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[1px]">
-      <section
+      <dialog
+        open
         ref={dialogRef}
-        role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`my-auto w-full ${sizeClasses[size]} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl focus:outline-none`}
+        className={`m-0 my-auto w-full ${sizeClasses[size]} overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl focus:outline-none`}
       >
         {children}
-      </section>
+      </dialog>
     </div>,
     document.body,
   )

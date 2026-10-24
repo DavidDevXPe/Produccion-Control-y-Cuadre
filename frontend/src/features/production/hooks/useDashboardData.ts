@@ -136,11 +136,10 @@ export function useDashboardData() {
     const journeyStatusCounts = [
       ...packingCalculatedDays,
       ...freezingCalculatedDays,
-    ].reduce(
-      (counts, { journey }) => ({
-        ...counts,
-        [journey.status]: counts[journey.status] + 1,
-      }),
+    ].reduce((counts, { journey }) => {
+      counts[journey.status] += 1
+      return counts
+    },
       {
         BALANCED: 0,
         BALANCED_OBSERVED: 0,

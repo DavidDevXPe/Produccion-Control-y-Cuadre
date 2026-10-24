@@ -11,8 +11,110 @@ import {
   isFreezingProductionDay,
   isProductionProcess,
 } from "../model/productionProcess";
+import type { ProductionDay, ProductionDayCalculation } from "../model/types";
 import { getJourneyStatus } from "../presentation/journeyStatus";
 import { useProductionData } from "../state/ProductionDataContext";
+
+type ProductionDayJourney = ReturnType<typeof getJourneyStatus>;
+
+function getProductionDayStatusBadge({
+  isClosed,
+  hasVisibleClosureObservations,
+  isBalanced,
+  isReadyToClose,
+  hasClosureWarnings,
+  journey,
+}: {
+  isClosed: boolean
+  hasVisibleClosureObservations: boolean
+  isBalanced: boolean
+  isReadyToClose: boolean
+  hasClosureWarnings: boolean
+  journey: ProductionDayJourney | undefined
+}) {
+  if (isClosed) {
+    if (hasVisibleClosureObservations) {
+      return { tone: "warning" as const, label: "CERRADA · CON OBSERVACIONES" };
+    }
+    if (isBalanced) {
+      return { tone: "success" as const, label: "CERRADA · SOLO LECTURA" };
+    }
+    return { tone: "danger" as const, label: "CERRADA · REVISAR" };
+  }
+
+  if (isReadyToClose) {
+    if (hasClosureWarnings) {
+      return { tone: "warning" as const, label: "LISTA · CON OBSERVACIONES" };
+    }
+    return { tone: "success" as const, label: "LISTA PARA CERRAR" };
+  }
+
+  return journey
+    ? { tone: journey.tone, label: journey.label }
+    : { tone: "neutral" as const, label: "EN CURSO" };
+}
+
+function buildFreezingCloseSummary(
+  productionDay: ProductionDay,
+  calculation: ProductionDayCalculation,
+  totalFrozenKg100: number,
+) {
+  return [
+    { label: "Fecha", value: formatIsoDate(productionDay.date) },
+    {
+      label: "Congelado Día",
+      value: formatCentiKg(calculation.day.declaredReportedKg100),
+    },
+    {
+      label: "Congelado Noche",
+      value: formatCentiKg(calculation.night.declaredReportedKg100),
+    },
+    { label: "Total congelado", value: formatCentiKg(totalFrozenKg100) },
+    {
+      label: "Con origen identificado",
+      value: formatCentiKg(calculation.processedPreviousBalanceKg100),
+    },
+    {
+      label: "Sin origen suficiente",
+      value: formatCentiKg(calculation.reportOwnProductionKg100),
+    },
+  ];
+}
+
+function buildPackingCloseSummary(
+  productionDay: ProductionDay,
+  calculation: ProductionDayCalculation,
+  isReadyToClose: boolean,
+  hasClosureWarnings: boolean,
+) {
+  return [
+    { label: "Fecha", value: formatIsoDate(productionDay.date) },
+    {
+      label: "Materia prima",
+      value: formatCentiKg(productionDay.declaredRawMaterialKg100),
+    },
+    {
+      label: "Producto terminado",
+      value: formatCentiKg(calculation.declaredFinishedKg100),
+    },
+    {
+      label: "Saldo final",
+      value: formatCentiKg(calculation.newClosingBalanceKg100),
+    },
+    {
+      label: "Diferencia",
+      value: formatCentiKg(calculation.differenceKg100),
+    },
+    {
+      label: "Estado",
+      value: isReadyToClose
+        ? hasClosureWarnings
+          ? "Lista para cerrar con observación"
+          : "Lista para cerrar"
+        : "Requiere revisión",
+    },
+  ];
+}
 
 export function useProductionDayDetail() {
   const { date } = useParams<{ date?: string }>();
@@ -110,40 +212,25 @@ export function useProductionDayDetail() {
     return getJourneyStatus(productionDay, operationalState);
   }, [productionDay, operationalState]);
 
-  const statusBadge = useMemo(() => {
-    if (isClosed) {
-      if (hasVisibleClosureObservations) {
-        return {
-          tone: "warning" as const,
-          label: "CERRADA · CON OBSERVACIONES",
-        };
-      }
-      if (isBalanced) {
-        return { tone: "success" as const, label: "CERRADA · SOLO LECTURA" };
-      }
-      return { tone: "danger" as const, label: "CERRADA · REVISAR" };
-    }
-
-    if (isReadyToClose) {
-      if (hasClosureWarnings) {
-        return { tone: "warning" as const, label: "LISTA · CON OBSERVACIONES" };
-      }
-      return { tone: "success" as const, label: "LISTA PARA CERRAR" };
-    }
-
-    if (journey) {
-      return { tone: journey.tone, label: journey.label };
-    }
-
-    return { tone: "neutral" as const, label: "EN CURSO" };
-  }, [
-    isClosed,
-    hasVisibleClosureObservations,
-    isBalanced,
-    isReadyToClose,
-    hasClosureWarnings,
-    journey,
-  ]);
+  const statusBadge = useMemo(
+    () =>
+      getProductionDayStatusBadge({
+        isClosed,
+        hasVisibleClosureObservations,
+        isBalanced,
+        isReadyToClose,
+        hasClosureWarnings,
+        journey,
+      }),
+    [
+      isClosed,
+      hasVisibleClosureObservations,
+      isBalanced,
+      isReadyToClose,
+      hasClosureWarnings,
+      journey,
+    ],
+  );
 
   const canEdit = Boolean(
     productionDay &&
@@ -226,60 +313,17 @@ export function useProductionDayDetail() {
 
   const freezingCloseSummary = useMemo(() => {
     if (!productionDay || !calculation) return [];
-    return [
-      { label: "Fecha", value: formatIsoDate(productionDay.date) },
-      {
-        label: "Congelado Día",
-        value: formatCentiKg(calculation.day.declaredReportedKg100),
-      },
-      {
-        label: "Congelado Noche",
-        value: formatCentiKg(calculation.night.declaredReportedKg100),
-      },
-      {
-        label: "Total congelado",
-        value: formatCentiKg(totalFrozenKg100),
-      },
-      {
-        label: "Con origen identificado",
-        value: formatCentiKg(calculation.processedPreviousBalanceKg100),
-      },
-      {
-        label: "Sin origen suficiente",
-        value: formatCentiKg(calculation.reportOwnProductionKg100),
-      },
-    ];
+    return buildFreezingCloseSummary(productionDay, calculation, totalFrozenKg100);
   }, [productionDay, calculation, totalFrozenKg100]);
 
   const packingCloseSummary = useMemo(() => {
     if (!productionDay || !calculation) return [];
-    return [
-      { label: "Fecha", value: formatIsoDate(productionDay.date) },
-      {
-        label: "Materia prima",
-        value: formatCentiKg(productionDay.declaredRawMaterialKg100),
-      },
-      {
-        label: "Producto terminado",
-        value: formatCentiKg(calculation.declaredFinishedKg100),
-      },
-      {
-        label: "Saldo final",
-        value: formatCentiKg(calculation.newClosingBalanceKg100),
-      },
-      {
-        label: "Diferencia",
-        value: formatCentiKg(calculation.differenceKg100),
-      },
-      {
-        label: "Estado",
-        value: isReadyToClose
-          ? hasClosureWarnings
-            ? "Lista para cerrar con observación"
-            : "Lista para cerrar"
-          : "Requiere revisión",
-      },
-    ];
+    return buildPackingCloseSummary(
+      productionDay,
+      calculation,
+      isReadyToClose,
+      hasClosureWarnings,
+    );
   }, [productionDay, calculation, isReadyToClose, hasClosureWarnings]);
 
   return {

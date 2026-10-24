@@ -21,11 +21,11 @@ export function CloseConfirmationDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#020914]/90 p-4">
-      <section
-        role="dialog"
+      <dialog
+        open
         aria-modal="true"
         aria-labelledby="yield-warning-title"
-        className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-ui-line-dark-grid dark:bg-ui-surface-dark"
+        className="m-0 my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl dark:border-ui-line-dark-grid dark:bg-ui-surface-dark"
       >
         {/* Encabezado */}
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6 dark:border-ui-line-dark-grid">
@@ -136,7 +136,7 @@ export function CloseConfirmationDialog({
             {warnings.length > 0 ? 'Cerrar con observación' : 'Cerrar jornada'}
           </button>
         </div>
-      </section>
+      </dialog>
     </div>,
     document.body,
   )

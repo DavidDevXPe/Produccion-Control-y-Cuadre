@@ -23,6 +23,7 @@ export function BalancesFilterBar({
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
+          aria-label="Buscar por producto o familia"
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
           placeholder="Buscar por producto o familia..."

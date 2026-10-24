@@ -816,6 +816,9 @@ export function validateProductionClosure(
   );
   const blockers: ClosureMessage[] = [];
   const warnings: ClosureMessage[] = [];
+  const receivedBalanceLotsById = new Map(
+    productionDay.receivedBalanceLots.map((lot) => [lot.id, lot]),
+  );
 
   if (!options.requiredDataComplete) {
     blockers.push({
@@ -867,9 +870,9 @@ export function validateProductionClosure(
     const freezingLot =
       isFreezingProductionDay(productionDay) &&
       issue.code === "BALANCE_OVERUSED"
-        ? productionDay.receivedBalanceLots.find(
-            (lot) => lot.id === issue.balanceLotId,
-          )
+        ? issue.balanceLotId
+          ? receivedBalanceLotsById.get(issue.balanceLotId)
+          : undefined
         : undefined;
     const overusedKg100 = freezingLot
       ? calculateBalancePosition(freezingLot).overusedKg100

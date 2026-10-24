@@ -160,6 +160,9 @@ export function writePackingDetail(
   productionDay: ProductionDay,
 ) {
   const columns = buildDetailColumns(calculation)
+  const columnIndexByKey = new Map(
+    columns.map((column, index) => [column.key, index]),
+  )
   const lastColumn = columns.length + 2
   const worksheet = setupWorksheet(
     workbook,
@@ -182,7 +185,7 @@ export function writePackingDetail(
   ])
 
   const letterOf = (key: string) =>
-    worksheet.getColumn(columns.findIndex((column) => column.key === key) + 3)
+    worksheet.getColumn((columnIndexByKey.get(key) ?? 0) + 3)
       .letter
   const has = (key: string) => columns.some((column) => column.key === key)
   const firstDataRow = headerRowNumber + 1
@@ -202,7 +205,7 @@ export function writePackingDetail(
     ]
     const cell = (key: string) => `${letterOf(key)}${rowNumber}`
     const setFormula = (key: string, formula: string) => {
-      const position = columns.findIndex((column) => column.key === key) + 2
+      const position = (columnIndexByKey.get(key) ?? 0) + 2
       values[position] = { formula, result: values[position] }
     }
     const adjustment = (shift: 'day' | 'night') =>
@@ -240,7 +243,7 @@ export function writePackingDetail(
       },
     }
     for (const key of ['dayOwn', 'nightOwn', 'expected']) {
-      row.getCell(columns.findIndex((column) => column.key === key) + 3).font = {
+      row.getCell((columnIndexByKey.get(key) ?? 0) + 3).font = {
         bold: true,
         color: { argb: COLORS.navy },
       }

@@ -10,6 +10,40 @@ interface TubeMpBalancePanelProps {
   balance: TubeMpBalance
 }
 
+function TubeIntegrityMessages({ balance }: TubeMpBalancePanelProps) {
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-900">
+      <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <div>
+        {balance.mpMantoExcessKg100 > 0 ? (
+          <p>
+            Manto requiere {formatCentiKg(balance.mpMantoExcessKg100)} más
+            que la MP Tubo disponible.
+          </p>
+        ) : null}
+        {balance.mpMainAnillasExcessKg100 > 0 ? (
+          <p>
+            Las Anillas principales requieren un exceso de{' '}
+            {formatCentiKg(balance.mpMainAnillasExcessKg100)}.
+          </p>
+        ) : null}
+        {balance.unclassifiedAnillasKg100 > 0 ? (
+          <p>
+            Hay {formatCentiKg(balance.unclassifiedAnillasKg100)} sin
+            clasificación técnica Polar, General o USA.
+          </p>
+        ) : null}
+        {balance.tubeDifferenceKg100 !== 0 ? (
+          <p>
+            El balance principal del Tubo presenta una diferencia de{' '}
+            {formatCentiKg(balance.tubeDifferenceKg100)}.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export function TubeMpBalancePanel({ balance }: TubeMpBalancePanelProps) {
   if (
     balance.mpTotalKg100 === 0 ||
@@ -125,37 +159,7 @@ export function TubeMpBalancePanel({ balance }: TubeMpBalancePanelProps) {
           </p>
         ) : null}
 
-        {hasIntegrityError ? (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-900">
-            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div>
-              {balance.mpMantoExcessKg100 > 0 ? (
-                <p>
-                  Manto requiere {formatCentiKg(balance.mpMantoExcessKg100)} más
-                  que la MP Tubo disponible.
-                </p>
-              ) : null}
-              {balance.mpMainAnillasExcessKg100 > 0 ? (
-                <p>
-                  Las Anillas principales requieren un exceso de{' '}
-                  {formatCentiKg(balance.mpMainAnillasExcessKg100)}.
-                </p>
-              ) : null}
-              {balance.unclassifiedAnillasKg100 > 0 ? (
-                <p>
-                  Hay {formatCentiKg(balance.unclassifiedAnillasKg100)} sin
-                  clasificación técnica Polar, General o USA.
-                </p>
-              ) : null}
-              {balance.tubeDifferenceKg100 !== 0 ? (
-                <p>
-                  El balance principal del Tubo presenta una diferencia de{' '}
-                  {formatCentiKg(balance.tubeDifferenceKg100)}.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {hasIntegrityError ? <TubeIntegrityMessages balance={balance} /> : null}
       </div>
     </SectionCard>
   )

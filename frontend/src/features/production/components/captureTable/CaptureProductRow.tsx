@@ -35,6 +35,118 @@ export interface CaptureProductRowProps {
   ) => Record<string, unknown>
 }
 
+function DownstreamKgCell({
+  isDownstream,
+  value,
+}: {
+  readonly isDownstream: boolean
+  readonly value: Kg100
+}) {
+  return (
+    <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
+      {isDownstream ? (
+        <>
+          <span className="font-semibold text-slate-800 dark:text-white">
+            {formatCentiKgValue(value)}
+          </span>
+          <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
+            kg
+          </span>
+        </>
+      ) : (
+        '—'
+      )}
+    </td>
+  )
+}
+
+function TraceabilityDifferenceCell({
+  isDownstream,
+  differenceKg100,
+}: {
+  readonly isDownstream: boolean
+  readonly differenceKg100: Kg100
+}) {
+  const toneClass =
+    differenceKg100 < 0
+      ? 'font-bold text-rose-700 dark:text-rose-400'
+      : differenceKg100 > 0
+        ? 'font-semibold text-sky-700 dark:text-sky-400'
+        : 'text-slate-400 dark:text-slate-500'
+
+  return (
+    <td
+      className={`number-tabular px-3 py-2 text-right text-xs ${
+        isDownstream ? toneClass : 'text-slate-400 dark:text-slate-500'
+      }`}
+    >
+      {isDownstream ? (
+        <>
+          <span>{formatCentiKgValue(differenceKg100)}</span>
+          <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
+        </>
+      ) : (
+        '—'
+      )}
+    </td>
+  )
+}
+
+interface ProductStatusCellProps {
+  readonly row: ProductionCaptureRow
+  readonly isDownstream: boolean
+  readonly productStatus: ReturnType<typeof freezingTraceabilityStatus>
+  readonly availableKg100: Kg100
+  readonly linkedKg100: Kg100
+  readonly onAutoLink: (productId: string) => void
+}
+
+function ProductStatusCell({
+  row,
+  isDownstream,
+  productStatus,
+  availableKg100,
+  linkedKg100,
+  onAutoLink,
+}: ProductStatusCellProps) {
+  const canAutoLink =
+    isDownstream &&
+    productStatus.pendingToLinkKg100 > 0 &&
+    availableKg100 > linkedKg100
+
+  return (
+    <td className="whitespace-nowrap px-3 py-2 text-center align-middle">
+      <div className="flex flex-col items-center gap-1.5">
+        {productStatus.label === 'SIN MOVIMIENTO' ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <Circle
+              className="size-2 fill-slate-400 text-slate-400 dark:fill-slate-500 dark:text-slate-400"
+              aria-hidden="true"
+            />
+            <span aria-label="Sin movimiento">Sin mov.</span>
+          </span>
+        ) : (
+          <StatusBadge tone={productStatus.tone} truncateText={false}>
+            {productStatus.label}
+          </StatusBadge>
+        )}
+
+        {canAutoLink ? (
+          <button
+            type="button"
+            onClick={() => onAutoLink(row.product.productId)}
+            className="inline-flex min-h-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-2.5 text-[0.6875rem] font-bold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+            aria-label={`Vincular FIFO ${row.product.productName}`}
+            title="Consume primero la jornada de la etapa anterior pendiente más antigua para este producto"
+          >
+            Vincular FIFO
+          </button>
+        ) : null}
+      </div>
+    </td>
+  )
+}
+
 export function CaptureProductRow({
   row,
   calculated,
@@ -123,85 +235,22 @@ export function CaptureProductRow({
           kg
         </span>
       </td>
-      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isDownstream ? (
-          <>
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(availableKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        ) : (
-          '—'
-        )}
-      </td>
+      <DownstreamKgCell isDownstream={isDownstream} value={availableKg100} />
 
-      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isDownstream ? (
-          <>
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(totalKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        ) : (
-          '—'
-        )}
-      </td>
+      <DownstreamKgCell isDownstream={isDownstream} value={totalKg100} />
 
-      <td
-        className={`number-tabular px-3 py-2 text-right text-xs ${
-          isDownstream && productStatus.differenceKg100 < 0
-            ? 'font-bold text-rose-700 dark:text-rose-400'
-            : isDownstream && productStatus.differenceKg100 > 0
-              ? 'font-semibold text-sky-700 dark:text-sky-400'
-              : 'text-slate-400 dark:text-slate-500'
-        }`}
-      >
-        {isDownstream ? (
-          <>
-            <span>{formatCentiKgValue(productStatus.differenceKg100)}</span>
-            <span className="ml-1 text-[0.6875rem] font-medium">kg</span>
-          </>
-        ) : (
-          '—'
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-center align-middle">
-        <div className="flex flex-col items-center gap-1.5">
-          {productStatus.label === 'SIN MOVIMIENTO' ? (
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <Circle
-                className="size-2 fill-slate-400 text-slate-400 dark:fill-slate-500 dark:text-slate-400"
-                aria-hidden="true"
-              />
-              <span aria-label="Sin movimiento">Sin mov.</span>
-            </span>
-          ) : (
-            <StatusBadge tone={productStatus.tone} truncateText={false}>
-              {productStatus.label}
-            </StatusBadge>
-          )}
-
-          {isDownstream &&
-          productStatus.pendingToLinkKg100 > 0 &&
-          availableKg100 > linkedKg100 ? (
-            <button
-              type="button"
-              onClick={() => autoLinkFreezingProduct(row.product.productId)}
-              className="inline-flex min-h-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-2.5 text-[0.6875rem] font-bold text-amber-800 transition hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
-              aria-label={`Vincular FIFO ${row.product.productName}`}
-              title="Consume primero la jornada de la etapa anterior pendiente más antigua para este producto"
-            >
-              Vincular FIFO
-            </button>
-          ) : null}
-        </div>
-      </td>
+      <TraceabilityDifferenceCell
+        isDownstream={isDownstream}
+        differenceKg100={productStatus.differenceKg100}
+      />
+      <ProductStatusCell
+        row={row}
+        isDownstream={isDownstream}
+        productStatus={productStatus}
+        availableKg100={availableKg100}
+        linkedKg100={linkedKg100}
+        onAutoLink={autoLinkFreezingProduct}
+      />
       <td className="w-12 px-2 py-1.5 text-center align-middle">
         <button
           type="button"

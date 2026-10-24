@@ -12,6 +12,8 @@ import { ProductPicker } from './ProductPicker'
 import { ProductionCaptureTable } from './ProductionCaptureTable'
 import { ProductionShiftCards } from './ProductionShiftCards'
 
+const EMPTY_TUNNEL_PRODUCT_IDS: readonly string[] = []
+
 export interface ProductionReportsSectionProps {
   readonly draft: ProductionCaptureDraft
   readonly calculation: ProductionDayCalculation
@@ -51,7 +53,7 @@ export function ProductionReportsSection({
   freezingAvailabilityByProduct,
   reportFamilySubtotals,
   orderedProductIds,
-  tunnelProductIds = [],
+  tunnelProductIds = EMPTY_TUNNEL_PRODUCT_IDS,
   dayHasReportData,
   nightHasReportData,
   isFreezing,

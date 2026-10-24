@@ -44,6 +44,185 @@ export interface UseProductionCalculationsParams {
   usesExternalAvailability: boolean
 }
 
+type ProductionCaptureRow = ProductionCaptureDraft['rows'][number]
+type ReportFamilySubtotals = ReturnType<typeof calculateReportFamilySubtotals>
+type ClosureValidation = ReturnType<typeof validateProductionClosure>
+type ProductionDiagnostics = ReturnType<typeof buildProductionDiagnostics>
+
+function getOtherProductionDays(
+  draft: ProductionCaptureDraft,
+  allProductionDays: readonly ProductionDay[],
+) {
+  const currentDayKey = productionDayKey(draft.date, draft.process)
+  return allProductionDays.filter(
+    (day) => productionDayKey(day.date, getProductionProcess(day)) !== currentDayKey,
+  )
+}
+
+function hasCaptureMovement(row: ProductionCaptureRow) {
+  const hasNormalMovement =
+    captureQuantityKg100(row.dayReportedKg) > 0 ||
+    captureQuantityKg100(row.nightReportedKg) > 0 ||
+    captureQuantityKg100(row.treatmentKg) > 0 ||
+    captureQuantityKg100(row.closingBalanceKg) > 0 ||
+    captureQuantityKg100(row.finishedKg) > 0
+  const hasTunnelMovement =
+    captureQuantityKg100(row.tunnelDayKg) > 0 ||
+    captureQuantityKg100(row.tunnelNightKg) > 0
+  return { hasNormalMovement, hasTunnelMovement }
+}
+
+function getOrderedProductIds(
+  reportFamilySubtotals: ReportFamilySubtotals,
+  rows: readonly ProductionCaptureRow[],
+) {
+  return reportFamilySubtotals.flatMap((subtotal) =>
+    subtotal.productIds.filter((productId) => {
+      const row = rows.find(
+        (candidate) => candidate.product.productId === productId,
+      )
+      if (!row) return false
+      const { hasNormalMovement, hasTunnelMovement } = hasCaptureMovement(row)
+      return hasNormalMovement || !hasTunnelMovement
+    }),
+  )
+}
+
+function buildFreezingBalanceUseSummary(
+  process: ProductionCaptureDraft['process'],
+  balanceUses: ProductionCaptureDraft['balanceUses'],
+  balanceShiftDiagnostics: ReturnType<typeof buildBalanceShiftDiagnostics>,
+) {
+  if (!hasPreviousProcess(process)) return null
+
+  const diagnosticProductIds = new Set(
+    balanceShiftDiagnostics.map((diagnostic) => diagnostic.productId),
+  )
+
+  return balanceUses.reduce(
+    (summary, balance) => {
+      const position = captureBalancePosition(balance)
+      const requiresReview =
+        balance.requiresProductDistribution === true ||
+        position.overusedKg100 > 0 ||
+        diagnosticProductIds.has(balance.productId)
+
+      return {
+        originCount: summary.originCount + 1,
+        availableKg100: kg100(summary.availableKg100 + balance.availableKg100),
+        usedKg100: kg100(summary.usedKg100 + position.processedKg100),
+        remainingKg100: kg100(summary.remainingKg100 + position.pendingKg100),
+        reviewCount: summary.reviewCount + (requiresReview ? 1 : 0),
+      }
+    },
+    {
+      originCount: 0,
+      availableKg100: kg100(0),
+      usedKg100: kg100(0),
+      remainingKg100: kg100(0),
+      reviewCount: 0,
+    },
+  )
+}
+
+function buildPendingClosureReasons(
+  canClose: boolean,
+  dayHasReportData: boolean,
+  nightHasReportData: boolean,
+  dayDifferenceKg100: number,
+  nightDifferenceKg100: number,
+  closureValidation: ClosureValidation,
+  diagnostics: ProductionDiagnostics,
+) {
+  if (canClose) return []
+  const items: string[] = []
+  const addShiftDifference = (
+    label: string,
+    hasReportData: boolean,
+    differenceKg100: number,
+  ) => {
+    if (!hasReportData || differenceKg100 === 0) return
+    items.push(
+      differenceKg100 > 0
+        ? `Turno ${label}: faltan ${formatCentiKg(differenceKg100)}`
+        : `Turno ${label}: excede ${formatCentiKg(kg100(-differenceKg100))}`,
+    )
+  }
+
+  addShiftDifference('Día', dayHasReportData, dayDifferenceKg100)
+  addShiftDifference('Noche', nightHasReportData, nightDifferenceKg100)
+
+  const otherBlockers = [
+    ...closureValidation.blockers
+      .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
+      .map((blocker) => blocker.message),
+    ...diagnostics
+      .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
+      .map((diagnostic) => diagnostic.message),
+  ].filter((message, index, messages) => messages.indexOf(message) === index)
+
+  for (const blocker of otherBlockers) {
+    const lower = blocker.toLowerCase()
+    if (
+      lower.includes('turno día') &&
+      items.some((item) => item.toLowerCase().includes('turno día'))
+    ) {
+      continue
+    }
+    if (
+      lower.includes('turno noche') &&
+      items.some((item) => item.toLowerCase().includes('turno noche'))
+    ) {
+      continue
+    }
+    if (
+      !items.some(
+        (item) =>
+          item.toLowerCase().includes(lower) || lower.includes(item.toLowerCase()),
+      )
+    ) {
+      items.push(blocker)
+    }
+  }
+  return items
+}
+
+function getFooterStatus(
+  canClose: boolean,
+  hasWarnings: boolean,
+  hasSufficientData: boolean,
+  usesExternalAvailability: boolean,
+  isFreezing: boolean,
+) {
+  if (canClose && hasWarnings) {
+    return {
+      title: 'La jornada puede cerrarse con observaciones.',
+      description:
+        'El cuadre principal es válido, pero existen advertencias que quedarán sujetas a revisión.',
+    }
+  }
+  if (canClose) {
+    return {
+      title: 'La jornada está lista para cerrar.',
+      description: usesExternalAvailability
+        ? isFreezing
+          ? 'Los reportes coinciden y todo el producto congelado tiene origen trazable en Envasado.'
+          : 'Los reportes y consumos de saldo están conciliados sin producción propia.'
+        : 'El cuadre es correcto y no existen diferencias pendientes.',
+    }
+  }
+  if (hasSufficientData) {
+    return {
+      title: 'La jornada todavía requiere revisión.',
+      description: 'Revisa el cuadre y las validaciones pendientes antes de cerrar.',
+    }
+  }
+  return {
+    title: 'Completa los datos requeridos para validar la jornada.',
+    description: 'Puedes guardar un borrador válido y continuar después.',
+  }
+}
+
 export function useProductionCalculations({
   draft,
   allProductionDays,
@@ -56,11 +235,7 @@ export function useProductionCalculations({
     () =>
       buildProductionDayFromCapture(
         draft,
-        allProductionDays.filter(
-          (day) =>
-            productionDayKey(day.date, getProductionProcess(day)) !==
-            productionDayKey(draft.date, draft.process),
-        ),
+        getOtherProductionDays(draft, allProductionDays),
         subsequentBalanceLots,
       ),
     [allProductionDays, draft, subsequentBalanceLots],
@@ -87,25 +262,7 @@ export function useProductionCalculations({
   )
 
   const orderedProductIds = useMemo(
-    () =>
-      reportFamilySubtotals.flatMap((subtotal) =>
-        subtotal.productIds.filter((productId) => {
-          const row = draft.rows.find(
-            (candidate) => candidate.product.productId === productId,
-          )
-          if (!row) return false
-          const hasNormalMovement =
-            captureQuantityKg100(row.dayReportedKg) > 0 ||
-            captureQuantityKg100(row.nightReportedKg) > 0 ||
-            captureQuantityKg100(row.treatmentKg) > 0 ||
-            captureQuantityKg100(row.closingBalanceKg) > 0 ||
-            captureQuantityKg100(row.finishedKg) > 0
-          const hasTunnelMovement =
-            captureQuantityKg100(row.tunnelDayKg) > 0 ||
-            captureQuantityKg100(row.tunnelNightKg) > 0
-          return hasNormalMovement || !hasTunnelMovement
-        }),
-      ),
+    () => getOrderedProductIds(reportFamilySubtotals, draft.rows),
     [draft.rows, reportFamilySubtotals],
   )
 
@@ -148,44 +305,15 @@ export function useProductionCalculations({
     [buildResult.calculation, draft.process],
   )
 
-  const freezingBalanceUseSummary = useMemo(() => {
-    if (!hasPreviousProcess(draft.process)) return null
-
-    const diagnosticProductIds = new Set(
-      balanceShiftDiagnostics.map((diagnostic) => diagnostic.productId),
-    )
-
-    return draft.balanceUses.reduce(
-      (summary, balance) => {
-        const position = captureBalancePosition(balance)
-        const requiresReview =
-          balance.requiresProductDistribution === true ||
-          position.overusedKg100 > 0 ||
-          diagnosticProductIds.has(balance.productId)
-
-        return {
-          originCount: summary.originCount + 1,
-          availableKg100: kg100(
-            summary.availableKg100 + balance.availableKg100,
-          ),
-          usedKg100: kg100(
-            summary.usedKg100 + position.processedKg100,
-          ),
-          remainingKg100: kg100(
-            summary.remainingKg100 + position.pendingKg100,
-          ),
-          reviewCount: summary.reviewCount + (requiresReview ? 1 : 0),
-        }
-      },
-      {
-        originCount: 0,
-        availableKg100: kg100(0),
-        usedKg100: kg100(0),
-        remainingKg100: kg100(0),
-        reviewCount: 0,
-      },
-    )
-  }, [balanceShiftDiagnostics, draft.balanceUses, draft.process])
+  const freezingBalanceUseSummary = useMemo(
+    () =>
+      buildFreezingBalanceUseSummary(
+        draft.process,
+        draft.balanceUses,
+        balanceShiftDiagnostics,
+      ),
+    [balanceShiftDiagnostics, draft.balanceUses, draft.process],
+  )
 
   const dayHasReportData =
     draft.declaredDayTotalKg.trim() !== '' && draft.rows.length > 0
@@ -201,57 +329,27 @@ export function useProductionCalculations({
   const tunnelMovementRequired =
     draft.hasTunnelProduction && buildResult.calculation.tunnel.totalKg100 === 0
 
-  const pendingClosureReasons = useMemo(() => {
-    if (canClose) return []
-    const items: string[] = []
-    if (dayHasReportData && buildResult.calculation.day.detailDifferenceKg100 !== 0) {
-      const diff = buildResult.calculation.day.detailDifferenceKg100
-      if (diff > 0) {
-        items.push(`Turno Día: faltan ${formatCentiKg(diff)}`)
-      } else {
-        items.push(`Turno Día: excede ${formatCentiKg(kg100(-diff))}`)
-      }
-    }
-    if (nightHasReportData && buildResult.calculation.night.detailDifferenceKg100 !== 0) {
-      const diff = buildResult.calculation.night.detailDifferenceKg100
-      if (diff > 0) {
-        items.push(`Turno Noche: faltan ${formatCentiKg(diff)}`)
-      } else {
-        items.push(`Turno Noche: excede ${formatCentiKg(kg100(-diff))}`)
-      }
-    }
-
-    const otherBlockers = [
-      ...closureValidation.blockers
-        .filter((blocker) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED')
-        .map((blocker) => blocker.message),
-      ...diagnostics
-        .filter((diagnostic) => diagnostic.code !== 'SHIFT_BALANCED')
-        .map((diagnostic) => diagnostic.message),
-    ].filter((message, index, messages) => messages.indexOf(message) === index)
-
-    for (const blocker of otherBlockers) {
-      const lower = blocker.toLowerCase()
-      if (lower.includes('turno día') && items.some((it) => it.toLowerCase().includes('turno día'))) {
-        continue
-      }
-      if (lower.includes('turno noche') && items.some((it) => it.toLowerCase().includes('turno noche'))) {
-        continue
-      }
-      if (!items.some((it) => it.toLowerCase().includes(lower) || lower.includes(it.toLowerCase()))) {
-        items.push(blocker)
-      }
-    }
-    return items
-  }, [
-    canClose,
-    dayHasReportData,
-    nightHasReportData,
-    buildResult.calculation.day.detailDifferenceKg100,
-    buildResult.calculation.night.detailDifferenceKg100,
-    closureValidation.blockers,
-    diagnostics,
-  ])
+  const pendingClosureReasons = useMemo(
+    () =>
+      buildPendingClosureReasons(
+        canClose,
+        dayHasReportData,
+        nightHasReportData,
+        buildResult.calculation.day.detailDifferenceKg100,
+        buildResult.calculation.night.detailDifferenceKg100,
+        closureValidation,
+        diagnostics,
+      ),
+    [
+      canClose,
+      dayHasReportData,
+      nightHasReportData,
+      buildResult.calculation.day.detailDifferenceKg100,
+      buildResult.calculation.night.detailDifferenceKg100,
+      closureValidation,
+      diagnostics,
+    ],
+  )
 
   const reviewReasons = useMemo(() => {
     const warningMessages = closureValidation.warnings.map(
@@ -263,32 +361,13 @@ export function useProductionCalculations({
     )
   }, [closureValidation.warnings, pendingClosureReasons])
 
-  const footerStatus = canClose
-    ? closureValidation.warnings.length > 0
-      ? {
-          title: 'La jornada puede cerrarse con observaciones.',
-          description:
-            'El cuadre principal es válido, pero existen advertencias que quedarán sujetas a revisión.',
-        }
-      : {
-          title: 'La jornada está lista para cerrar.',
-          description: usesExternalAvailability
-            ? isFreezing
-              ? 'Los reportes coinciden y todo el producto congelado tiene origen trazable en Envasado.'
-              : 'Los reportes y consumos de saldo están conciliados sin producción propia.'
-            : 'El cuadre es correcto y no existen diferencias pendientes.',
-        }
-    : hasSufficientData
-      ? {
-          title: 'La jornada todavía requiere revisión.',
-          description:
-            'Revisa el cuadre y las validaciones pendientes antes de cerrar.',
-        }
-      : {
-          title: 'Completa los datos requeridos para validar la jornada.',
-          description:
-            'Puedes guardar un borrador válido y continuar después.',
-        }
+  const footerStatus = getFooterStatus(
+    canClose,
+    closureValidation.warnings.length > 0,
+    hasSufficientData,
+    usesExternalAvailability,
+    isFreezing,
+  )
 
   const importedBalanceTotal = sumImportedBalances(draft.importedBalances)
   const importedBalanceMatches =

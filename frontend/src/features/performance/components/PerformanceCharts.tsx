@@ -1,14 +1,4 @@
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { lazy, Suspense } from 'react'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import type { PerformanceRecord } from '../model/types'
 
@@ -43,15 +33,7 @@ function buildChartRows(records: readonly PerformanceRecord[]): readonly ChartRo
   })
 }
 
-function OperationalLineChart({
-  title,
-  description,
-  data,
-  dayKey,
-  nightKey,
-  referenceValue,
-  referenceLabel,
-}: {
+interface OperationalLineChartProps {
   title: string
   description: string
   data: readonly ChartRow[]
@@ -59,54 +41,80 @@ function OperationalLineChart({
   nightKey: 'nightProductivity' | 'nightKgPerHour'
   referenceValue?: number
   referenceLabel?: string
-}) {
-  return (
-    <SectionCard title={title} description={description} contentClassName="p-3 sm:p-4">
-      <div className="h-64 w-full" aria-label={title}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 12, right: 18, bottom: 4, left: 6 }}>
-            <CartesianGrid stroke="var(--color-production-grid)" strokeDasharray="3 3" opacity={0.35} />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#7f9bad" />
-            <YAxis tick={{ fontSize: 11 }} stroke="#7f9bad" width={64} />
-            <Tooltip
-              formatter={(value) =>
-                typeof value === 'number'
-                  ? value.toLocaleString('es-PE', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
-                  : '—'
-              }
-              contentStyle={{
-                background: '#0a1a27',
-                border: '1px solid #2b5268',
-                borderRadius: '0.625rem',
-                color: '#f3f8fb',
-                fontSize: '0.75rem',
-              }}
-            />
-            <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-            {referenceValue ? (
-              <ReferenceLine
-                y={referenceValue}
-                stroke="#10b981"
-                strokeDasharray="4 4"
-                label={{
-                  value: referenceLabel ?? 'Benchmark',
-                  fill: '#10b981',
-                  fontSize: 10,
-                  position: 'insideTopRight',
-                }}
-              />
-            ) : null}
-            <Line type="monotone" dataKey={dayKey} name="Día" stroke="#20a6d2" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
-            <Line type="monotone" dataKey={nightKey} name="Noche" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </SectionCard>
-  )
 }
+
+const OperationalLineChart = lazy(async () => {
+  const {
+    CartesianGrid,
+    Legend,
+    Line,
+    LineChart,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+  } = await import('recharts')
+
+  return {
+    default: function OperationalLineChart({
+      title,
+      description,
+      data,
+      dayKey,
+      nightKey,
+      referenceValue,
+      referenceLabel,
+    }: OperationalLineChartProps) {
+      return (
+        <SectionCard title={title} description={description} contentClassName="p-3 sm:p-4">
+          <div className="h-64 w-full" aria-label={title}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 12, right: 18, bottom: 4, left: 6 }}>
+                <CartesianGrid stroke="var(--color-production-grid)" strokeDasharray="3 3" opacity={0.35} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#7f9bad" />
+                <YAxis tick={{ fontSize: 11 }} stroke="#7f9bad" width={64} />
+                <Tooltip
+                  formatter={(value) =>
+                    typeof value === 'number'
+                      ? value.toLocaleString('es-PE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : '—'
+                  }
+                  contentStyle={{
+                    background: '#0a1a27',
+                    border: '1px solid #2b5268',
+                    borderRadius: '0.625rem',
+                    color: '#f3f8fb',
+                    fontSize: '0.75rem',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                {referenceValue ? (
+                  <ReferenceLine
+                    y={referenceValue}
+                    stroke="#10b981"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: referenceLabel ?? 'Benchmark',
+                      fill: '#10b981',
+                      fontSize: 10,
+                      position: 'insideTopRight',
+                    }}
+                  />
+                ) : null}
+                <Line type="monotone" dataKey={dayKey} name="Día" stroke="#20a6d2" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+                <Line type="monotone" dataKey={nightKey} name="Noche" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+      )
+    },
+  }
+})
 
 export function PerformanceCharts({ records }: PerformanceChartsProps) {
   const complete = records.filter((record) => record.isComplete)
@@ -121,21 +129,23 @@ export function PerformanceCharts({ records }: PerformanceChartsProps) {
   const data = buildChartRows(complete)
 
   return (
-    <section className="grid gap-5 xl:grid-cols-2" aria-label="Gráficos de rendimiento">
-      <OperationalLineChart
-        title="Kg/persona-h por día"
-        description="Productividad agregada de cada turno; no usa promedios simples."
-        data={data}
-        dayKey="dayProductivity"
-        nightKey="nightProductivity"
-      />
-      <OperationalLineChart
-        title="Kg/h por día"
-        description="Ritmo físico registrado por jornada y turno."
-        data={data}
-        dayKey="dayKgPerHour"
-        nightKey="nightKgPerHour"
-      />
-    </section>
+    <Suspense fallback={<div className="h-64 rounded-xl bg-slate-100 dark:bg-ui-surface-dark-soft" aria-label="Cargando gráficos" />}>
+      <section className="grid gap-5 xl:grid-cols-2" aria-label="Gráficos de rendimiento">
+        <OperationalLineChart
+          title="Kg/persona-h por día"
+          description="Productividad agregada de cada turno; no usa promedios simples."
+          data={data}
+          dayKey="dayProductivity"
+          nightKey="nightProductivity"
+        />
+        <OperationalLineChart
+          title="Kg/h por día"
+          description="Ritmo físico registrado por jornada y turno."
+          data={data}
+          dayKey="dayKgPerHour"
+          nightKey="nightKgPerHour"
+        />
+      </section>
+    </Suspense>
   )
 }

@@ -25,6 +25,46 @@ export interface ProductionEntryHeaderProps {
   onDeleteDay?: () => void
 }
 
+interface ProductionEntryHeaderActionsProps {
+  readonly isBalanceOnly: boolean
+  readonly draftProcess: ProductionProcess
+  readonly canClose: boolean
+  readonly closureValidation: ProductionClosureValidation
+  readonly existingDay: ProductionDay | undefined
+  readonly onRequestDelete: () => void
+}
+
+function ProductionEntryHeaderActions({
+  isBalanceOnly,
+  draftProcess,
+  canClose,
+  closureValidation,
+  existingDay,
+  onRequestDelete,
+}: ProductionEntryHeaderActionsProps) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {isBalanceOnly ? <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge> : null}
+      <StatusBadge tone="info">{productionProcessLabels[draftProcess].toUpperCase()}</StatusBadge>
+      <StatusBadge
+        tone={!canClose ? 'warning' : closureValidation.warnings.length > 0 ? 'warning' : 'success'}
+      >
+        {!canClose ? 'EN CAPTURA' : closureValidation.warnings.length > 0 ? 'LISTA · CON OBSERVACIONES' : 'LISTA PARA CERRAR'}
+      </StatusBadge>
+      {existingDay && existingDay.status !== 'CLOSED' ? (
+        <button
+          type="button"
+          onClick={onRequestDelete}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:text-rose-800 transition-colors shadow-2xs"
+        >
+          <Trash2 className="size-3.5" aria-hidden="true" />
+          Eliminar jornada
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 export function ProductionEntryHeader({
   existingDay,
   canClose,
@@ -60,39 +100,14 @@ export function ProductionEntryHeader({
                 : 'Registra los reportes de producción y concilia cada turno hasta obtener un cuadre exacto.'
         }
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {isBalanceOnly ? (
-              <StatusBadge tone="neutral">JORNADA DE SALDOS</StatusBadge>
-            ) : null}
-            <StatusBadge tone="info">
-              {productionProcessLabels[draftProcess].toUpperCase()}
-            </StatusBadge>
-            <StatusBadge
-              tone={
-                !canClose
-                  ? 'warning'
-                  : closureValidation.warnings.length > 0
-                    ? 'warning'
-                    : 'success'
-              }
-            >
-              {!canClose
-                ? 'EN CAPTURA'
-                : closureValidation.warnings.length > 0
-                  ? 'LISTA · CON OBSERVACIONES'
-                  : 'LISTA PARA CERRAR'}
-            </StatusBadge>
-            {existingDay && existingDay.status !== 'CLOSED' && onDeleteDay ? (
-              <button
-                type="button"
-                onClick={() => setIsDeleteOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:text-rose-800 transition-colors shadow-2xs"
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-                Eliminar jornada
-              </button>
-            ) : null}
-          </div>
+          <ProductionEntryHeaderActions
+            isBalanceOnly={isBalanceOnly}
+            draftProcess={draftProcess}
+            canClose={canClose}
+            closureValidation={closureValidation}
+            existingDay={existingDay}
+            onRequestDelete={() => setIsDeleteOpen(true)}
+          />
         }
       />
 

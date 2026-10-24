@@ -17,18 +17,15 @@ export interface ShiftComparisonTableProps {
   records: readonly PerformanceRecord[]
 }
 
-export function ShiftComparisonTable({
-  process,
-  records,
-}: ShiftComparisonTableProps) {
-  const day = aggregatePerformanceFor(records, process, 'DAY')
-  const night = aggregatePerformanceFor(records, process, 'NIGHT')
-  const bestShift = getBestPerformanceShift(
-    records.filter((record) => record.process === process),
-  )
+type ShiftPerformance = ReturnType<typeof aggregatePerformanceFor>
+
+function buildShiftComparisonRows(
+  day: ShiftPerformance,
+  night: ShiftPerformance,
+) {
   const hasDay = day.completeRecordCount > 0
   const hasNight = night.completeRecordCount > 0
-  const rows = [
+  return [
     ['Kg procesados', hasDay ? formatCentiKg(day.processedKg100) : '—', hasNight ? formatCentiKg(night.processedKg100) : '—'],
     ['Horas efectivas', hasDay ? formatPerformanceMetric(day.effectiveHours, ' h') : '—', hasNight ? formatPerformanceMetric(night.effectiveHours, ' h') : '—'],
     ['Persona-h', hasDay ? formatPerformanceMetric(day.personHours) : '—', hasNight ? formatPerformanceMetric(night.personHours) : '—'],
@@ -38,7 +35,19 @@ export function ShiftComparisonTable({
     ['Cumplimiento', hasDay ? formatPerformanceMetric(day.benchmarkCompliance, '%') : '—', hasNight ? formatPerformanceMetric(night.benchmarkCompliance, '%') : '—'],
     ['Producción potencial', hasDay && day.potentialKg100 !== null ? formatCentiKg(day.potentialKg100) : '—', hasNight && night.potentialKg100 !== null ? formatCentiKg(night.potentialKg100) : '—'],
     ['Brecha de productividad', hasDay ? formatProductivityGap(day) : '—', hasNight ? formatProductivityGap(night) : '—'],
-  ]
+  ] as const
+}
+
+export function ShiftComparisonTable({
+  process,
+  records,
+}: ShiftComparisonTableProps) {
+  const day = aggregatePerformanceFor(records, process, 'DAY')
+  const night = aggregatePerformanceFor(records, process, 'NIGHT')
+  const bestShift = getBestPerformanceShift(
+    records.filter((record) => record.process === process),
+  )
+  const rows = buildShiftComparisonRows(day, night)
 
   return (
     <SectionCard

@@ -43,6 +43,7 @@ export function ProductionDaysFilterBar({
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
+            aria-label="Buscar jornadas por lote o supervisor"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             placeholder="Buscar por lote o supervisor..."
@@ -51,6 +52,7 @@ export function ProductionDaysFilterBar({
           {searchQuery ? (
             <button
               type="button"
+              aria-label="Limpiar búsqueda"
               onClick={() => onSearchQueryChange('')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >

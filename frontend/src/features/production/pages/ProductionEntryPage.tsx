@@ -110,7 +110,6 @@ export function ProductionEntryPage() {
 
       {candidateUpstreamDate ? (
         <section
-          role="region"
           aria-label="Aviso de fecha desfasada"
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
         >

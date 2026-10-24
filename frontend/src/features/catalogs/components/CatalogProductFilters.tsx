@@ -26,6 +26,7 @@ export function CatalogProductFilters({
         <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
         <input
           type="text"
+          aria-label="Buscar productos por nombre, familia o alias"
           placeholder="Buscar por producto, familia o alias..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -35,6 +36,7 @@ export function CatalogProductFilters({
 
       <div className="flex flex-wrap items-center gap-2">
         <select
+          aria-label="Filtrar por familia"
           value={selectedFamily}
           onChange={(e) => onFamilyChange(e.target.value)}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-200 dark:bg-slate-50 dark:text-white"
@@ -48,6 +50,7 @@ export function CatalogProductFilters({
         </select>
 
         <select
+          aria-label="Filtrar por estado"
           value={selectedStatus}
           onChange={(e) => onStatusChange(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-200 dark:bg-slate-50 dark:text-white"

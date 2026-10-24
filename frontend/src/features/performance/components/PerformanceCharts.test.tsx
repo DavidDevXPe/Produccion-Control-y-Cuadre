@@ -46,7 +46,7 @@ describe('PerformanceCharts', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders charts section and line chart titles when complete records are provided', () => {
+  it('renders charts section and line chart titles when complete records are provided', async () => {
     const dayRecord = createPerformanceRecord({
       id: 'p1',
       date: '2026-09-16',
@@ -63,6 +63,8 @@ describe('PerformanceCharts', () => {
     })
 
     render(<PerformanceCharts records={[dayRecord, nightRecord]} />)
+
+    await screen.findByRole('region', {}, { timeout: 5000 })
 
     expect(
       screen.getByRole('region', { name: 'Gráficos de rendimiento' }),

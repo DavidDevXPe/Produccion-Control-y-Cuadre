@@ -6,7 +6,7 @@ export interface AdminMobileDrawerProps {
   isOpen: boolean
   onClose: () => void
   closeButtonRef: RefObject<HTMLButtonElement | null>
-  mobileNavigationRef: RefObject<HTMLElement | null>
+  mobileNavigationRef: RefObject<HTMLDialogElement | null>
 }
 
 export function AdminMobileDrawer({
@@ -26,11 +26,11 @@ export function AdminMobileDrawer({
         tabIndex={-1}
         onClick={onClose}
       />
-      <aside
+      <dialog
+        open
         ref={mobileNavigationRef}
         id="mobile-navigation"
-        className="relative h-full w-[min(20rem,88vw)] shadow-2xl"
-        role="dialog"
+        className="relative m-0 h-full w-[min(20rem,88vw)] border-0 p-0 shadow-2xl"
         aria-modal="true"
         aria-labelledby="mobile-navigation-title"
       >
@@ -47,7 +47,7 @@ export function AdminMobileDrawer({
           <X className="size-5" aria-hidden="true" />
         </button>
         <AdminSidebarContent onNavigate={onClose} />
-      </aside>
+      </dialog>
     </div>
   )
 }

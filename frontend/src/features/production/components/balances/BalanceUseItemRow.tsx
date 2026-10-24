@@ -33,6 +33,119 @@ export interface BalanceUseItemRowProps {
   }
 }
 
+function getBalanceStatus(
+  requiresProductDistribution: boolean,
+  position: ReturnType<typeof captureBalancePosition>,
+  diagnosticCount: number,
+) {
+  if (requiresProductDistribution) {
+    return { tone: 'warning' as const, label: 'REQUIERE DISTRIBUCIÓN' }
+  }
+  if (position.overusedKg100 > 0 || diagnosticCount > 0) {
+    return { tone: 'danger' as const, label: 'REVISAR' }
+  }
+  if (position.pendingKg100 === 0) {
+    return { tone: 'success' as const, label: 'CONSUMIDO' }
+  }
+  return { tone: 'warning' as const, label: 'PENDIENTE' }
+}
+
+interface LegacyBalanceDistributionProps {
+  readonly balance: ProductionCaptureBalanceUse
+  readonly catalogItems: readonly ProductionCatalogItem[]
+  readonly onDistribute: (key: string, productId: string) => void
+}
+
+function LegacyBalanceDistribution({
+  balance,
+  catalogItems,
+  onDistribute,
+}: LegacyBalanceDistributionProps) {
+  if (balance.requiresProductDistribution !== true) return null
+
+  return (
+    <div
+      role="alert"
+      className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-200">
+            Requiere distribución
+          </p>
+          <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-100">
+            Este saldo histórico solo identifica la familia. Selecciona el
+            producto comercial exacto; el sistema no lo asignará automáticamente.
+          </p>
+        </div>
+
+        <label className="min-w-0 sm:w-[28rem]">
+          <span className="mb-1 block text-[0.6875rem] font-bold text-amber-900 dark:text-amber-200">
+            Producto exacto
+          </span>
+          <select
+            value=""
+            onChange={(event) => onDistribute(balance.key, event.target.value)}
+            className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-amber-500/30 dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong"
+          >
+            <option value="">Seleccionar producto…</option>
+            {catalogItems
+              .filter(
+                (product) =>
+                  product.familyId === balance.familyId && product.active !== false,
+              )
+              .map((product) => (
+                <option key={product.productId} value={product.productId}>
+                  {product.productName}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  )
+}
+
+function BalanceShiftDiagnostics({
+  diagnostics,
+}: {
+  readonly diagnostics: readonly BalanceShiftDiagnostic[]
+}) {
+  if (diagnostics.length === 0) return null
+
+  return (
+    <div
+      role="alert"
+      className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
+    >
+      <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em]">
+        Saldo anterior mal distribuido
+      </p>
+      {diagnostics.map((diagnostic) => (
+        <div
+          key={`${diagnostic.productId}-${diagnostic.shift}`}
+          className="mt-2 text-xs leading-5"
+        >
+          <p className="font-bold">
+            {diagnostic.productName} · Turno{' '}
+            {diagnostic.shift === 'DAY' ? 'Día' : 'Noche'}
+          </p>
+          <p>
+            Reporte físico: {formatCentiKg(diagnostic.reportedKg100)} · Saldo
+            asignado: {formatCentiKg(diagnostic.assignedBalanceKg100)} · Máximo
+            consumible: {formatCentiKg(diagnostic.maximumConsumableKg100)} · Exceso:{' '}
+            {formatCentiKg(diagnostic.excessKg100)}
+          </p>
+          <p className="mt-1">
+            El saldo asignado supera los kg físicamente reportados para este producto.
+            Redistribuye el consumo entre Día/Noche o deja el remanente pendiente.
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function BalanceUseItemRow({
   balance,
   balanceIdx,
@@ -50,6 +163,11 @@ export function BalanceUseItemRow({
     balance.requiresProductDistribution === true
   const productShiftDiagnostics = balanceShiftDiagnostics.filter(
     (diagnostic) => diagnostic.productId === balance.productId,
+  )
+  const balanceStatus = getBalanceStatus(
+    requiresProductDistribution,
+    position,
+    productShiftDiagnostics.length,
   )
 
   return (
@@ -79,50 +197,11 @@ export function BalanceUseItemRow({
         </button>
       </div>
 
-      {requiresProductDistribution ? (
-        <div
-          role="alert"
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em] text-amber-900 dark:text-amber-200">
-                Requiere distribución
-              </p>
-              <p className="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-100">
-                Este saldo histórico solo identifica la familia. Selecciona el
-                producto comercial exacto; el sistema no lo asignará automáticamente.
-              </p>
-            </div>
-
-            <label className="min-w-0 sm:w-[28rem]">
-              <span className="mb-1 block text-[0.6875rem] font-bold text-amber-900 dark:text-amber-200">
-                Producto exacto
-              </span>
-              <select
-                value=""
-                onChange={(event) =>
-                  onDistributeLegacyBalance(balance.key, event.target.value)
-                }
-                className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-400 dark:border-amber-500/30 dark:bg-ui-surface-dark-recessed dark:text-ui-text-dark-strong"
-              >
-                <option value="">Seleccionar producto…</option>
-                {catalogItems
-                  .filter(
-                    (product) =>
-                      product.familyId === balance.familyId &&
-                      product.active !== false,
-                  )
-                  .map((product) => (
-                    <option key={product.productId} value={product.productId}>
-                      {product.productName}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        </div>
-      ) : null}
+      <LegacyBalanceDistribution
+        balance={balance}
+        catalogItems={catalogItems}
+        onDistribute={onDistributeLegacyBalance}
+      />
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
@@ -177,64 +256,11 @@ export function BalanceUseItemRow({
         </div>
 
         <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
-          <StatusBadge
-            tone={
-              requiresProductDistribution ||
-              position.overusedKg100 > 0 ||
-              productShiftDiagnostics.length > 0
-                ? requiresProductDistribution
-                  ? 'warning'
-                  : 'danger'
-                : position.pendingKg100 === 0
-                  ? 'success'
-                  : 'warning'
-            }
-          >
-            {requiresProductDistribution
-              ? 'REQUIERE DISTRIBUCIÓN'
-              : position.overusedKg100 > 0 ||
-                  productShiftDiagnostics.length > 0
-                ? 'REVISAR'
-                : position.pendingKg100 === 0
-                  ? 'CONSUMIDO'
-                  : 'PENDIENTE'}
-          </StatusBadge>
+          <StatusBadge tone={balanceStatus.tone}>{balanceStatus.label}</StatusBadge>
         </div>
       </div>
 
-      {productShiftDiagnostics.length > 0 ? (
-        <div
-          role="alert"
-          className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-rose-900 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200"
-        >
-          <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.06em]">
-            Saldo anterior mal distribuido
-          </p>
-          {productShiftDiagnostics.map((diagnostic) => (
-            <div
-              key={`${diagnostic.productId}-${diagnostic.shift}`}
-              className="mt-2 text-xs leading-5"
-            >
-              <p className="font-bold">
-                {diagnostic.productName} · Turno{' '}
-                {diagnostic.shift === 'DAY' ? 'Día' : 'Noche'}
-              </p>
-              <p>
-                Reporte físico: {formatCentiKg(diagnostic.reportedKg100)} ·
-                Saldo asignado: {formatCentiKg(diagnostic.assignedBalanceKg100)}{' '}
-                · Máximo consumible:{' '}
-                {formatCentiKg(diagnostic.maximumConsumableKg100)} · Exceso:{' '}
-                {formatCentiKg(diagnostic.excessKg100)}
-              </p>
-              <p className="mt-1">
-                El saldo asignado supera los kg físicamente reportados para este
-                producto. Redistribuye el consumo entre Día/Noche o deja el
-                remanente pendiente.
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <BalanceShiftDiagnostics diagnostics={productShiftDiagnostics} />
     </div>
   )
 }

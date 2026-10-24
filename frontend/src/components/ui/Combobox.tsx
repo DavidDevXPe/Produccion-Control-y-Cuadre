@@ -42,6 +42,8 @@ export interface ComboboxProps {
 import { groupOptions, normalizeSearch } from './comboboxUtils'
 import { ComboboxOptionRow } from './ComboboxOptionRow'
 
+const EMPTY_RECENT_VALUES: string[] = []
+
 export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Combobox(
   {
     options,
@@ -52,7 +54,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
     placeholder = 'Buscar…',
     disabled = false,
     noResultsText = 'Sin productos coincidentes',
-    recentValues = [],
+    recentValues = EMPTY_RECENT_VALUES,
     recentSectionTitle = 'Usados recientemente',
     searchInputRef,
     className = '',
@@ -137,19 +139,36 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
     return list
   }, [displayItems])
 
-  const currentActiveOption = useMemo(() => {
-    if (activeIndex >= 0 && flatSelectable[activeIndex]) {
-      return flatSelectable[activeIndex]
-    }
-    if (query.trim() && filteredOptions.length > 0) {
-      return filteredOptions[0] ?? null
-    }
-    return null
-  }, [activeIndex, filteredOptions, flatSelectable, query])
+  const notifyActiveOptionChange = useCallback(
+    (option: ComboboxOption | null) => {
+      onActiveOptionChange?.(option)
+    },
+    [onActiveOptionChange],
+  )
 
-  useEffect(() => {
-    onActiveOptionChange?.(currentActiveOption)
-  }, [currentActiveOption, onActiveOptionChange])
+  const getSelectableOptionsForQuery = useCallback(
+    (nextQuery: string): ComboboxOption[] => {
+      const norm = normalizeSearch(nextQuery)
+      const words = norm.split(/\s+/).filter(Boolean)
+      const nextFilteredOptions = norm
+        ? options.filter((opt) => {
+            const target = normalizeSearch(`${opt.group ?? ''} ${opt.label} ${opt.secondaryText ?? ''}`)
+            return words.every((word) => target.includes(word))
+          })
+        : options
+
+      const groupedOptions = groupOptions(nextFilteredOptions).flatMap((group) => group.items)
+      if (nextQuery.trim()) return groupedOptions
+
+      const optionMap = new Map(options.map((option) => [option.value, option]))
+      const recents = recentValues
+        .map((value) => optionMap.get(value))
+        .filter((option): option is ComboboxOption => Boolean(option))
+
+      return [...recents, ...groupedOptions]
+    },
+    [options, recentValues],
+  )
 
   const handleSelectOption = useCallback(
     (option: ComboboxOption) => {
@@ -158,6 +177,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
       if (autoResetOnSelect) setQuery('')
       setIsOpen(false)
       setActiveIndex(-1)
+      notifyActiveOptionChange(null)
       if (document.activeElement !== internalInputRef.current) {
         internalInputRef.current?.focus()
       }
@@ -165,7 +185,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
         isSelectingRef.current = false
       }, 0)
     },
-    [autoResetOnSelect, onSelect],
+    [autoResetOnSelect, notifyActiveOptionChange, onSelect],
   )
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -173,20 +193,26 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
+      let nextIndex = -1
       if (!isOpen) {
         setIsOpen(true)
-        setActiveIndex(flatSelectable.length > 0 ? 0 : -1)
+        nextIndex = flatSelectable.length > 0 ? 0 : -1
       } else if (flatSelectable.length > 0) {
-        setActiveIndex((prev) => (prev < 0 ? 0 : prev + 1 >= flatSelectable.length ? 0 : prev + 1))
+        nextIndex = activeIndex < 0 ? 0 : activeIndex + 1 >= flatSelectable.length ? 0 : activeIndex + 1
       }
+      setActiveIndex(nextIndex)
+      notifyActiveOptionChange(flatSelectable[nextIndex] ?? null)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
+      let nextIndex = -1
       if (!isOpen) {
         setIsOpen(true)
-        setActiveIndex(flatSelectable.length > 0 ? flatSelectable.length - 1 : -1)
+        nextIndex = flatSelectable.length > 0 ? flatSelectable.length - 1 : -1
       } else if (flatSelectable.length > 0) {
-        setActiveIndex((prev) => (prev <= 0 ? flatSelectable.length - 1 : prev - 1))
+        nextIndex = activeIndex <= 0 ? flatSelectable.length - 1 : activeIndex - 1
       }
+      setActiveIndex(nextIndex)
+      notifyActiveOptionChange(flatSelectable[nextIndex] ?? null)
     } else if (e.key === 'Enter') {
       if (isOpen && activeIndex >= 0 && activeIndex < flatSelectable.length) {
         e.preventDefault()
@@ -198,6 +224,7 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
         e.preventDefault()
         setIsOpen(false)
         setActiveIndex(-1)
+        notifyActiveOptionChange(null)
       }
     }
   }
@@ -239,9 +266,13 @@ export const Combobox = forwardRef<HTMLInputElement, ComboboxProps>(function Com
           disabled={disabled}
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value)
+            const nextQuery = e.target.value
+            const nextSelectable = getSelectableOptionsForQuery(nextQuery)
+            const nextIndex = nextSelectable.length > 0 ? 0 : -1
+            setQuery(nextQuery)
             setIsOpen(true)
-            setActiveIndex(0)
+            setActiveIndex(nextIndex)
+            notifyActiveOptionChange(nextSelectable[nextIndex] ?? null)
           }}
           onFocus={() => {
             if (!isSelectingRef.current) setIsOpen(true)

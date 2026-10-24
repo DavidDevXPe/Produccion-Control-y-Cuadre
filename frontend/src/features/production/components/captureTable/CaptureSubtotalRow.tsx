@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { StatusBadge } from '../../../../components/ui/StatusBadge'
 import { formatCentiKgValue } from '../../../../utils/formatters'
 import type { ReportFamilySubtotal } from '../../model/businessRules'
@@ -17,6 +18,186 @@ export interface CaptureSubtotalRowProps {
   }
 }
 
+type TraceabilityStatus = ReturnType<typeof freezingTraceabilityStatus>
+
+function SubtotalYieldCell({
+  subtotal,
+  isDownstream,
+  isBalanceOnly,
+  availableKg100,
+}: {
+  readonly subtotal: ReportFamilySubtotal
+  readonly isDownstream: boolean
+  readonly isBalanceOnly: boolean
+  readonly availableKg100: Kg100
+}) {
+  let content: ReactNode
+  if (isDownstream) {
+    content = (
+      <>
+        <span className="font-semibold text-slate-800 dark:text-white">
+          {formatCentiKgValue(availableKg100)}
+        </span>
+        <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
+          kg
+        </span>
+      </>
+    )
+  } else if (isBalanceOnly) {
+    content = 'No aplica'
+  } else if (subtotal.preliminaryYieldPercent === null) {
+    content = (
+      <span
+        title="Rendimiento disponible al ingresar kg"
+        aria-label="Rendimiento disponible al ingresar kg"
+        className="text-slate-400 dark:text-slate-500"
+      >
+        —
+      </span>
+    )
+  } else {
+    const yieldClass =
+      subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
+        ? subtotal.status === 'COMPLIES'
+          ? 'font-bold text-emerald-700 dark:text-emerald-400'
+          : 'font-bold text-amber-700 dark:text-amber-400'
+        : 'font-semibold text-slate-800 dark:text-white'
+    content = (
+      <span className={yieldClass}>
+        {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+      </span>
+    )
+  }
+
+  return (
+    <td className="number-tabular px-3 py-2 text-right text-xs">{content}</td>
+  )
+}
+
+function SubtotalTargetCell({
+  subtotal,
+  isDownstream,
+  isBalanceOnly,
+}: {
+  readonly subtotal: ReportFamilySubtotal
+  readonly isDownstream: boolean
+  readonly isBalanceOnly: boolean
+}) {
+  let content: ReactNode
+  if (isDownstream) {
+    content = (
+      <>
+        <span className="font-semibold text-slate-800 dark:text-white">
+          {formatCentiKgValue(subtotal.totalKg100)}
+        </span>
+        <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
+          kg
+        </span>
+      </>
+    )
+  } else if (isBalanceOnly) {
+    content = 'No aplica'
+  } else if (subtotal.totalKg100 === 0 || subtotal.targetPercent === null) {
+    content = '—'
+  } else {
+    content = `≥ ${subtotal.targetPercent.toFixed(0)}%`
+  }
+
+  return (
+    <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
+      {content}
+    </td>
+  )
+}
+
+function SubtotalDifferenceCell({
+  subtotal,
+  traceabilityStatus,
+  isDownstream,
+  isBalanceOnly,
+}: {
+  readonly subtotal: ReportFamilySubtotal
+  readonly traceabilityStatus: TraceabilityStatus
+  readonly isDownstream: boolean
+  readonly isBalanceOnly: boolean
+}) {
+  let content: ReactNode
+  if (isDownstream) {
+    const differenceClass =
+      traceabilityStatus.differenceKg100 < 0
+        ? 'font-bold text-rose-700 dark:text-rose-400'
+        : traceabilityStatus.differenceKg100 > 0
+          ? 'font-semibold text-sky-700 dark:text-sky-400'
+          : 'text-slate-800 dark:text-white'
+    content = (
+      <>
+        <span className={`font-semibold ${differenceClass}`}>
+          {formatCentiKgValue(traceabilityStatus.differenceKg100)}
+        </span>
+        <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
+          kg
+        </span>
+      </>
+    )
+  } else if (
+    isBalanceOnly ||
+    subtotal.targetPercent === null ||
+    subtotal.totalKg100 === 0
+  ) {
+    content = '—'
+  } else {
+    content = (
+      <>
+        <span className="font-bold text-slate-900 dark:text-white">
+          {formatCentiKgValue(subtotal.missingToTargetKg100)}
+        </span>
+        <span className="ml-1 text-[0.6875rem] font-medium text-slate-600 dark:text-slate-400">
+          kg
+        </span>
+      </>
+    )
+  }
+
+  return (
+    <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
+      {content}
+    </td>
+  )
+}
+
+function getSubtotalStatus(
+  subtotal: ReportFamilySubtotal,
+  traceabilityStatus: TraceabilityStatus,
+  isFreezing: boolean,
+  isBalanceOnly: boolean,
+) {
+  if (isFreezing) {
+    return {
+      tone: traceabilityStatus.tone,
+      label: traceabilityStatus.label,
+      showIcon: true,
+    }
+  }
+  if (isBalanceOnly) {
+    return { tone: 'neutral' as const, label: 'NO APLICA', showIcon: false }
+  }
+  if (subtotal.totalKg100 === 0) {
+    return { tone: 'neutral' as const, label: 'SIN DATOS', showIcon: false }
+  }
+
+  const showIcon = subtotal.targetPercent !== null
+  if (subtotal.status === 'INTEGRITY_ERROR') {
+    return { tone: 'danger' as const, label: 'ERROR', showIcon }
+  }
+  if (subtotal.status === 'BELOW_TARGET') {
+    return { tone: 'warning' as const, label: 'BAJO OBJETIVO', showIcon }
+  }
+  if (subtotal.status === 'COMPLIES') {
+    return { tone: 'success' as const, label: 'CUMPLE', showIcon }
+  }
+  return { tone: 'neutral' as const, label: 'SIN OBJETIVO', showIcon }
+}
+
 export function CaptureSubtotalRow({
   subtotal,
   isFreezing,
@@ -30,6 +211,12 @@ export function CaptureSubtotalRow({
     subtotal.totalKg100,
     familyTraceability.availableKg100,
     familyTraceability.linkedKg100,
+  )
+  const subtotalStatus = getSubtotalStatus(
+    subtotal,
+    familyTraceabilityStatusData,
+    isFreezing === true,
+    isBalanceOnly,
   )
 
   return (
@@ -91,134 +278,30 @@ export function CaptureSubtotalRow({
           kg
         </span>
       </td>
-      <td className="number-tabular px-3 py-2 text-right text-xs">
-        {isDownstream ? (
-          <>
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(familyTraceability.availableKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        ) : isBalanceOnly ? (
-          'No aplica'
-        ) : subtotal.preliminaryYieldPercent === null ? (
-          <span
-            title="Rendimiento disponible al ingresar kg"
-            aria-label="Rendimiento disponible al ingresar kg"
-            className="text-slate-400 dark:text-slate-500"
-          >
-            —
-          </span>
-        ) : (
-          <span
-            className={
-              subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
-                ? subtotal.status === 'COMPLIES'
-                  ? 'font-bold text-emerald-700 dark:text-emerald-400'
-                  : 'font-bold text-amber-700 dark:text-amber-400'
-                : 'font-semibold text-slate-800 dark:text-white'
-            }
-          >
-            {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
-          </span>
-        )}
-      </td>
-      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isDownstream ? (
-          <>
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {formatCentiKgValue(subtotal.totalKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        ) : isBalanceOnly ? (
-          'No aplica'
-        ) : subtotal.totalKg100 === 0 ? (
-          '—'
-        ) : subtotal.targetPercent === null ? (
-          '—'
-        ) : (
-          `≥ ${subtotal.targetPercent.toFixed(0)}%`
-        )}
-      </td>
-      <td className="number-tabular px-3 py-2 text-right text-xs text-slate-700 dark:text-slate-300">
-        {isDownstream ? (
-          <>
-            <span
-              className={`font-semibold ${
-                familyTraceabilityStatusData.differenceKg100 < 0
-                  ? 'font-bold text-rose-700 dark:text-rose-400'
-                  : familyTraceabilityStatusData.differenceKg100 > 0
-                    ? 'font-semibold text-sky-700 dark:text-sky-400'
-                    : 'text-slate-800 dark:text-white'
-              }`}
-            >
-              {formatCentiKgValue(familyTraceabilityStatusData.differenceKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-500 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        ) : isBalanceOnly ||
-          subtotal.targetPercent === null ||
-          subtotal.totalKg100 === 0 ? (
-          '—'
-        ) : (
-          <>
-            <span className="font-bold text-slate-900 dark:text-white">
-              {formatCentiKgValue(subtotal.missingToTargetKg100)}
-            </span>
-            <span className="ml-1 text-[0.6875rem] font-medium text-slate-600 dark:text-slate-400">
-              kg
-            </span>
-          </>
-        )}
-      </td>
+      <SubtotalYieldCell
+        subtotal={subtotal}
+        isDownstream={isDownstream}
+        isBalanceOnly={isBalanceOnly}
+        availableKg100={familyTraceability.availableKg100}
+      />
+      <SubtotalTargetCell
+        subtotal={subtotal}
+        isDownstream={isDownstream}
+        isBalanceOnly={isBalanceOnly}
+      />
+      <SubtotalDifferenceCell
+        subtotal={subtotal}
+        traceabilityStatus={familyTraceabilityStatusData}
+        isDownstream={isDownstream}
+        isBalanceOnly={isBalanceOnly}
+      />
       <td className="whitespace-nowrap px-3 py-2 text-center">
         <StatusBadge
-          tone={
-            isFreezing
-              ? familyTraceabilityStatusData.tone
-              : isBalanceOnly
-                ? 'neutral'
-                : subtotal.totalKg100 === 0
-                  ? 'neutral'
-                  : subtotal.status === 'INTEGRITY_ERROR'
-                    ? 'danger'
-                    : subtotal.status === 'BELOW_TARGET'
-                      ? 'warning'
-                      : subtotal.status === 'COMPLIES'
-                        ? 'success'
-                        : 'neutral'
-          }
-          showIcon={
-            isFreezing
-              ? true
-              : isBalanceOnly ||
-                  subtotal.totalKg100 === 0 ||
-                  subtotal.targetPercent === null
-                ? false
-                : true
-          }
+          tone={subtotalStatus.tone}
+          showIcon={subtotalStatus.showIcon}
           truncateText={false}
         >
-          {isFreezing
-            ? familyTraceabilityStatusData.label
-            : isBalanceOnly
-              ? 'NO APLICA'
-              : subtotal.totalKg100 === 0
-                ? 'SIN DATOS'
-                : subtotal.status === 'INTEGRITY_ERROR'
-                  ? 'ERROR'
-                  : subtotal.status === 'BELOW_TARGET'
-                    ? 'BAJO OBJETIVO'
-                    : subtotal.status === 'COMPLIES'
-                      ? 'CUMPLE'
-                      : 'SIN OBJETIVO'}
+          {subtotalStatus.label}
         </StatusBadge>
       </td>
       <td className="w-12" />

@@ -51,10 +51,11 @@ export function CatalogProductModal({
         </h2>
         <form onSubmit={onSave} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+            <label htmlFor="catalog-product-name" className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
               Nombre del Producto
             </label>
             <input
+              id="catalog-product-name"
               type="text"
               required
               value={formName}
@@ -66,10 +67,11 @@ export function CatalogProductModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+              <label htmlFor="catalog-product-family" className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                 Familia
               </label>
               <select
+                id="catalog-product-family"
                 value={formFamilyId}
                 onChange={(e) => onFormFamilyIdChange(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 dark:border-slate-200 dark:bg-slate-50 dark:text-white"
@@ -83,10 +85,11 @@ export function CatalogProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+              <label htmlFor="catalog-product-technical-class" className="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                 Clasificación Térmica
               </label>
               <select
+                id="catalog-product-technical-class"
                 value={formTechnicalClass}
                 onChange={(e) =>
                   onFormTechnicalClassChange(
@@ -109,12 +112,13 @@ export function CatalogProductModal({
 
           {editingProduct ? (
             <div className="border-t border-slate-200 pt-4 dark:border-slate-200">
-              <label className="mb-2 block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+              <label htmlFor="catalog-product-alias" className="mb-2 block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                 Sinónimos y Aliases (para coincidencia con planillas Excel)
               </label>
 
               <div className="flex gap-2">
                 <input
+                  id="catalog-product-alias"
                   type="text"
                   value={newAlias}
                   onChange={(e) => onNewAliasChange(e.target.value)}

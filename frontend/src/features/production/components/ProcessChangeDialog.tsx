@@ -18,8 +18,8 @@ export function ProcessChangeDialog({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-      <section
-        role="dialog"
+      <dialog
+        open
         aria-modal="true"
         aria-labelledby="process-change-title"
         className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
@@ -58,7 +58,7 @@ export function ProcessChangeDialog({
             Cambiar proceso
           </button>
         </div>
-      </section>
+      </dialog>
     </div>
   )
 }

@@ -197,7 +197,7 @@ export function ProductionShiftCards({
                   aria-label={`Avance de conciliación Turno ${label}`}
                   className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-50 dark:ring-1 dark:ring-slate-200/50"
                 >
-                  <div className="flex h-full transition-all duration-300" style={{ width: `${clampedPercent}%` }}>
+                  <div className="flex h-full transition-[width] duration-300" style={{ width: `${clampedPercent}%` }}>
                     <div className="h-full bg-emerald-500" style={{ width: `${shift.ownProductionKg100 ? (shift.normalProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
                     <div className="h-full bg-sky-400" style={{ width: `${shift.ownProductionKg100 ? (shift.tunnelProductionKg100 / shift.ownProductionKg100) * 100 : 0}%` }} />
                   </div>

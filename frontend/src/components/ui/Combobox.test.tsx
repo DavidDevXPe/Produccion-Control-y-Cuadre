@@ -111,6 +111,82 @@ describe('Combobox component', () => {
     expect(input).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('notifies the parent from interaction events without an initial effect notification', () => {
+    const handleActiveOptionChange = vi.fn()
+    render(
+      <Combobox
+        label="Buscar producto"
+        options={MOCK_OPTIONS}
+        onSelect={vi.fn()}
+        onActiveOptionChange={handleActiveOptionChange}
+      />,
+    )
+
+    const input = screen.getByRole('combobox')
+    expect(handleActiveOptionChange).not.toHaveBeenCalled()
+
+    fireEvent.focus(input)
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(MOCK_OPTIONS[0])
+
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(MOCK_OPTIONS[1])
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(null)
+  })
+
+  it('notifies the first matching option when typing and clears the active option after mouse selection', () => {
+    const handleActiveOptionChange = vi.fn()
+    const handleSelect = vi.fn()
+    render(
+      <Combobox
+        label="Buscar producto"
+        options={MOCK_OPTIONS}
+        onSelect={handleSelect}
+        onActiveOptionChange={handleActiveOptionChange}
+      />,
+    )
+
+    const input = screen.getByRole('combobox')
+    fireEvent.change(input, { target: { value: 'tratamiento' } })
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(MOCK_OPTIONS[1])
+
+    fireEvent.click(screen.getByRole('option'))
+    expect(handleSelect).toHaveBeenCalledWith(MOCK_OPTIONS[1])
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(null)
+    expect(input).toHaveValue('')
+  })
+
+  it('does not notify a removed option when the options list changes', () => {
+    const handleActiveOptionChange = vi.fn()
+    const { rerender } = render(
+      <Combobox
+        label="Buscar producto"
+        options={MOCK_OPTIONS}
+        onSelect={vi.fn()}
+        onActiveOptionChange={handleActiveOptionChange}
+      />,
+    )
+
+    const input = screen.getByRole('combobox')
+    fireEvent.focus(input)
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(handleActiveOptionChange).toHaveBeenLastCalledWith(MOCK_OPTIONS[0])
+
+    handleActiveOptionChange.mockClear()
+    rerender(
+      <Combobox
+        label="Buscar producto"
+        options={MOCK_OPTIONS.slice(1)}
+        onSelect={vi.fn()}
+        onActiveOptionChange={handleActiveOptionChange}
+      />,
+    )
+
+    expect(handleActiveOptionChange).not.toHaveBeenCalled()
+  })
+
   it('closes on Escape', () => {
     render(
       <Combobox

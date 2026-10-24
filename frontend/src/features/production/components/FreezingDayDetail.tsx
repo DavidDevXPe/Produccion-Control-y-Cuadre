@@ -27,17 +27,10 @@ export interface FreezingDayDetailProps {
   onExportExcel?: () => void
 }
 
-export function FreezingDayDetail({
-  productionDay,
-  allProductionDays,
-  canEdit,
-  canClose,
-  canExport = false,
-  exportState = 'IDLE',
-  onClose,
-  onExportPdf,
-  onExportExcel,
-}: FreezingDayDetailProps) {
+function buildFreezingDayDetailModel(
+  productionDay: ProductionDay,
+  allProductionDays: readonly ProductionDay[],
+) {
   const operationalState = getProductionDayOperationalState(productionDay)
   const calculation = operationalState.calculation
   const physicalKg100 = calculateFrozenPhysicalKg100(productionDay)
@@ -70,14 +63,7 @@ export function FreezingDayDetail({
           ? ('CURRENT' as const)
           : ('UNKNOWN' as const)
 
-    return {
-      lot,
-      line,
-      originDay,
-      usedKg100,
-      pendingKg100,
-      originKind,
-    }
+    return { lot, line, originDay, usedKg100, pendingKg100, originKind }
   })
 
   const originUsageRows = calculateFreezingDayOriginUsage(
@@ -126,11 +112,9 @@ export function FreezingDayDetail({
   const previousOriginUsedKg100 = kg100(
     Math.min(explicitlyUsedPreviousOriginKg100, linkedKg100),
   )
-
   const currentOriginUsedKg100 = kg100(
     Math.max(linkedKg100 - previousOriginUsedKg100, 0),
   )
-
   const unsupportedFrozenKg100 = kg100(Math.max(differenceKg100, 0))
   const excessLinkedKg100 = kg100(Math.max(-differenceKg100, 0))
   const hasTraceabilityDifference = differenceKg100 !== 0
@@ -152,6 +136,58 @@ export function FreezingDayDetail({
         ? { tone: 'warning' as const, label: 'LISTA · CON OBSERVACIONES' }
         : { tone: 'success' as const, label: 'LISTA PARA CERRAR' }
       : { tone: 'warning' as const, label: 'BORRADOR · REVISAR' }
+
+  return {
+    operationalState,
+    calculation,
+    physicalKg100,
+    freezingComparison,
+    linkedKg100,
+    differenceKg100,
+    isBalanced,
+    isClosed,
+    reconciliationObserved,
+    originUsageRows,
+    previousOriginUsedKg100,
+    currentOriginUsedKg100,
+    unsupportedFrozenKg100,
+    excessLinkedKg100,
+    hasTraceabilityDifference,
+    traceabilityDifferenceLabel,
+    statusBadge,
+  }
+}
+
+export function FreezingDayDetail({
+  productionDay,
+  allProductionDays,
+  canEdit,
+  canClose,
+  canExport = false,
+  exportState = 'IDLE',
+  onClose,
+  onExportPdf,
+  onExportExcel,
+}: FreezingDayDetailProps) {
+  const {
+    operationalState,
+    calculation,
+    physicalKg100,
+    freezingComparison,
+    linkedKg100,
+    differenceKg100,
+    isBalanced,
+    isClosed,
+    reconciliationObserved,
+    originUsageRows,
+    previousOriginUsedKg100,
+    currentOriginUsedKg100,
+    unsupportedFrozenKg100,
+    excessLinkedKg100,
+    hasTraceabilityDifference,
+    traceabilityDifferenceLabel,
+    statusBadge,
+  } = buildFreezingDayDetailModel(productionDay, allProductionDays)
 
   return (
     <div className="space-y-5">

@@ -1,14 +1,5 @@
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  type TooltipContentProps,
-} from 'recharts'
+import { lazy, Suspense } from 'react'
+import type { TooltipContentProps } from 'recharts'
 import { formatCentiKg } from '../../../utils/formatters'
 import { getWeeklyChartLineKg100 } from './weeklyChartLine'
 
@@ -147,6 +138,101 @@ export function ProductionTooltip({
   )
 }
 
+type WeeklyProductionChartData = WeeklyProductionChartDatum & {
+  lineKg100: number
+}
+
+interface WeeklyProductionChartPrimitiveProps {
+  chartData: readonly WeeklyProductionChartData[]
+  visibleBars: readonly (typeof seriesBars)[number][]
+  axisScale: ReturnType<typeof getAxisScale>
+  selectedBar: (typeof seriesBars)[number] | null
+}
+
+const WeeklyProductionChartPrimitive = lazy(async () => {
+  const {
+    Bar,
+    CartesianGrid,
+    ComposedChart,
+    Line,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+  } = await import('recharts')
+
+  return {
+    default: function WeeklyProductionChartPrimitive({
+      chartData,
+      visibleBars,
+      axisScale,
+      selectedBar,
+    }: WeeklyProductionChartPrimitiveProps) {
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+            barCategoryGap="42%"
+            accessibilityLayer
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--color-production-grid)"
+              strokeOpacity={0.6}
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'var(--color-slate-500)', fontSize: 11, fontWeight: 600 }}
+              tickMargin={10}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'var(--color-slate-500)', fontSize: 10 }}
+              tickFormatter={formatAxisKg}
+              domain={[0, axisScale.maximumKg100]}
+              ticks={axisScale.ticks}
+              width={48}
+            />
+            <Tooltip
+              content={ProductionTooltip}
+              cursor={{ fill: '#123247', fillOpacity: 0.38 }}
+              isAnimationActive={false}
+              shared
+            />
+            {visibleBars.map((bar, index) => (
+              <Bar
+                key={bar.series}
+                dataKey={bar.dataKey}
+                name={bar.name}
+                stackId="production"
+                fill={bar.fill}
+                maxBarSize={58}
+                radius={index === visibleBars.length - 1 ? [4, 4, 0, 0] : 0}
+                isAnimationActive={false}
+              />
+            ))}
+            <Line
+              type="monotone"
+              dataKey="lineKg100"
+              name={selectedBar ? selectedBar.name : 'Total'}
+              stroke="var(--color-production-total)"
+              strokeWidth={2}
+              dot={{ r: 3.5, fill: 'var(--color-production-total)', strokeWidth: 0 }}
+              activeDot={{ r: 5 }}
+              isAnimationActive={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      )
+    },
+  }
+})
+
 export function WeeklyProductionChart({
   data,
   series = 'ALL',
@@ -179,65 +265,14 @@ export function WeeklyProductionChart({
       role="img"
       aria-label={`Producción semanal apilada. ${chartLabel}.`}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
-          barCategoryGap="42%"
-          accessibilityLayer
-        >
-          <CartesianGrid
-            vertical={false}
-            stroke="var(--color-production-grid)"
-            strokeOpacity={0.6}
-            strokeDasharray="3 3"
-          />
-          <XAxis
-            dataKey="label"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: 'var(--color-slate-500)', fontSize: 11, fontWeight: 600 }}
-            tickMargin={10}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: 'var(--color-slate-500)', fontSize: 10 }}
-            tickFormatter={formatAxisKg}
-            domain={[0, axisScale.maximumKg100]}
-            ticks={axisScale.ticks}
-            width={48}
-          />
-          <Tooltip
-            content={ProductionTooltip}
-            cursor={{ fill: '#123247', fillOpacity: 0.38 }}
-            isAnimationActive={false}
-            shared
-          />
-          {visibleBars.map((bar, index) => (
-            <Bar
-              key={bar.series}
-              dataKey={bar.dataKey}
-              name={bar.name}
-              stackId="production"
-              fill={bar.fill}
-              maxBarSize={58}
-              radius={index === visibleBars.length - 1 ? [4, 4, 0, 0] : 0}
-              isAnimationActive={false}
-            />
-          ))}
-          <Line
-            type="monotone"
-            dataKey="lineKg100"
-            name={selectedBar ? selectedBar.name : 'Total'}
-            stroke="var(--color-production-total)"
-            strokeWidth={2}
-            dot={{ r: 3.5, fill: 'var(--color-production-total)', strokeWidth: 0 }}
-            activeDot={{ r: 5 }}
-            isAnimationActive={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <Suspense fallback={<div className="h-full w-full rounded-xl bg-slate-100/40 dark:bg-ui-surface-dark-soft" aria-hidden="true" />}>
+        <WeeklyProductionChartPrimitive
+          chartData={chartData}
+          visibleBars={visibleBars}
+          axisScale={axisScale}
+          selectedBar={selectedBar}
+        />
+      </Suspense>
     </div>
   )
 }

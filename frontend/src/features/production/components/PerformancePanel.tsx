@@ -13,6 +13,114 @@ interface PerformancePanelProps {
   washAuthorization?: NucaWashAuthorization | null
 }
 
+type NucaSemilimpiaPerformance = ProductionDayCalculation['nucaSemilimpia']
+type NucaBikiniPerformance = ProductionDayCalculation['nucaBikini']
+
+function NucaReferenceMetrics({
+  referenceLabel,
+  performance,
+}: {
+  readonly referenceLabel: string
+  readonly performance: NucaSemilimpiaPerformance
+}) {
+  return (
+    <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+      <div>
+        <dt className="text-slate-600 dark:text-ui-text-dark-soft">
+          {referenceLabel}
+        </dt>
+        <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
+          {formatCentiKg(performance.referenceKg100)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-slate-600 dark:text-ui-text-dark-soft">
+          Producción real
+        </dt>
+        <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
+          {formatCentiKg(performance.actualKg100)}
+        </dd>
+      </div>
+    </dl>
+  )
+}
+
+function NucaSemilimpiaCard({
+  performance,
+}: {
+  readonly performance: NucaSemilimpiaPerformance
+}) {
+  const badgeTone = !performance.applicable
+    ? 'neutral'
+    : performance.status === 'AT_OR_ABOVE_REFERENCE'
+      ? 'success'
+      : 'warning'
+  const badgeLabel = !performance.applicable
+    ? 'NO APLICA'
+    : performance.status === 'AT_OR_ABOVE_REFERENCE'
+      ? 'EN REFERENCIA'
+      : 'BAJO REFERENCIA'
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-ui-line-dark dark:bg-ui-surface-dark/70">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-ui-text-dark-strong">
+          Nuca semilimpia
+        </h3>
+        <StatusBadge tone={badgeTone}>{badgeLabel}</StatusBadge>
+      </div>
+      {performance.applicable ? (
+        <NucaReferenceMetrics
+          referenceLabel="Referencia 15%"
+          performance={performance}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function NucaBikiniCard({
+  performance,
+  washAuthorization,
+}: {
+  readonly performance: NucaBikiniPerformance
+  readonly washAuthorization: NucaWashAuthorization | null | undefined
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3.5 dark:border-brand-500/30 dark:bg-brand-500/10">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Droplets
+            className="size-4 text-brand-700 dark:text-brand-300"
+            aria-hidden="true"
+          />
+          <h3 className="text-sm font-bold text-brand-950 dark:text-brand-100">
+            Nuca Bikini
+          </h3>
+        </div>
+        <StatusBadge tone={performance.applicable ? 'info' : 'neutral'}>
+          {performance.applicable ? 'LAVADO ACTIVO' : 'NO APLICA'}
+        </StatusBadge>
+      </div>
+      {performance.applicable ? (
+        <>
+          <NucaReferenceMetrics
+            referenceLabel="Referencia 7%"
+            performance={performance}
+          />
+          {washAuthorization ? (
+            <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-5 font-medium text-brand-900 dark:border-brand-500/20 dark:text-brand-100">
+              {washAuthorization.kind === 'CUSTOMER_ORDER'
+                ? `Pedido: ${washAuthorization.reference}`
+                : 'Pedido confirmado; número no consignado en el Excel.'}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 export function PerformancePanel({
   calculation,
   washAuthorization,
@@ -86,94 +194,12 @@ export function PerformancePanel({
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-ui-line-dark dark:bg-ui-surface-dark/70">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-ui-text-dark-strong">
-            Nuca semilimpia
-          </h3>
-          <StatusBadge
-            tone={
-              !nucaSemilimpia.applicable
-                ? 'neutral'
-                : nucaSemilimpia.status === 'AT_OR_ABOVE_REFERENCE'
-                  ? 'success'
-                  : 'warning'
-            }
-          >
-            {!nucaSemilimpia.applicable
-              ? 'NO APLICA'
-              : nucaSemilimpia.status === 'AT_OR_ABOVE_REFERENCE'
-                ? 'EN REFERENCIA'
-                : 'BAJO REFERENCIA'}
-          </StatusBadge>
-        </div>
-        {nucaSemilimpia.applicable ? (
-          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-slate-600 dark:text-ui-text-dark-soft">
-                Referencia 15%
-              </dt>
-              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
-                {formatCentiKg(nucaSemilimpia.referenceKg100)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-slate-600 dark:text-ui-text-dark-soft">
-                Producción real
-              </dt>
-              <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
-                {formatCentiKg(nucaSemilimpia.actualKg100)}
-              </dd>
-            </div>
-          </dl>
-        ) : null}
-      </div>
+      <NucaSemilimpiaCard performance={nucaSemilimpia} />
 
-      <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3.5 dark:border-brand-500/30 dark:bg-brand-500/10">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Droplets
-              className="size-4 text-brand-700 dark:text-brand-300"
-              aria-hidden="true"
-            />
-            <h3 className="text-sm font-bold text-brand-950 dark:text-brand-100">
-              Nuca Bikini
-            </h3>
-          </div>
-          <StatusBadge tone={nucaBikini.applicable ? 'info' : 'neutral'}>
-            {nucaBikini.applicable ? 'LAVADO ACTIVO' : 'NO APLICA'}
-          </StatusBadge>
-        </div>
-        {nucaBikini.applicable ? (
-          <>
-            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="text-slate-600 dark:text-ui-text-dark-soft">
-                  Referencia 7%
-                </dt>
-                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
-                  {formatCentiKg(nucaBikini.referenceKg100)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-600 dark:text-ui-text-dark-soft">
-                  Producción real
-                </dt>
-                <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
-                  {formatCentiKg(nucaBikini.actualKg100)}
-                </dd>
-              </div>
-            </dl>
-            {washAuthorization ? (
-              <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-5 font-medium text-brand-900 dark:border-brand-500/20 dark:text-brand-100">
-                {washAuthorization.kind === 'CUSTOMER_ORDER'
-                  ? `Pedido: ${washAuthorization.reference}`
-                  : 'Pedido confirmado; número no consignado en el Excel.'}
-              </p>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+      <NucaBikiniCard
+        performance={nucaBikini}
+        washAuthorization={washAuthorization}
+      />
 
       <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-ui-text-dark-soft">
         Las referencias de Nuca son informativas y no intervienen en el cuadre

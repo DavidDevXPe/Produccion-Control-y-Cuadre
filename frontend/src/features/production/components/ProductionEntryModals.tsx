@@ -31,6 +31,62 @@ export interface ProductionEntryModalsProps {
   onDismissUndoToast: () => void
 }
 
+function getPreviousProcessName(process: ProductionProcess) {
+  if (process === 'FREEZING') return 'Envasado'
+  if (process === 'VIDEOJET') return 'Congelamiento'
+  if (process === 'PALLETIZING') return 'Videojet'
+  return 'Envasado'
+}
+
+function getCurrentProcessName(process: ProductionProcess) {
+  if (process === 'FREEZING') return 'Congelado'
+  if (process === 'VIDEOJET') return 'Videojet'
+  if (process === 'PALLETIZING') return 'Paletizado'
+  return 'Procesado'
+}
+
+interface CloseSummaryInput {
+  readonly isDownstream: boolean
+  readonly date: string
+  readonly currentProcessName: string
+  readonly buildResult: CaptureBuildResult
+  readonly totalReportedKg100: Kg100
+  readonly freezingLinkedThisDayKg100: Kg100
+  readonly untracedFrozenKg100: Kg100
+  readonly businessSummary: ProductionBusinessSummary
+}
+
+function buildCloseSummaryItems({
+  isDownstream,
+  date,
+  currentProcessName,
+  buildResult,
+  totalReportedKg100,
+  freezingLinkedThisDayKg100,
+  untracedFrozenKg100,
+  businessSummary,
+}: CloseSummaryInput): [string, string][] {
+  if (isDownstream) {
+    return [
+      ['Fecha', formatIsoDate(date)],
+      [`${currentProcessName} Día`, formatCentiKg(buildResult.calculation.day.declaredReportedKg100)],
+      [`${currentProcessName} Noche`, formatCentiKg(buildResult.calculation.night.declaredReportedKg100)],
+      [`Total ${currentProcessName.toLowerCase()}`, formatCentiKg(totalReportedKg100)],
+      ['Con origen identificado', formatCentiKg(freezingLinkedThisDayKg100)],
+      ['Sin origen suficiente', formatCentiKg(untracedFrozenKg100)],
+    ]
+  }
+
+  return [
+    ['Fecha', formatIsoDate(date)],
+    ['Materia prima', formatCentiKg(buildResult.productionDay.declaredRawMaterialKg100)],
+    ['Producto terminado', formatCentiKg(buildResult.calculation.declaredFinishedKg100)],
+    ['Saldo final', formatCentiKg(buildResult.calculation.newClosingBalanceKg100)],
+    ['Diferencia', formatCentiKg(buildResult.calculation.differenceKg100)],
+    ['Aprovechamiento', `${businessSummary.generalYieldPercent?.toFixed(2) ?? '—'}%`],
+  ]
+}
+
 export function ProductionEntryModals({
   pendingProcessChange,
   draft,
@@ -55,23 +111,8 @@ export function ProductionEntryModals({
   onDismissUndoToast,
 }: ProductionEntryModalsProps) {
   const isDownstream = isFreezing || draft.process !== 'PACKING'
-  const prevProcessName =
-    draft.process === 'FREEZING'
-      ? 'Envasado'
-      : draft.process === 'VIDEOJET'
-        ? 'Congelamiento'
-        : draft.process === 'PALLETIZING'
-          ? 'Videojet'
-          : 'Envasado'
-
-  const currentProcessName =
-    draft.process === 'FREEZING'
-      ? 'Congelado'
-      : draft.process === 'VIDEOJET'
-        ? 'Videojet'
-        : draft.process === 'PALLETIZING'
-          ? 'Paletizado'
-          : 'Procesado'
+  const prevProcessName = getPreviousProcessName(draft.process)
+  const currentProcessName = getCurrentProcessName(draft.process)
 
   return (
     <>
@@ -93,25 +134,16 @@ export function ProductionEntryModals({
 
       <CloseConfirmationDialog
         isOpen={isCloseConfirmationOpen}
-        summaryItems={
-          isDownstream
-            ? [
-                ['Fecha', formatIsoDate(draft.date)],
-                [`${currentProcessName} Día`, formatCentiKg(buildResult.calculation.day.declaredReportedKg100)],
-                [`${currentProcessName} Noche`, formatCentiKg(buildResult.calculation.night.declaredReportedKg100)],
-                [`Total ${currentProcessName.toLowerCase()}`, formatCentiKg(totalReportedKg100)],
-                ['Con origen identificado', formatCentiKg(freezingLinkedThisDayKg100)],
-                ['Sin origen suficiente', formatCentiKg(freezingBalanceExplanation.untracedFrozenKg100)],
-              ]
-            : [
-                ['Fecha', formatIsoDate(draft.date)],
-                ['Materia prima', formatCentiKg(buildResult.productionDay.declaredRawMaterialKg100)],
-                ['Producto terminado', formatCentiKg(buildResult.calculation.declaredFinishedKg100)],
-                ['Saldo final', formatCentiKg(buildResult.calculation.newClosingBalanceKg100)],
-                ['Diferencia', formatCentiKg(buildResult.calculation.differenceKg100)],
-                ['Aprovechamiento', `${businessSummary.generalYieldPercent?.toFixed(2) ?? '—'}%`],
-              ]
-        }
+        summaryItems={buildCloseSummaryItems({
+          isDownstream,
+          date: draft.date,
+          currentProcessName,
+          buildResult,
+          totalReportedKg100,
+          freezingLinkedThisDayKg100,
+          untracedFrozenKg100: freezingBalanceExplanation.untracedFrozenKg100,
+          businessSummary,
+        })}
         warnings={closureValidation.warnings}
         onCancel={onCancelCloseConfirmation}
         onConfirm={onConfirmClose}
