@@ -11,7 +11,10 @@ import {
   type ProductionCaptureDraft,
 } from '../capture/productionCapture'
 import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
-import type { ProductionCatalogItem } from '../capture/productionCatalog'
+import {
+  isCatalogItemAllowedForProcess,
+  type ProductionCatalogItem,
+} from '../capture/productionCatalog'
 import {
   buildBalanceShiftDiagnostics,
   buildProductionDiagnostics,
@@ -401,6 +404,7 @@ export function useProductionCalculations({
         .filter(
           (product) =>
             !isTreatmentOnlyProduct(product) &&
+            isCatalogItemAllowedForProcess(product, draft.process) &&
             !draft.rows.some(
               (row) => row.product.productId === product.productId,
             ),

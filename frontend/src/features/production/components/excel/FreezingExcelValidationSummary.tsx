@@ -102,6 +102,22 @@ export function FreezingExcelValidationSummary({
           {preview.status}
         </p>
       </div>
+
+      {preview.presentationWarnings?.length ? (
+        <div
+          role="alert"
+          className="col-span-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-[0.6875rem] font-semibold leading-4 text-amber-800 dark:border-ui-amber-border-dark dark:bg-ui-amber-surface-dark dark:text-ui-amber-text-dark-soft"
+        >
+          <p className="font-extrabold uppercase tracking-[0.06em]">
+            Revisar presentaciones SACO
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {preview.presentationWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   )
 }

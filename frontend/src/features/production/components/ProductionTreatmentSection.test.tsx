@@ -62,7 +62,7 @@ describe('ProductionTreatmentSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders pending badge and disables fieldset when reports are not reconciled', () => {
+  it('keeps editing controls disabled but allows removing a treatment row', () => {
     const props = createProps({ reportsReconciled: false })
     render(<ProductionTreatmentSection {...props} />)
 
@@ -70,7 +70,14 @@ describe('ProductionTreatmentSection', () => {
     const fieldset = screen.getByRole('group', {
       name: 'Registro de tratamiento',
     })
-    expect(fieldset).toBeDisabled()
+    expect(fieldset).toHaveAttribute('aria-disabled', 'true')
+
+    expect(screen.getByLabelText(/Kg tratamiento/i)).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: `Eliminar tratamiento de ${sampleCatalogItem.productName}`,
+      }),
+    ).toBeEnabled()
   })
 
   it('renders empty message when rows is empty', () => {

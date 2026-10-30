@@ -13,10 +13,14 @@ import type { FreezingAvailabilityPosition } from '../model/freezing'
 interface FreezingBalancesPanelProps {
   /** Positions with pending product or with consumption above their origin. */
   positions: readonly FreezingAvailabilityPosition[]
+  title?: string
+  description?: string
 }
 
 export function FreezingBalancesPanel({
   positions,
+  title = 'Producto pendiente de congelar',
+  description = 'Cada posición conserva la jornada de Envasado que originó el producto. Primero las inconsistencias; luego orden FIFO: el origen más antiguo se congela primero.',
 }: FreezingBalancesPanelProps) {
   const excessCount = positions.filter(
     (position) => position.excessKg100 > 0,
@@ -25,8 +29,8 @@ export function FreezingBalancesPanel({
 
   return (
     <SectionCard
-      title="Producto pendiente de congelar"
-      description="Cada posición conserva la jornada de Envasado que originó el producto. Primero las inconsistencias; luego orden FIFO: el origen más antiguo se congela primero."
+      title={title}
+      description={description}
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
           {excessCount > 0 ? (
@@ -51,7 +55,9 @@ export function FreezingBalancesPanel({
         >
           <table className="erp-table w-full min-w-[58rem] table-fixed border-collapse text-left">
             <caption className="sr-only">
-              Producto envasado, congelado y pendiente por jornada de origen
+              {title === 'Saldos anteriores disponibles'
+                ? 'Saldos anteriores disponibles para congelamiento por jornada de origen'
+                : 'Producto envasado, congelado y pendiente por jornada de origen'}
             </caption>
             <colgroup>
               <col className="w-[39%]" />

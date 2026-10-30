@@ -14,6 +14,7 @@ import {
   getActiveProducts,
 } from '../capture/productCatalogRepository'
 import { normalizeProductName } from '../capture/productNormalizer'
+import { parseSackPresentation } from '../model/sackPresentation'
 import { formatCentiKg } from '../../../utils/formatters'
 import {
   buildUpdatedFreezingDraft,
@@ -232,7 +233,7 @@ export function useProductionExcelImport({
 
     if (!row || !product) return
 
-    addAliasToActiveProduct(product.productId, row.baseProductName)
+    addAliasToActiveProduct(product.productId, row.rawProductName)
 
     setCatalogItems(getActiveProducts())
 
@@ -250,7 +251,7 @@ export function useProductionExcelImport({
                 aliases: [
                   ...new Set([
                     ...(product.aliases ?? []),
-                    row.baseProductName,
+                    row.rawProductName,
                   ]),
                 ],
               },
@@ -300,8 +301,16 @@ export function useProductionExcelImport({
       return
     }
 
-    const canonicalName = row.baseProductName.replace(/\s+/g, ' ').trim()
+    // Congelamiento uses the complete guide description, including SACO
+    // composition. Keep that identity separate from the Envasado base name.
+    const canonicalName = row.rawProductName.replace(/\s+/g, ' ').trim()
     const normalizedName = normalizeProductName(canonicalName)
+    const presentation = parseSackPresentation(canonicalName)
+    const baseProduct = catalogItems.find(
+      (candidate) =>
+        normalizeProductName(candidate.canonicalName ?? candidate.productName) ===
+        normalizeProductName(row.baseProductName),
+    )
 
     const existingProduct = catalogItems.find(
       (candidate) =>
@@ -332,6 +341,14 @@ export function useProductionExcelImport({
               ? 'USA'
               : 'GENERAL'
           : 'UNCLASSIFIED',
+        ...(presentation
+          ? {
+              ...(baseProduct ? { baseProductId: baseProduct.productId } : {}),
+              presentationName: presentation.name,
+              sackKg: presentation.totalKg,
+              allowedProcesses: ['FREEZING', 'VIDEOJET', 'PALLETIZING'] as const,
+            }
+          : {}),
       })
 
     setCatalogItems(getActiveProducts())

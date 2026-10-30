@@ -33,6 +33,11 @@ export function ProductionDaysPage() {
     frozenPhysicalKg100,
     freezingLinkedKg100,
     freezingDifferenceKg100,
+    freezingWeeklyAvailableKg100,
+    freezingWeeklyPhysicalKg100,
+    freezingWeeklyLinkedKg100,
+    freezingWeeklyDifferenceKg100,
+    freezingHasRecords,
     freezingPendingKg100,
     missingCalendarDays,
     isWeekFullySquared,
@@ -101,9 +106,11 @@ export function ProductionDaysPage() {
 
       <ProductionDaysMetricsGrid
         isFreezing={isFreezing}
-        frozenPhysicalKg100={frozenPhysicalKg100}
-        freezingLinkedKg100={freezingLinkedKg100}
-        freezingDifferenceKg100={freezingDifferenceKg100}
+        freezingWeeklyAvailableKg100={freezingWeeklyAvailableKg100}
+        freezingWeeklyPhysicalKg100={freezingWeeklyPhysicalKg100}
+        freezingWeeklyLinkedKg100={freezingWeeklyLinkedKg100}
+        freezingWeeklyDifferenceKg100={freezingWeeklyDifferenceKg100}
+        freezingHasRecords={freezingHasRecords}
         freezingPendingKg100={freezingPendingKg100}
         weeklySummary={weeklySummary}
         registeredDaysCount={registeredDays.length}
@@ -127,9 +134,11 @@ export function ProductionDaysPage() {
 
       {isFreezing ? (
         <ProductionDaysFreezingSummary
-          frozenPhysicalKg100={frozenPhysicalKg100}
-          freezingLinkedKg100={freezingLinkedKg100}
-          freezingDifferenceKg100={freezingDifferenceKg100}
+          freezingWeeklyAvailableKg100={freezingWeeklyAvailableKg100}
+          freezingWeeklyPhysicalKg100={freezingWeeklyPhysicalKg100}
+          freezingWeeklyLinkedKg100={freezingWeeklyLinkedKg100}
+          freezingWeeklyDifferenceKg100={freezingWeeklyDifferenceKg100}
+          freezingHasRecords={freezingHasRecords}
           freezingPendingKg100={freezingPendingKg100}
         />
       ) : null}

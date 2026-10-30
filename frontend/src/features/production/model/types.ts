@@ -46,6 +46,7 @@ export type IntegrityIssueCode =
   | 'BALANCE_OVERUSED'
   | 'BALANCE_PRODUCT_NOT_FOUND'
   | 'BALANCE_FAMILY_MISMATCH'
+  | 'BALANCE_SHIFT_WITHOUT_REPORT'
   | 'BALANCE_ORIGIN_NOT_PREVIOUS'
   | 'NEGATIVE_OWN_PRODUCTION'
   | 'NUCA_WASH_AUTHORIZATION_MISSING'
@@ -111,6 +112,10 @@ export interface ProductionLine {
   readonly newClosingBalanceKg100: Kg100
   /** Independent total from the product-finished table. */
   readonly declaredFinishedKg100: Kg100
+  /** Base product identity when this line is a downstream presentation variant. */
+  readonly baseProductId?: string
+  readonly presentationName?: string
+  readonly sackKg?: number
   readonly videojetBagsCount?: number
   readonly videojetQrKg100?: Kg100
   readonly looseBlockWithoutQrKg100?: Kg100

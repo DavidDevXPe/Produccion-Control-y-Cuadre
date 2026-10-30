@@ -4,7 +4,10 @@ import { StatusBadge } from '../../../../components/ui/StatusBadge'
 import { formatCentiKg, formatIsoDate } from '../../../../utils/formatters'
 import type { ProductionCatalogItem } from '../../capture/productionCatalog'
 import type { ProductionCaptureBalanceUse } from '../../capture/productionCapture'
-import { captureBalancePosition } from '../../capture/productionEntryHelpers'
+import {
+  captureBalancePosition,
+  captureQuantityKg100,
+} from '../../capture/productionEntryHelpers'
 import type { BalanceShiftDiagnostic } from '../../model/businessRules'
 import { QuantityInput } from '../QuantityInput'
 
@@ -15,6 +18,8 @@ export interface BalanceUseItemRowProps {
   readonly prevProcessName?: string
   readonly catalogItems: readonly ProductionCatalogItem[]
   readonly balanceShiftDiagnostics: readonly BalanceShiftDiagnostic[]
+  readonly dayShiftAvailable: boolean
+  readonly nightShiftAvailable: boolean
   readonly onRemoveBalanceUse: (key: string) => void
   readonly onDistributeLegacyBalance: (key: string, productId: string) => void
   readonly onUpdateBalanceUse: (
@@ -153,6 +158,8 @@ export function BalanceUseItemRow({
   prevProcessName,
   catalogItems,
   balanceShiftDiagnostics,
+  dayShiftAvailable,
+  nightShiftAvailable,
   onRemoveBalanceUse,
   onDistributeLegacyBalance,
   onUpdateBalanceUse,
@@ -169,6 +176,10 @@ export function BalanceUseItemRow({
     position,
     productShiftDiagnostics.length,
   )
+  const dayInputDisabled =
+    !dayShiftAvailable && captureQuantityKg100(balance.dayKg) === 0
+  const nightInputDisabled =
+    !nightShiftAvailable && captureQuantityKg100(balance.nightKg) === 0
 
   return (
     <div className="px-4 py-4 sm:px-5">
@@ -213,21 +224,45 @@ export function BalanceUseItemRow({
           </p>
         </div>
 
-        <QuantityInput
-          label={isFreezing ? 'Congelado Turno Día' : 'Procesado Día'}
-          value={balance.dayKg}
-          onChange={(value) => onUpdateBalanceUse(balance.key, 'dayKg', value)}
-          {...getBalancesCellProps(balanceIdx, 0)}
-        />
+        <div>
+          <QuantityInput
+            label={isFreezing ? 'Congelado Turno Día' : 'Procesado Día'}
+            value={balance.dayKg}
+            disabled={dayInputDisabled}
+            onChange={(value) =>
+              onUpdateBalanceUse(balance.key, 'dayKg', value)
+            }
+            {...getBalancesCellProps(balanceIdx, 0)}
+          />
+          {!dayShiftAvailable ? (
+            <p
+              role="status"
+              className="mt-1 text-[0.6875rem] leading-4 text-amber-700 dark:text-amber-300"
+            >
+              No hay producción registrada de este producto en el turno Día.
+            </p>
+          ) : null}
+        </div>
 
-        <QuantityInput
-          label={isFreezing ? 'Congelado Turno Noche' : 'Procesado Noche'}
-          value={balance.nightKg}
-          onChange={(value) =>
-            onUpdateBalanceUse(balance.key, 'nightKg', value)
-          }
-          {...getBalancesCellProps(balanceIdx, 1)}
-        />
+        <div>
+          <QuantityInput
+            label={isFreezing ? 'Congelado Turno Noche' : 'Procesado Noche'}
+            value={balance.nightKg}
+            disabled={nightInputDisabled}
+            onChange={(value) =>
+              onUpdateBalanceUse(balance.key, 'nightKg', value)
+            }
+            {...getBalancesCellProps(balanceIdx, 1)}
+          />
+          {!nightShiftAvailable ? (
+            <p
+              role="status"
+              className="mt-1 text-[0.6875rem] leading-4 text-amber-700 dark:text-amber-300"
+            >
+              No hay producción registrada de este producto en el turno Noche.
+            </p>
+          ) : null}
+        </div>
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
           <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">

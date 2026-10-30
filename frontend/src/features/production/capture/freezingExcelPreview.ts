@@ -2,8 +2,12 @@ import type {
   ParsedFreezingWorkbook,
   ParsedFreezingWorkbookRow,
 } from "./parseFreezingWorkbook";
-import type { ProductionCatalogItem } from "./productionCatalog";
+import {
+  isCatalogItemAllowedForProcess,
+  type ProductionCatalogItem,
+} from "./productionCatalog";
 import { normalizeProductName } from "./productNormalizer";
+import { parseSackPresentation } from "../model/sackPresentation";
 
 export type FreezingExcelRowStatus =
   | "COINCIDENCIA EXACTA"
@@ -26,7 +30,42 @@ export interface FreezingExcelPreview extends Omit<
   rows: readonly FreezingExcelPreviewRow[];
   recognizedRows: number;
   reviewRows: number;
+  /** Advisory checks for the downstream SACO presentation. */
+  presentationWarnings?: readonly string[];
   status: "EXCEL RECONCILIADO" | "EXCEL REQUIERE REVISIÓN";
+}
+
+const SUPPORTED_SACK_WEIGHTS_KG = new Set([20, 27, 30]);
+
+function buildPresentationWarnings(
+  rows: readonly ParsedFreezingWorkbookRow[],
+): readonly string[] {
+  return rows.flatMap((row) => {
+    if (row.totalKg <= 0) return [];
+
+    if (!row.packaging) {
+      return [
+        `Fila ${row.rowNumber}: la descripción no incluye presentación SACO. ` +
+          "Verifica que corresponde a la descripción completa de Congelamiento.",
+      ];
+    }
+
+    const presentation = parseSackPresentation(row.rawProductName, row.packaging);
+    if (!presentation) {
+      return [
+        `Fila ${row.rowNumber}: no se pudo interpretar la presentación "${row.packaging}".`,
+      ];
+    }
+
+    if (!SUPPORTED_SACK_WEIGHTS_KG.has(presentation.totalKg)) {
+      return [
+        `Fila ${row.rowNumber}: la presentación ${presentation.name} equivale a ` +
+          `${presentation.totalKg} kg por saco y no está en las presentaciones autorizadas (20, 27 o 30 kg).`,
+      ];
+    }
+
+    return [];
+  });
 }
 
 export function isTreatmentOnlyProduct(
@@ -62,11 +101,18 @@ export function buildFreezingExcelPreview(
   catalogItems: readonly ProductionCatalogItem[],
 ): FreezingExcelPreview {
   const activeProducts = catalogItems.filter(
-    (product) => product.active !== false && !isTreatmentOnlyProduct(product),
+    (product) =>
+      product.active !== false &&
+      isCatalogItemAllowedForProcess(product, "FREEZING") &&
+      !isTreatmentOnlyProduct(product),
   );
 
   const rows: FreezingExcelPreviewRow[] = parsed.rows.map((row) => {
-    const sourceExact = comparableProductName(row.baseProductName);
+    // A SACO presentation is part of the downstream identity. Matching only
+    // the Envasado base name would select the first variant and lose its sack
+    // composition (20, 27 or 30 kg).
+    const sourceName = row.packaging ? row.rawProductName : row.baseProductName;
+    const sourceExact = comparableProductName(sourceName);
 
     const exactMatches = activeProducts.filter((product) =>
       [product.productName, product.canonicalName ?? ""].some(
@@ -79,11 +125,13 @@ export function buildFreezingExcelPreview(
         ...row,
         product: exactMatches[0]!,
         status: "COINCIDENCIA EXACTA",
-        matchReason: "El nombre base coincide exactamente con el catálogo.",
+        matchReason: row.packaging
+          ? "La descripción completa y la presentación SACO coinciden con el catálogo."
+          : "El nombre base coincide exactamente con el catálogo.",
       };
     }
 
-    const sourceNormalized = normalizeProductName(row.baseProductName);
+    const sourceNormalized = normalizeProductName(sourceName);
 
     const normalizedMatches = activeProducts.filter((product) =>
       [product.productName, product.canonicalName ?? ""].some(
@@ -112,7 +160,7 @@ export function buildFreezingExcelPreview(
         product: aliasMatches[0]!,
         status: "ALIAS CONOCIDO",
         matchReason:
-          "El nombre de Congelamiento ya está registrado como alias.",
+          "El nombre completo de Congelamiento ya está registrado como alias.",
       };
     }
 
@@ -132,6 +180,7 @@ export function buildFreezingExcelPreview(
   });
 
   const productiveRows = rows.filter((row) => row.totalKg > 0);
+  const presentationWarnings = buildPresentationWarnings(parsed.rows);
 
   const recognizedRows = productiveRows.filter(
     (row) => row.product !== null && row.status !== "REQUIERE REVISIÓN",
@@ -148,6 +197,7 @@ export function buildFreezingExcelPreview(
     rows,
     recognizedRows,
     reviewRows,
+    presentationWarnings,
     status:
       parsed.reconciled && reviewRows === 0
         ? "EXCEL RECONCILIADO"

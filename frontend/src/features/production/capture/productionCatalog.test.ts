@@ -426,11 +426,49 @@ describe("active capture catalog", () => {
       active,
     );
 
-    expect(preview.reviewRows).toBe(0);
-    expect(preview.rows.map((r) => r.product?.productId)).toEqual([
-      "boton-crudo-block-espana-p-sm-cp-st",
-      "anillas-espana-p-cm-cp-st-mixta",
-      "boton-crudo-block-polar-sm-sp-st",
+    expect(preview.reviewRows).toBe(3);
+    expect(preview.rows.map((r) => r.product)).toEqual([
+      null,
+      null,
+      null,
     ]);
+    expect(preview.presentationWarnings).toHaveLength(3);
+  });
+
+  it("marks historical base names as Envasado-only for downstream matching", () => {
+    const historical = PRODUCTION_CATALOG_ITEMS.find(
+      (item) => item.productId === "conos-con-piel-crudos",
+    );
+
+    expect(historical).toBeDefined();
+    expect(historical?.allowedProcesses).toEqual(["PACKING"]);
+
+    const preview = buildFreezingExcelPreview(
+      {
+        sheetName: "Reporte",
+        totalAros: 10,
+        totalKg: 100,
+        sourceGrandTotalAros: null,
+        sourceGrandTotalKg: null,
+        warnings: [],
+        reconciled: true,
+        rows: [
+          {
+            rowNumber: 5,
+            rawProductName: historical!.productName,
+            baseProductName: historical!.productName,
+            quantityAros: 10,
+            packaging: null,
+            totalKg: 100,
+          },
+        ],
+      },
+      "base-historical.xlsx",
+      "DAY",
+      [historical!],
+    );
+
+    expect(preview.rows[0]?.product).toBeNull();
+    expect(preview.reviewRows).toBe(1);
   });
 });

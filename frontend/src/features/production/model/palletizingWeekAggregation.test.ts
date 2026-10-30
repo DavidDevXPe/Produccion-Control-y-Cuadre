@@ -115,4 +115,31 @@ describe('palletizingWeekAggregation', () => {
     expect(row.palletizedKg100).toBe(kg100(5_120_00))
     expect(row.palletizedBagsCount).toBe(256)
   })
+
+  it('keeps distinct SACO variants separate and derives their sack counts', () => {
+    const date = '2026-10-12'
+    const rows: ProductionDay[] = [
+      makeMockDay(date, 'PALLETIZING', [
+        makeMockLine({
+          productId: 'variant-20',
+          productName: 'MANTO - SACO 2 x 10 kg',
+          presentationName: 'SACO 2 x 10 kg',
+          sackKg: 20,
+          palletizedKg100: kg100(40_00),
+        }),
+        makeMockLine({
+          productId: 'variant-30',
+          productName: 'ANILLAS - SACO 3 x 10 kg',
+          presentationName: 'SACO 3 x 10 kg',
+          sackKg: 30,
+          palletizedKg100: kg100(60_00),
+        }),
+      ]),
+    ]
+
+    const result = buildPalletizingRowsFromWeekDays(47, rows)
+    expect(result).toHaveLength(2)
+    expect(result?.find((row) => row.productId === 'variant-20')?.palletizedBagsCount).toBe(2)
+    expect(result?.find((row) => row.productId === 'variant-30')?.palletizedBagsCount).toBe(2)
+  })
 })

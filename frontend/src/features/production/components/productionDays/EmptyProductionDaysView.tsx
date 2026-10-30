@@ -30,7 +30,9 @@ export function EmptyProductionDaysView({
             Semana {activeWeekNumber}
           </p>
           <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950">
-            Sin jornadas de {productionProcessLabels[selectedProcess]}
+            {isFreezing
+              ? 'Sin registros de congelamiento esta semana'
+              : `Sin jornadas de ${productionProcessLabels[selectedProcess]}`}
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
             {activeWeekCanCreate

@@ -80,10 +80,12 @@ export function useBalancesData() {
     [productionDays, subsequentBalanceLots],
   )
 
-  // Full ledger up to week end (needed for correct excess/pending math).
+  // Full ledger across every known date (needed to subtract consumptions that
+  // happened after the selected week). The UI scope below still filters by
+  // the origin week, so historical pending is never mixed into that list.
   const freezingAvailability = useMemo(
-    () => calculateFreezingAvailability(allProductionDays, weekEnd),
-    [allProductionDays, weekEnd],
+    () => calculateFreezingAvailability(allProductionDays),
+    [allProductionDays],
   )
 
   // UI scope: only positions whose Packing origin belongs to the active week.
@@ -104,6 +106,26 @@ export function useBalancesData() {
             first.productName.localeCompare(second.productName, 'es-PE'),
         ),
     [freezingAvailability, weekStart, weekEnd],
+  )
+
+  // Keep older origins available for FIFO, but expose them separately from
+  // the selected week's production so the two scopes cannot be confused.
+  const previousFreezingPositions = useMemo(
+    () =>
+      [...freezingAvailability]
+        .filter(
+          (position) =>
+            (position.pendingKg100 > 0 || position.excessKg100 > 0) &&
+            position.originDate < weekStart,
+        )
+        .sort(
+          (first, second) =>
+            Number(second.excessKg100 > 0) - Number(first.excessKg100 > 0) ||
+            first.originDate.localeCompare(second.originDate) ||
+            first.familyName.localeCompare(second.familyName, 'es-PE') ||
+            first.productName.localeCompare(second.productName, 'es-PE'),
+        ),
+    [freezingAvailability, weekStart],
   )
 
   const openFreezingOriginIds = useMemo(
@@ -134,6 +156,20 @@ export function useBalancesData() {
       }),
     [freezingPositions, searchQuery, selectedDate],
   )
+
+  const filteredPreviousFreezingPositions: readonly FreezingAvailabilityPosition[] =
+    useMemo(
+      () =>
+        previousFreezingPositions.filter((position) => {
+          const matchesSearch =
+            !searchQuery.trim() ||
+            position.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            position.familyName.toLowerCase().includes(searchQuery.toLowerCase())
+          const matchesDate = !selectedDate || position.originDate === selectedDate
+          return matchesSearch && matchesDate
+        }),
+      [previousFreezingPositions, searchQuery, selectedDate],
+    )
 
   const outstandingByOrigin: readonly OutstandingOriginGroup[] = useMemo(
     () =>
@@ -188,6 +224,16 @@ export function useBalancesData() {
     [visiblePositions],
   )
 
+  const totalFreezingLedgerPendingKg100: Kg100 = useMemo(
+    () =>
+      sumKg100(
+        [...filteredFreezingPositions, ...filteredPreviousFreezingPositions].map(
+          (position) => position.pendingKg100,
+        ),
+      ),
+    [filteredFreezingPositions, filteredPreviousFreezingPositions],
+  )
+
   const totalExcessKg100: Kg100 = useMemo(
     () => sumKg100(visiblePositions.map((position) => position.excessKg100)),
     [visiblePositions],
@@ -236,9 +282,12 @@ export function useBalancesData() {
     setSelectedDate,
     freezingPositions,
     filteredFreezingPositions,
+    previousFreezingPositions,
+    filteredPreviousFreezingPositions,
     freezingOrigins,
     outstandingByOrigin,
     totalPendingKg100,
+    totalFreezingLedgerPendingKg100,
     totalExcessKg100,
     pendingProductCount,
     originCount,

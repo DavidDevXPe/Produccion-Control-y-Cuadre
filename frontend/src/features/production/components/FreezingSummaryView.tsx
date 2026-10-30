@@ -1,4 +1,4 @@
-import { Download, LoaderCircle, Moon, Printer, Snowflake, Sun, Waves } from 'lucide-react'
+import { Download, LoaderCircle, Printer, Snowflake, Waves } from 'lucide-react'
 import { useState } from 'react'
 import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { DataTableScroll } from '../../../components/ui/DataTableScroll'
@@ -9,13 +9,12 @@ import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
 import { exportPageToPdf } from '../../../utils/pdfExport'
 import {
-  calculateProductionDay,
   kg100,
   sumKg100,
 } from '../model/calculations'
 import {
   calculateFreezingAvailability,
-  calculateFrozenPhysicalKg100,
+  calculateFreezingComparison,
 } from '../model/freezing'
 import type { OperationalWeekView } from '../state/ProductionDataContext'
 import type { ProductionDay } from '../model/types'
@@ -58,25 +57,23 @@ export function FreezingSummaryView({
     }
   }
 
-  const calculations = week.productionDays.map((day) => ({
-    day,
-    calculation: calculateProductionDay(day),
-  }))
-  const dayKg100 = sumKg100(
-    week.productionDays.map((day) => day.declaredShiftTotalsKg100.DAY),
-  )
-  const nightKg100 = sumKg100(
-    week.productionDays.map((day) => day.declaredShiftTotalsKg100.NIGHT),
-  )
-  const physicalKg100 = sumKg100(
-    week.productionDays.map(calculateFrozenPhysicalKg100),
-  )
-  const linkedKg100 = sumKg100(
-    calculations.map(({ calculation }) => calculation.processedPreviousBalanceKg100),
-  )
+  const comparison = calculateFreezingComparison(allProductionDays, week.period)
+  const physicalKg100 = comparison.physicalReportedKg100
+  const linkedKg100 = comparison.linkedKg100
   const differenceKg100 = kg100(physicalKg100 - linkedKg100)
+  const hasFreezingRecords = week.productionDays.length > 0
+  const weeklyAvailableKg100 = sumKg100(
+    calculateFreezingAvailability(allProductionDays)
+      .filter(
+        (position) =>
+          position.originDate >= week.period.startDate &&
+          position.originDate <= week.period.endDate,
+      )
+      .filter((position) => position.pendingKg100 > 0)
+      .map((position) => position.pendingKg100),
+  )
   const pendingKg100 = sumKg100(
-    calculateFreezingAvailability(allProductionDays, week.period.endDate).map(
+    calculateFreezingAvailability(allProductionDays).map(
       (position) => position.pendingKg100,
     ),
   )
@@ -143,28 +140,100 @@ export function FreezingSummaryView({
       ) : null}
       {selector}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de Congelamiento">
-        <MetricCard label="Congelado físicamente" value={formatCentiKg(physicalKg100)} icon={<Snowflake className="size-5" />} tone="brand" />
-        <MetricCard label="Turno Día" value={formatCentiKg(dayKg100)} icon={<Sun className="size-5" />} />
-        <MetricCard label="Turno Noche" value={formatCentiKg(nightKg100)} icon={<Moon className="size-5" />} />
-        <MetricCard label="Pendiente de congelar" value={formatCentiKg(pendingKg100)} icon={<Waves className="size-5" />} tone="warning" />
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Indicadores de Congelamiento">
+        <MetricCard
+          label="Disponible de Envasado"
+          value={formatCentiKg(weeklyAvailableKg100)}
+          icon={<Snowflake className="size-5" />}
+          tone="brand"
+          description="Semana seleccionada · pendiente real"
+        />
+        <MetricCard
+          label="Congelado físicamente"
+          value={formatCentiKg(physicalKg100)}
+          icon={<Snowflake className="size-5" />}
+          tone="success"
+          description={
+            hasFreezingRecords
+              ? 'Reportes físicos de la semana'
+              : 'Sin registros de congelamiento esta semana'
+          }
+        />
+        <MetricCard
+          label="Vinculado por trazabilidad"
+          value={formatCentiKg(linkedKg100)}
+          icon={<Waves className="size-5" />}
+          tone="success"
+          description="Consumos FIFO realizados esta semana"
+        />
+        <MetricCard
+          label="Diferencia de trazabilidad semanal"
+          value={hasFreezingRecords ? formatCentiKg(differenceKg100) : '—'}
+          icon={<Waves className="size-5" />}
+          tone={
+            !hasFreezingRecords
+              ? 'neutral'
+              : differenceKg100 === 0
+                ? 'success'
+                : 'danger'
+          }
+          description={
+            !hasFreezingRecords
+              ? 'Sin registros para verificar la diferencia'
+              : differenceKg100 === 0
+                ? 'Físico − vinculado · semana conciliada'
+                : 'Físico − vinculado · requiere revisión'
+          }
+        />
+        <MetricCard
+          label="Pendiente global de congelamiento"
+          value={formatCentiKg(pendingKg100)}
+          icon={<Waves className="size-5" />}
+          tone="warning"
+          description="Todas las semanas"
+        />
       </section>
 
       <SectionCard
         title="Cuadre de Congelamiento"
         description="El total físico debe estar completamente vinculado con disponibilidad originada en Envasado."
-        action={<StatusBadge tone={differenceKg100 === 0 ? 'success' : 'danger'}>{differenceKg100 === 0 ? 'CUADRADO' : 'REVISAR'}</StatusBadge>}
+        action={
+          <StatusBadge
+            tone={
+              !hasFreezingRecords
+                ? 'info'
+                : differenceKg100 === 0
+                  ? 'success'
+                  : 'danger'
+            }
+          >
+            {!hasFreezingRecords
+              ? 'SIN REGISTROS'
+              : differenceKg100 === 0
+                ? 'CUADRADO'
+                : 'REVISAR'}
+          </StatusBadge>
+        }
       >
         <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-5">
           <MetricCard label="Congelado físicamente" value={formatCentiKg(physicalKg100)} />
           <MetricCard label="Congelado atribuible" value={formatCentiKg(linkedKg100)} />
-          <MetricCard label="Diferencia" value={formatCentiKg(differenceKg100)} tone={differenceKg100 === 0 ? 'success' : 'danger'} />
+          <MetricCard
+            label="Diferencia"
+            value={hasFreezingRecords ? formatCentiKg(differenceKg100) : '—'}
+            tone={!hasFreezingRecords ? 'neutral' : differenceKg100 === 0 ? 'success' : 'danger'}
+            description={
+              hasFreezingRecords
+                ? undefined
+                : 'Sin registros para verificar la diferencia'
+            }
+          />
         </div>
       </SectionCard>
 
       <SectionCard title="Congelado por producto" description="Consolidado físico por producto y turno.">
         {productTotals.size === 0 ? (
-          <p className="p-6 text-center text-sm text-slate-500">No hay jornadas de Congelamiento registradas.</p>
+          <p className="p-6 text-center text-sm text-slate-500">Sin registros de congelamiento esta semana.</p>
         ) : (
           <DataTableScroll label="Congelado semanal por producto">
             <table className="erp-table w-full min-w-[48rem] table-fixed border-collapse">

@@ -386,6 +386,11 @@ export function createCaptureDraftFromDay(
           productId: line.productId,
           productName: line.productName,
           summaryGroupId: line.summaryGroupId,
+          ...(line.baseProductId ? { baseProductId: line.baseProductId } : {}),
+          ...(line.presentationName
+            ? { presentationName: line.presentationName }
+            : {}),
+          ...(line.sackKg !== undefined ? { sackKg: line.sackKg } : {}),
         },
         dayReportedKg: String(toKilograms(line.shifts.DAY.reportedKg100)),
         dayPreviousBalanceKg: String(
@@ -421,6 +426,11 @@ export function createCaptureDraftFromDay(
         const originDay = allProductionDays.find(
           (day) => day.id === lot.originDayId,
         );
+        const isPackingDay = getProductionProcess(productionDay) === "PACKING";
+        // Envasado puede consumir un saldo sin repetirlo en la fila normal del
+        // turno. Sus usos explícitos son la fuente de verdad y deben sobrevivir
+        // al volver a abrir la jornada; las etapas posteriores siguen exigiendo
+        // un reporte físico para conservar un enlace de saldo.
         const hasPhysicalReportForShift = (shift: ShiftCode) =>
           productionDay.lines.some(
             (line) =>
@@ -438,7 +448,7 @@ export function createCaptureDraftFromDay(
               (use) =>
                 use.targetDayId === productionDay.id &&
                 use.shift === "DAY" &&
-                hasPhysicalReportForShift("DAY"),
+                (isPackingDay || hasPhysicalReportForShift("DAY")),
             )
             .map((use) => use.kg100),
         );
@@ -448,7 +458,7 @@ export function createCaptureDraftFromDay(
               (use) =>
                 use.targetDayId === productionDay.id &&
                 use.shift === "NIGHT" &&
-                hasPhysicalReportForShift("NIGHT"),
+                (isPackingDay || hasPhysicalReportForShift("NIGHT")),
             )
             .map((use) => use.kg100),
         );
@@ -559,6 +569,15 @@ export function buildProductionDayFromCapture(
       productId: row.product.productId,
       productName: row.product.productName,
       summaryGroupId: row.product.summaryGroupId,
+      ...(row.product.baseProductId
+        ? { baseProductId: row.product.baseProductId }
+        : {}),
+      ...(row.product.presentationName
+        ? { presentationName: row.product.presentationName }
+        : {}),
+      ...(row.product.sackKg !== undefined
+        ? { sackKg: row.product.sackKg }
+        : {}),
       source: {
         sheet: draft.sourceSheet,
         cell: draft.source === "EXCEL" ? `B${index + 1}` : `WEB-${index + 1}`,

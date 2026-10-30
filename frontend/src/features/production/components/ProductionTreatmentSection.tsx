@@ -50,8 +50,8 @@ export function ProductionTreatmentSection({
       }
     >
       <fieldset
-        disabled={!reportsReconciled}
-        className="min-w-0 disabled:opacity-65"
+        aria-disabled={!reportsReconciled}
+        className="min-w-0"
       >
         <legend className="sr-only">Registro de tratamiento</legend>
         <ProductPicker

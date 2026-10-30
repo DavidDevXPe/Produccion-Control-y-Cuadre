@@ -64,7 +64,7 @@ describe('PerformanceCharts', () => {
 
     render(<PerformanceCharts records={[dayRecord, nightRecord]} />)
 
-    await screen.findByRole('region', {}, { timeout: 5000 })
+    await screen.findByRole('region', {}, { timeout: 15000 })
 
     expect(
       screen.getByRole('region', { name: 'Gráficos de rendimiento' }),

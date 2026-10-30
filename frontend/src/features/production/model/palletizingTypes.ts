@@ -12,6 +12,8 @@ export interface PalletizingRowInput {
   readonly productId: string
   readonly productName: string
   readonly presentationName?: string
+  /** Total kilograms represented by one SACO in the source guide. */
+  readonly sackKg?: number
   readonly packingKg100: Kg100
   readonly freezingKg100: Kg100
   readonly initialCameraBalanceKg100?: Kg100

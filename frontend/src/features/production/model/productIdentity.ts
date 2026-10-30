@@ -27,6 +27,14 @@ const SEED_SLUG_TO_CANONICAL_ID: Readonly<Record<string, string>> = (() => {
   return map
 })()
 
+const DOWNSTREAM_VARIANT_BASE_IDS: ReadonlyMap<string, string> = new Map(
+  SEED_CAPTURE_PRODUCTS.flatMap((product) =>
+    product.baseProductId
+      ? [[product.productId, product.baseProductId] as const]
+      : [],
+  ),
+)
+
 export function canonicalProductId(productId: string): string {
   return (
     LEGACY_PRODUCT_ID_TO_CANONICAL[
@@ -41,7 +49,24 @@ export function productIdsEquivalent(
   firstProductId: string,
   secondProductId: string,
 ): boolean {
-  return canonicalProductId(firstProductId) === canonicalProductId(secondProductId)
+  const firstCanonical = canonicalProductId(firstProductId)
+  const secondCanonical = canonicalProductId(secondProductId)
+
+  if (firstCanonical === secondCanonical) return true
+
+  // A downstream SACO variant must trace back to its Envasado base product,
+  // but two different SACO variants must never collapse into one another.
+  const firstBase = DOWNSTREAM_VARIANT_BASE_IDS.get(firstCanonical)
+  const secondBase = DOWNSTREAM_VARIANT_BASE_IDS.get(secondCanonical)
+
+  if (firstBase && !secondBase) {
+    return canonicalProductId(firstBase) === secondCanonical
+  }
+  if (!firstBase && secondBase) {
+    return firstCanonical === canonicalProductId(secondBase)
+  }
+
+  return false
 }
 
 export function productsMatch(

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { formatCentiKg, formatIsoDate } from '../../../utils/formatters'
+import { captureQuantityKg100 } from '../capture/productionEntryHelpers'
 import type { FreezingOriginLedgerRow } from '../capture/freezingOriginLedger'
 import type { ProductionCatalogItem } from '../capture/productionCatalog'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
 import { useGridKeyboardNavigation } from '../hooks/useGridKeyboardNavigation'
 import type { BalanceShiftDiagnostic } from '../model/businessRules'
+import { productIdsEquivalent } from '../model/productIdentity'
 import {
   Kg100,
   OutstandingBalancePosition,
@@ -177,6 +179,7 @@ function DownstreamBalanceSummary({
 
 interface BalanceUseFieldsetProps {
   readonly isDownstream: boolean
+  readonly isBalanceOnly: boolean
   readonly usesExternalAvailability: boolean
   readonly reportsReconciled: boolean
   readonly selectedProcess: ProductionProcess
@@ -303,10 +306,13 @@ type BalanceUseRowsProps = Pick<
   | 'onRemoveBalanceUse'
   | 'onDistributeLegacyBalance'
   | 'onUpdateBalanceUse'
->
+> & {
+  readonly isBalanceOnly: boolean
+}
 
 function BalanceUseRows({
   isDownstream,
+  isBalanceOnly,
   draft,
   prevProcessName,
   freezingBalanceUseSummary,
@@ -343,21 +349,42 @@ function BalanceUseRows({
         />
       ) : null}
       <div className="divide-y divide-slate-100 dark:divide-ui-line-dark-grid">
-        {draft.balanceUses.map((balance, balanceIdx) => (
-          <BalanceUseItemRow
-            key={balance.key}
-            balance={balance}
-            balanceIdx={balanceIdx}
-            isFreezing={isDownstream}
-            prevProcessName={prevProcessName}
-            catalogItems={catalogItems}
-            balanceShiftDiagnostics={balanceShiftDiagnostics}
-            onRemoveBalanceUse={onRemoveBalanceUse}
-            onDistributeLegacyBalance={onDistributeLegacyBalance}
-            onUpdateBalanceUse={onUpdateBalanceUse}
-            getBalancesCellProps={getBalancesCellProps}
-          />
-        ))}
+        {draft.balanceUses.map((balance, balanceIdx) => {
+          const sourceProductId = balance.sourceProductId ?? balance.productId
+          const productRows = draft.rows.filter(
+            (row) =>
+              productIdsEquivalent(row.product.productId, balance.productId) ||
+              productIdsEquivalent(row.product.productId, sourceProductId),
+          )
+          const dayShiftAvailable =
+            isBalanceOnly ||
+            productRows.some(
+              (row) => captureQuantityKg100(row.dayReportedKg) > 0,
+            )
+          const nightShiftAvailable =
+            isBalanceOnly ||
+            productRows.some(
+              (row) => captureQuantityKg100(row.nightReportedKg) > 0,
+            )
+
+          return (
+            <BalanceUseItemRow
+              key={balance.key}
+              balance={balance}
+              balanceIdx={balanceIdx}
+              isFreezing={isDownstream}
+              prevProcessName={prevProcessName}
+              catalogItems={catalogItems}
+              balanceShiftDiagnostics={balanceShiftDiagnostics}
+              dayShiftAvailable={dayShiftAvailable}
+              nightShiftAvailable={nightShiftAvailable}
+              onRemoveBalanceUse={onRemoveBalanceUse}
+              onDistributeLegacyBalance={onDistributeLegacyBalance}
+              onUpdateBalanceUse={onUpdateBalanceUse}
+              getBalancesCellProps={getBalancesCellProps}
+            />
+          )
+        })}
       </div>
     </>
   )
@@ -365,6 +392,7 @@ function BalanceUseRows({
 
 function BalanceUseFieldset({
   isDownstream,
+  isBalanceOnly,
   usesExternalAvailability,
   reportsReconciled,
   selectedProcess,
@@ -398,6 +426,7 @@ function BalanceUseFieldset({
       />
       <BalanceUseRows
         isDownstream={isDownstream}
+        isBalanceOnly={isBalanceOnly}
         draft={draft}
         prevProcessName={prevProcessName}
         freezingBalanceUseSummary={freezingBalanceUseSummary}
@@ -483,6 +512,7 @@ export function ProductionBalancesSection({
 
       <BalanceUseFieldset
         isDownstream={isDownstream}
+        isBalanceOnly={isBalanceOnly}
         usesExternalAvailability={usesExternalAvailability}
         reportsReconciled={reportsReconciled}
         selectedProcess={selectedProcess}

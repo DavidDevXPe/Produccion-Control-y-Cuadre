@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ProductionCaptureSection, ProductionDay } from '../model/types'
-import type { ProductionCatalogItem } from '../capture/productionCatalog'
+import {
+  isCatalogItemAllowedForProcess,
+  type ProductionCatalogItem,
+} from '../capture/productionCatalog'
 import type { ProductionCaptureDraft } from '../capture/productionCapture'
 import {
   captureQuantityKg100,
@@ -39,10 +42,18 @@ function withCaptureSection(
   if (enabled) sections.add(section)
   else sections.delete(section)
 
-  return {
-    ...row,
-    ...(sections.size > 0 ? { captureSections: [...sections] } : {}),
+  if (sections.size > 0) {
+    return {
+      ...row,
+      captureSections: [...sections],
+    }
   }
+
+  // Do not leave an empty marker behind. Empty section metadata is easy to
+  // mistake for an active membership when a draft is hydrated again.
+  const rowWithoutSections = { ...row }
+  delete rowWithoutSections.captureSections
+  return rowWithoutSections
 }
 
 export function useProductionSectionProducts({
@@ -62,13 +73,27 @@ export function useProductionSectionProducts({
   const effectiveTreatmentProductIds = useMemo(() => {
     const ids = new Set(treatmentProductIds)
     for (const row of draft.rows) {
+      const hasTreatmentMovement = captureQuantityKg100(row.treatmentKg) > 0
+      const hasLegacyTreatmentFinishedValue =
+        isTreatmentOnlyProduct(row.product) &&
+        captureQuantityKg100(row.finishedKg) > 0 &&
+        captureQuantityKg100(row.dayReportedKg) === 0 &&
+        captureQuantityKg100(row.nightReportedKg) === 0 &&
+        captureQuantityKg100(row.dayPreviousBalanceKg) === 0 &&
+        captureQuantityKg100(row.nightPreviousBalanceKg) === 0 &&
+        captureQuantityKg100(row.tunnelDayKg) === 0 &&
+        captureQuantityKg100(row.tunnelNightKg) === 0 &&
+        captureQuantityKg100(row.closingBalanceKg) === 0 &&
+        !hasCaptureSection(row, 'TUNNEL') &&
+        !hasCaptureSection(row, 'BALANCE')
+
       // Older jornadas did not persist the section that originated a row.
-      // Treatment-only products are still unambiguous from their catalog
-      // identity, so recover that membership when hydrating a historical day.
+      // Recover only rows with actual treatment data (or an explicit legacy
+      // finished value); a zeroed row must stay removable.
       if (
-        captureQuantityKg100(row.treatmentKg) > 0 ||
-        isTreatmentOnlyProduct(row.product) ||
-        hasCaptureSection(row, 'TREATMENT')
+        hasTreatmentMovement ||
+        hasCaptureSection(row, 'TREATMENT') ||
+        hasLegacyTreatmentFinishedValue
       ) {
         ids.add(row.product.productId)
       }
@@ -79,9 +104,11 @@ export function useProductionSectionProducts({
   const treatmentCatalogItems = useMemo(
     () =>
       catalogItems.filter(
-        (product) => !effectiveTreatmentProductIds.has(product.productId),
+        (product) =>
+          isCatalogItemAllowedForProcess(product, draft.process) &&
+          !effectiveTreatmentProductIds.has(product.productId),
       ),
-    [catalogItems, effectiveTreatmentProductIds],
+    [catalogItems, draft.process, effectiveTreatmentProductIds],
   )
 
   const treatmentRows = useMemo(
@@ -123,10 +150,11 @@ export function useProductionSectionProducts({
     () =>
       catalogItems.filter(
         (product) =>
+          isCatalogItemAllowedForProcess(product, draft.process) &&
           !effectiveTunnelProductIds.has(product.productId) &&
           !isTreatmentOnlyProduct(product),
       ),
-    [catalogItems, effectiveTunnelProductIds],
+    [catalogItems, draft.process, effectiveTunnelProductIds],
   )
 
   const tunnelRows = useMemo(
@@ -170,9 +198,11 @@ export function useProductionSectionProducts({
   const closingCatalogItems = useMemo(
     () =>
       catalogItems.filter(
-        (product) => !effectiveClosingProductIds.has(product.productId),
+        (product) =>
+          isCatalogItemAllowedForProcess(product, draft.process) &&
+          !effectiveClosingProductIds.has(product.productId),
       ),
-    [catalogItems, effectiveClosingProductIds],
+    [catalogItems, draft.process, effectiveClosingProductIds],
   )
 
   const closingRows = useMemo(
@@ -303,7 +333,8 @@ export function useProductionSectionProducts({
         captureQuantityKg100(row.tunnelDayKg) > 0 ||
         captureQuantityKg100(row.tunnelNightKg) > 0 ||
         captureQuantityKg100(row.closingBalanceKg) > 0 ||
-        captureQuantityKg100(row.finishedKg) > 0 ||
+        (captureQuantityKg100(row.finishedKg) > 0 &&
+          !isTreatmentOnlyProduct(row.product)) ||
         current.balanceUses.some((balance) => balance.productId === productId) ||
         hasCaptureSection(row, 'TUNNEL') ||
         hasCaptureSection(row, 'BALANCE')
@@ -365,6 +396,8 @@ export function useProductionSectionProducts({
       const hasOtherMovement =
         captureQuantityKg100(row.dayReportedKg) > 0 ||
         captureQuantityKg100(row.nightReportedKg) > 0 ||
+        captureQuantityKg100(row.dayPreviousBalanceKg) > 0 ||
+        captureQuantityKg100(row.nightPreviousBalanceKg) > 0 ||
         captureQuantityKg100(row.treatmentKg) > 0 ||
         captureQuantityKg100(row.closingBalanceKg) > 0 ||
         captureQuantityKg100(row.finishedKg) > 0 ||

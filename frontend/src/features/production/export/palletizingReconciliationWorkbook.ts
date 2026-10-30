@@ -4,6 +4,7 @@ import {
   calculatePalletizingRow,
   calculatePalletizingTotals,
 } from '../model/palletizingCalculations'
+import { getSackWeightKg, roundSackCount } from '../model/sackPresentation'
 import type {
   PalletizingComparisonMode,
   PalletizingRowCalculation,
@@ -344,7 +345,10 @@ export function buildPalletizingReconciliationWorkbook(
     row.getCell(5).value = { formula: `C${rIdx2}-D${rIdx2}`, result: toKilograms(c.diffPackingVsFreezingKg100) }
     row.getCell(5).numFmt = '#,##0'
 
-    row.getCell(6).value = c.row.videojetBagsCount ?? Math.floor(toKilograms(c.row.videojetQrKg100) / 20)
+    row.getCell(6).value = c.row.videojetBagsCount ?? roundSackCount(
+      toKilograms(c.row.videojetQrKg100),
+      getSackWeightKg(c.row.productName, c.row.presentationName, c.row.sackKg),
+    )
     row.getCell(6).numFmt = '#,##0'
 
     row.getCell(7).value = toKilograms(c.row.videojetQrKg100)
@@ -425,8 +429,8 @@ export function buildPalletizingReconciliationWorkbook(
   ws2.getCell(`B${rIdx2}`).font = { bold: true, size: 9, color: { argb: 'FF334155' } }
   rIdx2++
   const notes2 = [
-    '• Presentación y Pesajes: Envasado y congelamiento operan en blocks de 10 kg. Videojet y Paletizado operan por sacos de 20 kg (2 blocks por saco).',
-    '• Saldo Inicial y Arrastre: Los blocks sueltos (10 kg) del turno anterior se integran a la producción del turno actual para completar sacos de 20 kg (ej. Manto Estándar: 10 kg hoy + 10 kg anterior = 20 kg paletizados).',
+    '• Presentación y Pesajes: Envasado y congelamiento operan en blocks de 10 kg. Videojet y Paletizado usan la presentación SACO del producto: 2 x 10 = 20 kg, 3 x 9 = 27 kg o 3 x 10 = 30 kg.',
+    '• Saldo Inicial y Arrastre: Los blocks sueltos (10 kg) del turno anterior se integran a la producción del turno actual para completar la presentación SACO correspondiente.',
     '• Dif. Videojet (kg) = (Congelamiento + Saldo Inicial) − Videojet QR kg − Saldo Block sin QR = 0 kg.',
     '• Dif. Física Paletizar (kg) = (Congelamiento + Saldo Inicial) − (Paletizado + Saldo Final en Cámara) = 0 kg (conciliación exacta al descontar el stock físico en cámara).',
     '• Semáforo de Cuadre Conciliado:',

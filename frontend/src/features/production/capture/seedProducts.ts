@@ -1,5 +1,6 @@
 import type { ProductionCatalogItem } from "./productionCatalog";
-import { normalizeProductName } from "./productNormalizer";
+import { normalizeProductName, productNameSlug } from "./productNormalizer";
+import { parseSackPresentation } from "../model/sackPresentation";
 
 const seedNames = [
   [
@@ -202,6 +203,11 @@ const familyMetadata = {
     familyName: "MEMBRANA",
     summaryGroupId: "RECORTE_COCIDO",
   },
+  PICO: {
+    familyId: "pico",
+    familyName: "PICO",
+    summaryGroupId: "PICO",
+  },
   RECORTE_CRUDO: {
     familyId: "recorte-crudo",
     familyName: "RECORTE CRUDO",
@@ -229,8 +235,8 @@ if (seedNames.length !== seedIds.length) {
   );
 }
 
-export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] =
-  seedNames.map(([canonicalName, family], index) => ({
+const baseSeedProducts: readonly ProductionCatalogItem[] = seedNames.map(
+  ([canonicalName, family], index) => ({
     ...familyMetadata[family],
     productId: seedIds[index]!,
     productName: canonicalName,
@@ -262,4 +268,74 @@ export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] =
     createdAt: "2026-09-15T00:00:00.000Z",
     active: true,
     technicalClassification: technicalClassification(canonicalName),
-  }));
+    // Envasado works with the base product/aro description. Downstream stages
+    // use the explicit SACO variants declared below.
+    allowedProcesses: ["PACKING"] as const,
+  }),
+);
+
+/**
+ * Authoritative downstream presentations from the production guide. Envasado
+ * keeps the base product name; these variants are available only from
+ * Congelamiento onwards so their sack composition cannot be lost.
+ */
+const sacoVariantDefinitions = [
+  ["MANTO ESTANDAR CRUDO CONGELADO BLOCK S/TTO C/02 MEMB 2 KG - 4 KG SB 100% P.N. - SACO 2 x 10 kg", "MANTO", "manto-estandar-crudo-2-4"],
+  ["ALETA CRUDA CONGELADA BLOCK S/TTO 2000 g - 3000 g 100% P.N. - SACO 2 x 10 kg", "ALETA", "aleta-cruda-block-2000-3000"],
+  ["REJOS CRUDOS CONGELADOS BLOCK S/TTO BAILARINA S/R 500 G -1000 G SEMI LIMPIOS 100% P.N. - SACO 2 x 10 kg", "REJOS", "rejo-bailarina-500-1000"],
+  ["ALETA CRUDA CONGELADA BLOCK S/TTO 1000 g - 2000 g 100% P.N. - SACO 2 x 10 kg", "ALETA", "aleta-cruda-block-1000-2000-e"],
+  ["MANTO JAPONES CRUDO CONGELADO BLOCK S/TTO 2 KG - 4 KG SB 100% P.N. - SACO 2 x 10 kg", "MANTO", "manto-japones-crudo"],
+  ["NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 300-UP 100% P.N. - SACO 2 x 10 kg", "NUCA_SEMILIMPIA", "nuca-semilimpia-codificada"],
+  ["REJO CRUDO CONGELADO BLOCK S/TTO BAA S/R 1-2 100% P.N. - SACO 2 x 10 kg", "REJOS", "rejo-baa-1-2"],
+  ["ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P SM CP ST MIXTA 100% P.N. - SACO 3 x 10 kg", "ANILLAS", "anillas-espana-p-sm-cp-st-mixta"],
+  ["REJO REPRODUCTOR CRUDO CONGELADO BLOCK S/TTO S/U S/V C/T 70 cm - up 100% P.N. - SACO 2 x 10 kg", "REPRODUCTOR", "reproductor-70-up"],
+  ["CONOS CON PIEL CRUDOS CONGELADOS BLOCK S/TTO 100% P.N - SACO 2 x 10 kg", "MANTO", "conos-con-piel-crudos"],
+  ["RECORTE CRUDO CONGELADO BLOCK S/TTO ANILLAS SM CP ST 100% P.N. - SACO 2 x 10 kg", "RECORTE_CRUDO", "recorte-crudo-anillas-sm-cp-st"],
+  ["ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA SM 2DA MIXTA 100% P.N. - SACO 2 x 10 kg", "ANILLAS", "anillas-espana-segunda-mixta"],
+  ["MEMBRANAS COCIDAS CONGELADAS BLOCK S/TTO 100% P.N. - SACO 3 x 9 kg", "MEMBRANA", "membranas-cocidas"],
+  ["ALETA CRUDA CONGELADA BLOCK S/TTO 3000 g - 4000 g 100% P.N. - SACO 2 x 10 kg", "ALETA", "aleta-cruda-block-3000-4000"],
+  ["REJO CRUDO CONGELADO BLOCK S/TTO BAA S/R 2-3 100% P.N. - SACO 2 x 10 kg", "REJOS", "rejo-baa-2-3"],
+  ["BOTÓN CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM CP ST 100% P.N. - SACO 2 x 10 kg", "BOTON", "boton-crudo-block-espana-p-sm-cp-st"],
+  ["PICOS CRUDO CONGELADO BLOCK S/TTO 100% P.N. - SACO 2 x 10 kg", "PICO", undefined],
+  ["ALETA CRUDA CONGELADA BLOCK S/TTO 500 g - 1000 g 100% P.N. - SACO 2 x 10 kg", "ALETA", "aleta-cruda-block-500-1000"],
+  ["RECORTES CRUDOS - LABIOS CONGELADOS BLOCK S/TTO 100% P.N. - SACO 2 x 10 kg", "RECORTE_CRUDO", "recortes-crudos-labios"],
+  ["RECORTE CRUDO CONGELADO BLOCK S/TTO MANTO JAPONÉS 100% P.N. - SACO 2 x 10 kg", "RECORTE_CRUDO", "recorte-crudo-manto-japones"],
+  ["REJOS CRUDOS CONGELADOS BLOCK S/TTO BAILARINA S/R 0 - 500 g SEMI LIMPIOS 100% P.N. - SACO 2 x 10 kg", "REJOS", undefined],
+  ["RECORTE CRUDO CONGELADO BLOCK S/TTO ALETA 100% PN - SACO 2 x 10 kg", "RECORTE_CRUDO", "recorte-crudo-aleta"],
+  ["BOTÓN CRUDO CONGELADO BLOCK S/TTO ESPAÑA P SM SP ST 100% P.N. - SACO 2 x 10 kg", "BOTON", "boton-crudo-block-polar-sm-sp-st"],
+  ["NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N. - SACO 2 x 10 kg", "NUCA_SEMILIMPIA", undefined],
+  ["RECORTE COCIDO CONGELADO BLOCK S/TTO PB 100% P.N. - SACO 3 x 9 kg", "RECORTE_COCIDO", "recorte-cocido-pb"],
+  ["RECORTE CRUDO CONGELADO BLOCK S/TTO ANILLAS SM SP ST 100% P.N. - SACO 2 x 10 kg", "RECORTE_CRUDO", "recorte-crudo-anillas-sm-sp-st"],
+  ["RECORTE CRUDO CONGELADO BLOCK C/TTO MANTO SM 100% P.N. - SACO 2 x 10 kg", "RECORTE_CRUDO", undefined],
+  ["ANILLAS CRUDAS CONGELADAS BLOCK S/TTO ESPAÑA P POLAR SM SP ST MIXTA 100% P.N. - SACO 3 x 10 kg", "ANILLAS", "anillas-espana-polar-mixta"],
+  ["MANTO JAPONES CRUDO CONGELADO BLOCK S/TTO 1 KG - 2 KG SB 100% P.N. - SACO 2 x 10 kg", "MANTO", "manto-japones-crudo-1-2"],
+] as const;
+
+const sacoVariantProducts: readonly ProductionCatalogItem[] = sacoVariantDefinitions.map(
+  ([productName, family, baseProductId]) => {
+    const presentation = parseSackPresentation(productName);
+
+    return {
+      ...familyMetadata[family],
+      productId: `saco-${productNameSlug(productName)}`,
+      productName,
+      canonicalName: productName,
+      normalizedName: normalizeProductName(productName),
+      aliases: [],
+      source: "SEED" as const,
+      createdAt: "2026-10-19T00:00:00.000Z",
+      active: true,
+      technicalClassification: technicalClassification(productName),
+      ...(baseProductId ? { baseProductId } : {}),
+      ...(presentation
+        ? { presentationName: presentation.name, sackKg: presentation.totalKg }
+        : {}),
+      allowedProcesses: ["FREEZING", "VIDEOJET", "PALLETIZING"] as const,
+    };
+  },
+);
+
+export const SEED_CAPTURE_PRODUCTS: readonly ProductionCatalogItem[] = [
+  ...baseSeedProducts,
+  ...sacoVariantProducts,
+];

@@ -224,6 +224,37 @@ describe('ProductionBalancesSection', () => {
     )
   })
 
+  it('blocks a shift without physical production and leaves the valid shift available', () => {
+    const props = createProps({
+      draft: {
+        ...createEmptyCaptureDraft('2026-09-16', 'PACKING'),
+        rows: [
+          {
+            key: 'report-row-1',
+            product: sampleCatalogItem,
+            dayReportedKg: '0',
+            dayPreviousBalanceKg: '0',
+            nightReportedKg: '200',
+            nightPreviousBalanceKg: '0',
+            tunnelDayKg: '0',
+            tunnelNightKg: '0',
+            treatmentKg: '0',
+            closingBalanceKg: '0',
+            finishedKg: '0',
+          },
+        ],
+        balanceUses: [{ ...sampleBalanceUse, dayKg: '0', nightKg: '200' }],
+      },
+    })
+    render(<ProductionBalancesSection {...props} />)
+
+    expect(screen.getByLabelText(/Procesado Día/i)).toBeDisabled()
+    expect(screen.getByLabelText(/Procesado Noche/i)).not.toBeDisabled()
+    expect(
+      screen.getByText(/No hay producción registrada de este producto/),
+    ).toBeInTheDocument()
+  })
+
   it('triggers onRemoveBalanceUse when delete button is clicked', () => {
     const onRemoveBalanceUse = vi.fn()
     const props = createProps({ onRemoveBalanceUse })

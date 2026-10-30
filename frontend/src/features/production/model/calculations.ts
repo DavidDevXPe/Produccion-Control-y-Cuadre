@@ -646,6 +646,30 @@ function collectDayIntegrityIssues(
             calculateShiftEntry(line.shifts[use.shift]).ownProductionKg100 >
             0,
         );
+      const hasMatchingPhysicalReport = sameProduct.some((line) => {
+        const entry = calculateShiftEntry(line.shifts[use.shift]);
+        return entry.reportedKg100 + entry.adjustmentKg100 > 0;
+      });
+      if (
+        getProductionProcess(productionDay) === "PACKING" &&
+        productionDay.operationMode !== "BALANCE_ONLY" &&
+        sameProduct.length > 0 &&
+        use.kg100 > 0 &&
+        !hasMatchingPhysicalReport
+      ) {
+        const shiftLabel = use.shift === "DAY" ? "Día" : "Noche";
+        issues.push(
+          dayIssue({
+            code: "BALANCE_SHIFT_WITHOUT_REPORT",
+            message:
+              `El saldo de ${lot.productId} no puede procesarse en Turno ${shiftLabel} ` +
+              "porque el producto no tiene kilos envasados declarados para ese turno.",
+            balanceLotId: lot.id,
+            productId: lot.productId,
+            shift: use.shift,
+          }),
+        );
+      }
       if (sameProduct.length === 0 && hasPhysicalForShift) {
         issues.push(
           dayIssue({

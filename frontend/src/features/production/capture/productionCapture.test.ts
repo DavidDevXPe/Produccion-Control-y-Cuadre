@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kg100 } from '../model/calculations'
+import { calculateOutstandingBalances, kg100 } from '../model/calculations'
 import {
   getProductionMovements,
   getProductTotal,
@@ -34,6 +34,68 @@ function row(overrides: Partial<ProductionCaptureRow> = {}): ProductionCaptureRo
 }
 
 describe('production capture', () => {
+  it('restores both shifts of an independent balance use when the normal report has no matching row', () => {
+    const originDraft = {
+      ...createEmptyCaptureDraft('2026-10-19'),
+      rawMaterialKg: '1000',
+      declaredDayTotalKg: '0',
+      declaredNightTotalKg: '0',
+      rows: [
+        row({
+          dayReportedKg: '0',
+          nightReportedKg: '0',
+          closingBalanceKg: '1000',
+        }),
+      ],
+    }
+    const origin = buildProductionDayFromCapture(originDraft, [], []).productionDay
+    const product = origin.lines[0]!.productId
+    const originLine = origin.lines[0]!
+
+    const currentDraft = {
+      ...createEmptyCaptureDraft('2026-10-20'),
+      declaredDayTotalKg: '0',
+      declaredNightTotalKg: '0',
+      rows: [],
+      balanceUses: [
+        {
+          key: 'origin-balance',
+          originDayId: origin.id,
+          originDate: origin.date,
+          familyId: originLine.familyId,
+          familyName: originLine.familyName,
+          productId: product,
+          productName: originLine.productName,
+          availableKg100: kg100(100_000),
+          dayKg: '500',
+          nightKg: '500',
+        },
+      ],
+    }
+
+    const saved = buildProductionDayFromCapture(
+      currentDraft,
+      [origin],
+      [],
+    ).productionDay
+    const restored = createCaptureDraftFromDay(saved, [origin])
+
+    expect(saved.receivedBalanceLots[0]?.uses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ shift: 'DAY', kg100: kg100(50_000) }),
+        expect.objectContaining({ shift: 'NIGHT', kg100: kg100(50_000) }),
+      ]),
+    )
+    expect(
+      calculateOutstandingBalances([origin, saved])[0]?.pendingKg100,
+    ).toBe(kg100(0))
+    expect(restored.balanceUses).toHaveLength(1)
+    expect(restored.balanceUses[0]).toMatchObject({
+      dayKg: '500',
+      nightKg: '500',
+    })
+  })
+
   it('persists section membership so zero-quantity rows stay out of reports after reload', () => {
     const draft = {
       ...createEmptyCaptureDraft('2026-10-19'),

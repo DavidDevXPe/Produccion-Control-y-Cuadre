@@ -109,7 +109,9 @@ export function splitFreezingProductName(rawValue: string): {
 } {
   const value = normalizeWhitespace(rawValue);
 
-  const match = value.match(/\s*-\s*(SACO\s+\d+\s*[xX×]\s*\d+\s*kg)\s*$/i);
+  const match = value.match(
+    /\s*-\s*(SACO\s+\d+\s*[xX×Ã—Ãƒâ€”]\s*\d+(?:[.,]\d+)?\s*kg)\s*$/i,
+  );
 
   if (!match) {
     return {

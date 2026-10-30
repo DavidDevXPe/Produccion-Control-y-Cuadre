@@ -304,9 +304,44 @@ describe('production days page', () => {
     expect(
       within(summary).getByText('Vinculado por encima de lo reportado'),
     ).toBeInTheDocument()
-    const difference = within(summary).getByText('Dif. trazabilidad').nextElementSibling
+    const difference = within(summary)
+      .getByText('Diferencia de trazabilidad semanal')
+      .nextElementSibling
     expect(difference).toHaveTextContent('-20,000.00')
     expect(difference?.className).toMatch(/rose/)
+  })
+
+  it('keeps an empty Freezing week visibly unverified instead of showing a reconciled zero', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-24T12:00:00-05:00'))
+    window.localStorage.clear()
+    window.localStorage.setItem('trabunda-active-operational-week-v1', '48')
+
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/jornadas?process=FREEZING']}>
+          <ProductionDaysPage />
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Sin registros de congelamiento esta semana',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getAllByText('Sin registros de congelamiento esta semana').length,
+    ).toBeGreaterThanOrEqual(2)
+
+    const metrics = screen.getByRole('region', { name: 'Resumen de jornadas' })
+    const differenceCard = within(metrics)
+      .getByRole('heading', { name: 'Diferencia de trazabilidad semanal' })
+      .closest('article')!
+    expect(within(differenceCard).getByText('—')).toBeInTheDocument()
+    expect(
+      within(differenceCard).getByText('Sin registros para verificar la diferencia'),
+    ).toBeInTheDocument()
   })
 
   it('shows Freezing shift totals and linked kilograms under their matching footer columns', () => {

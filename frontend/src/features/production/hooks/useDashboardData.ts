@@ -114,10 +114,9 @@ export function useDashboardData() {
       ]),
     )
 
-    const freezingAvailability = calculateFreezingAvailability(
-      allProductionDays,
-      packingWeek.period.endDate,
-    )
+    // Reconcile selected-week origins against the complete ledger so later
+    // Freezing journeys are included when determining what is still pending.
+    const freezingAvailability = calculateFreezingAvailability(allProductionDays)
 
     const weekFreezingPositions = freezingAvailability.filter(
       (position) =>

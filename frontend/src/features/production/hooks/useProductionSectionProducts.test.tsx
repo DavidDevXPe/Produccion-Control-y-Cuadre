@@ -1,4 +1,5 @@
-import { renderHook, act } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
+import { useState } from 'react'
 import type { SetStateAction } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useProductionSectionProducts } from './useProductionSectionProducts'
@@ -196,6 +197,55 @@ describe('useProductionSectionProducts', () => {
     )
   })
 
+  it('removes treatment-only rows instead of recovering them after deletion', () => {
+    const treatmentProduct = catalogItems.find((product) =>
+      product.productName.includes('EN TRATAMIENTO'),
+    )
+    expect(treatmentProduct).toBeDefined()
+
+    const treatmentDraft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'treatment-only-row',
+          product: treatmentProduct!,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '4178',
+          closingBalanceKg: '0',
+          finishedKg: '4178',
+          captureSections: ['TREATMENT'],
+        },
+      ],
+    }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState(treatmentDraft)
+      const sectionProducts = useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      })
+
+      return { draft, sectionProducts }
+    })
+
+    expect(result.current.sectionProducts.treatmentRows).toHaveLength(1)
+
+    act(() => {
+      result.current.sectionProducts.removeTreatmentProduct('treatment-only-row')
+    })
+
+    expect(result.current.sectionProducts.treatmentRows).toHaveLength(0)
+    expect(result.current.draft.rows).toHaveLength(0)
+  })
+
   it('recovers imported closing-balance rows as non-report products', () => {
     const balanceProduct = catalogItems[0]!
     const historicalDraft: ProductionCaptureDraft = {
@@ -231,6 +281,241 @@ describe('useProductionSectionProducts', () => {
     expect(result.current.nonReportProductIds).toContain(
       balanceProduct.productId,
     )
+  })
+
+  it('removes a closing-only row, including a zero-value BAA 1-2 row', () => {
+    const balanceProduct = catalogItems.find(
+      (product) => product.productId === 'rejo-baa-1-2',
+    )
+    expect(balanceProduct).toBeDefined()
+
+    const draftWithClosingRow: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'closing-baa-1-2',
+          product: balanceProduct!,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+          captureSections: ['BALANCE'],
+        },
+      ],
+    }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState(draftWithClosingRow)
+      const sectionProducts = useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      })
+
+      return { draft, sectionProducts }
+    })
+
+    expect(result.current.sectionProducts.closingRows).toHaveLength(1)
+
+    act(() => {
+      result.current.sectionProducts.removeClosingProduct('closing-baa-1-2')
+    })
+
+    expect(result.current.sectionProducts.closingRows).toHaveLength(0)
+    expect(result.current.draft.rows).toHaveLength(0)
+  })
+
+  it('removes only the saldo membership when the product is also in the report', () => {
+    const balanceProduct = catalogItems.find(
+      (product) => product.productId === 'rejo-baa-1-2',
+    )
+    expect(balanceProduct).toBeDefined()
+
+    const draftWithSharedRow: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'shared-baa-1-2',
+          product: balanceProduct!,
+          dayReportedKg: '125',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '0',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '40',
+          finishedKg: '0',
+          captureSections: ['BALANCE'],
+        },
+      ],
+    }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState(draftWithSharedRow)
+      const sectionProducts = useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      })
+
+      return { draft, sectionProducts }
+    })
+
+    act(() => {
+      result.current.sectionProducts.removeClosingProduct('shared-baa-1-2')
+    })
+
+    expect(result.current.sectionProducts.closingRows).toHaveLength(0)
+    expect(result.current.draft.rows).toHaveLength(1)
+    expect(result.current.draft.rows[0]).toMatchObject({
+      dayReportedKg: '125',
+      closingBalanceKg: '0',
+    })
+    expect(result.current.draft.rows[0]?.captureSections).toBeUndefined()
+  })
+
+  it('keeps each section independent when the same product has different quantities', () => {
+    const sharedProduct = catalogItems.find(
+      (product) => product.productId === 'rejo-baa-1-2',
+    )
+    expect(sharedProduct).toBeDefined()
+
+    const sharedDraft: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'shared-sections-baa-1-2',
+          product: sharedProduct!,
+          dayReportedKg: '125',
+          dayPreviousBalanceKg: '0',
+          nightReportedKg: '75',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '40',
+          tunnelNightKg: '15',
+          treatmentKg: '12',
+          closingBalanceKg: '30',
+          finishedKg: '0',
+          captureSections: ['TUNNEL', 'TREATMENT', 'BALANCE'],
+        },
+      ],
+    }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState(sharedDraft)
+      const sectionProducts = useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      })
+
+      return { draft, sectionProducts }
+    })
+
+    act(() => {
+      result.current.sectionProducts.removeTunnelProduct('shared-sections-baa-1-2')
+    })
+
+    expect(result.current.draft.rows[0]).toMatchObject({
+      dayReportedKg: '125',
+      nightReportedKg: '75',
+      tunnelDayKg: '0',
+      tunnelNightKg: '0',
+      treatmentKg: '12',
+      closingBalanceKg: '30',
+    })
+    expect(result.current.sectionProducts.tunnelRows).toHaveLength(0)
+    expect(result.current.sectionProducts.treatmentRows).toHaveLength(1)
+    expect(result.current.sectionProducts.closingRows).toHaveLength(1)
+
+    act(() => {
+      result.current.sectionProducts.removeTreatmentProduct('shared-sections-baa-1-2')
+    })
+
+    expect(result.current.draft.rows[0]).toMatchObject({
+      dayReportedKg: '125',
+      nightReportedKg: '75',
+      treatmentKg: '0',
+      closingBalanceKg: '30',
+    })
+    expect(result.current.sectionProducts.treatmentRows).toHaveLength(0)
+    expect(result.current.sectionProducts.closingRows).toHaveLength(1)
+
+    act(() => {
+      result.current.sectionProducts.removeClosingProduct('shared-sections-baa-1-2')
+    })
+
+    expect(result.current.draft.rows).toHaveLength(1)
+    expect(result.current.draft.rows[0]).toMatchObject({
+      dayReportedKg: '125',
+      nightReportedKg: '75',
+      closingBalanceKg: '0',
+    })
+    expect(result.current.sectionProducts.closingRows).toHaveLength(0)
+  })
+
+  it('does not remove report traceability backed by a previous balance when tunnel is deleted', () => {
+    const sharedProduct = catalogItems.find(
+      (product) => product.productId === 'rejo-baa-1-2',
+    )
+    expect(sharedProduct).toBeDefined()
+
+    const draftWithPreviousBalance: ProductionCaptureDraft = {
+      ...initialDraft,
+      rows: [
+        {
+          key: 'tunnel-with-previous-balance',
+          product: sharedProduct!,
+          dayReportedKg: '0',
+          dayPreviousBalanceKg: '8',
+          nightReportedKg: '0',
+          nightPreviousBalanceKg: '0',
+          tunnelDayKg: '4',
+          tunnelNightKg: '0',
+          treatmentKg: '0',
+          closingBalanceKg: '0',
+          finishedKg: '0',
+          captureSections: ['TUNNEL'],
+        },
+      ],
+    }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState(draftWithPreviousBalance)
+      const sectionProducts = useProductionSectionProducts({
+        draft,
+        setDraft,
+        catalogItems,
+        setSaveError: vi.fn(),
+        updateDraft: vi.fn(),
+      })
+
+      return { draft, sectionProducts }
+    })
+
+    act(() => {
+      result.current.sectionProducts.removeTunnelProduct(
+        'tunnel-with-previous-balance',
+      )
+    })
+
+    expect(result.current.draft.rows).toHaveLength(1)
+    expect(result.current.draft.rows[0]).toMatchObject({
+      dayPreviousBalanceKg: '8',
+      tunnelDayKg: '0',
+    })
+    expect(result.current.sectionProducts.tunnelRows).toHaveLength(0)
   })
 
   it('keeps products linked to previous balances out of the daily report', () => {

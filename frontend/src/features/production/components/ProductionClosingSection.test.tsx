@@ -75,17 +75,22 @@ describe('ProductionClosingSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('disables the fieldset and inputs when reports are not reconciled', () => {
+  it('keeps editing controls disabled but allows removing a stale saldo row', () => {
     const props = createProps({ reportsReconciled: false })
     render(<ProductionClosingSection {...props} />)
 
     const fieldset = screen.getByRole('group', {
       name: 'Saldo generado al cierre',
     })
-    expect(fieldset).toBeDisabled()
+    expect(fieldset).toHaveAttribute('aria-disabled', 'true')
 
     const quantityInput = screen.getByLabelText(/Saldo al cierre/i)
     expect(quantityInput).toBeDisabled()
+
+    const deleteBtn = screen.getByRole('button', {
+      name: `Eliminar saldo de ${sampleCatalogItem.productName}`,
+    })
+    expect(deleteBtn).toBeEnabled()
   })
 
   it('renders empty message when there are no rows', () => {

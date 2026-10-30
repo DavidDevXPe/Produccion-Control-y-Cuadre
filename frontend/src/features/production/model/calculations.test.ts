@@ -206,6 +206,88 @@ describe('Wednesday production reconciliation', () => {
 })
 
 describe('daily integrity validation', () => {
+  it('accepts a balance in a shift with matching physical production', () => {
+    const sourceLine = WEDNESDAY_PRODUCTION_DAY.lines[0]!
+    const validNightBalance: ProductionDay = {
+      ...WEDNESDAY_PRODUCTION_DAY,
+      receivedBalanceLots: [
+        {
+          id: 'night-balance-with-report',
+          originDayId: 'production-day-2026-09-01',
+          familyId: sourceLine.familyId,
+          productId: sourceLine.productId,
+          originalKg100: kg(1_000),
+          uses: [
+            {
+              id: 'night-balance-with-report-use',
+              targetDayId: WEDNESDAY_PRODUCTION_DAY.id,
+              shift: 'NIGHT',
+              kg100: kg(1_000),
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = calculateProductionDay(validNightBalance)
+    const product = result.products.find(
+      (entry) => entry.productId === sourceLine.productId,
+    )
+
+    expect(product?.night.previousBalanceProcessedKg100).toBe(kg(1_000))
+    expect(result.integrityIssues).not.toContainEqual(
+      expect.objectContaining({
+        code: 'BALANCE_SHIFT_WITHOUT_REPORT',
+        shift: 'NIGHT',
+      }),
+    )
+  })
+
+  it('blocks balance use in a shift with no physical product report', () => {
+    const sourceLine = WEDNESDAY_PRODUCTION_DAY.lines[0]!
+    const invalidDay: ProductionDay = {
+      ...WEDNESDAY_PRODUCTION_DAY,
+      lines: [
+        {
+          ...sourceLine,
+          shifts: {
+            ...sourceLine.shifts,
+            DAY: { ...sourceLine.shifts.DAY, reportedKg100: kg(0) },
+          },
+        },
+        ...WEDNESDAY_PRODUCTION_DAY.lines.slice(1),
+      ],
+      receivedBalanceLots: [
+        {
+          id: 'day-without-report',
+          originDayId: 'production-day-2026-09-01',
+          familyId: sourceLine.familyId,
+          productId: sourceLine.productId,
+          originalKg100: kg(1_000),
+          uses: [
+            {
+              id: 'day-without-report-use',
+              targetDayId: WEDNESDAY_PRODUCTION_DAY.id,
+              shift: 'DAY',
+              kg100: kg(1_000),
+            },
+          ],
+        },
+      ],
+    }
+
+    const result = calculateProductionDay(invalidDay)
+
+    expect(result.integrityIssues).toContainEqual(
+      expect.objectContaining({
+        code: 'BALANCE_SHIFT_WITHOUT_REPORT',
+        shift: 'DAY',
+        productId: sourceLine.productId,
+      }),
+    )
+    expect(result.status).toBe('UNBALANCED')
+  })
+
   it('invalidates an otherwise squared day when raw-material entries do not match', () => {
     const invalidDay: ProductionDay = {
       ...WEDNESDAY_PRODUCTION_DAY,

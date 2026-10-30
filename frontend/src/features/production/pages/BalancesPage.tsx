@@ -27,9 +27,12 @@ export function BalancesPage() {
     setSelectedDate,
     freezingPositions,
     filteredFreezingPositions,
+    previousFreezingPositions,
+    filteredPreviousFreezingPositions,
     freezingOrigins,
     outstandingByOrigin,
     totalPendingKg100,
+    totalFreezingLedgerPendingKg100,
     totalExcessKg100,
     pendingProductCount,
     originCount,
@@ -39,7 +42,9 @@ export function BalancesPage() {
   } = useBalancesData()
 
   const hasNoPositions =
-    (isFreezing ? freezingPositions.length : outstandingByOrigin.length) === 0
+    (isFreezing
+      ? freezingPositions.length + previousFreezingPositions.length
+      : outstandingByOrigin.length) === 0
 
   return (
     <div className="space-y-5">
@@ -61,7 +66,8 @@ export function BalancesPage() {
               <Printer className="size-4" aria-hidden="true" />
               Exportar PDF
             </button>
-            {freezingWeek.canCreate && totalPendingKg100 > 0 ? (
+            {freezingWeek.canCreate &&
+            (totalPendingKg100 > 0 || totalFreezingLedgerPendingKg100 > 0) ? (
               <ActionLink
                 to="/jornadas/nueva?process=FREEZING"
                 variant="secondary"
@@ -111,7 +117,24 @@ export function BalancesPage() {
         <>
           <FreezingAvailabilityExplanation origins={freezingOrigins} />
           <FreezingBalancesPanel positions={filteredFreezingPositions} />
+          {filteredPreviousFreezingPositions.length > 0 ? (
+            <FreezingBalancesPanel
+              positions={filteredPreviousFreezingPositions}
+              title="Saldos anteriores disponibles"
+              description="Orígenes de semanas anteriores que siguen disponibles para consumir mediante FIFO. Se mantienen separados de la producción de la semana seleccionada."
+            />
+          ) : null}
         </>
+      ) : null}
+
+      {isFreezing &&
+      filteredFreezingPositions.length === 0 &&
+      filteredPreviousFreezingPositions.length > 0 ? (
+        <FreezingBalancesPanel
+          positions={filteredPreviousFreezingPositions}
+          title="Saldos anteriores disponibles"
+          description="Orígenes de semanas anteriores que siguen disponibles para consumir mediante FIFO. Se mantienen separados de la producción de la semana seleccionada."
+        />
       ) : null}
 
       {hasNoPositions ? (

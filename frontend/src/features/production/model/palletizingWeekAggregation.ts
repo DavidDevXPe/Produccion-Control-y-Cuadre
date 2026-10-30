@@ -1,5 +1,6 @@
 import { getOperationalWeekContextForIsoDate } from '../../../utils/operationalContext'
 import { kg100, sumKg100 } from './calculations'
+import { getSackWeightKg, roundSackCount } from './sackPresentation'
 import type { PalletizingRowInput } from './palletizingTypes'
 import type { ProductionDay } from './types'
 
@@ -20,6 +21,8 @@ export function buildPalletizingRowsFromWeekDays(
     {
       productId: string
       productName: string
+      presentationName?: string
+      sackKg?: number
       packingKg100: number
       freezingKg100: number
       videojetBagsCount: number
@@ -41,6 +44,10 @@ export function buildPalletizingRowsFromWeekDays(
         productsMap.set(pid, {
           productId: pid,
           productName: line.productName,
+          ...(line.presentationName
+            ? { presentationName: line.presentationName }
+            : {}),
+          ...(line.sackKg !== undefined ? { sackKg: line.sackKg } : {}),
           packingKg100: 0,
           freezingKg100: 0,
           videojetBagsCount: 0,
@@ -70,10 +77,19 @@ export function buildPalletizingRowsFromWeekDays(
       } else if (process === 'FREEZING') {
         entry.freezingKg100 += lineFinishedKg100
       } else if (process === 'VIDEOJET') {
-        const qrKg = line.videojetQrKg100 ?? lineFinishedKg100
+        const sackWeightKg = getSackWeightKg(
+          line.productName,
+          line.presentationName,
+          line.sackKg,
+        )
+        const qrKg =
+          line.videojetQrKg100 ??
+          (line.videojetBagsCount !== undefined
+            ? line.videojetBagsCount * sackWeightKg * 100
+            : lineFinishedKg100)
         const bags =
           line.videojetBagsCount ??
-          Math.round((qrKg / 100 / 20) * 10) / 10
+          roundSackCount(qrKg / 100, sackWeightKg)
         const loose = line.looseBlockWithoutQrKg100 ?? 0
         entry.videojetBagsCount += bags
         entry.videojetQrKg100 += qrKg
@@ -81,9 +97,14 @@ export function buildPalletizingRowsFromWeekDays(
       } else if (process === 'PALLETIZING') {
         const initial = line.initialCameraBalanceKg100 ?? 0
         const palKg = line.palletizedKg100 ?? lineFinishedKg100
+        const sackWeightKg = getSackWeightKg(
+          line.productName,
+          line.presentationName,
+          line.sackKg,
+        )
         const bags =
           line.palletizedBagsCount ??
-          Math.round((palKg / 100 / 20) * 10) / 10
+          roundSackCount(palKg / 100, sackWeightKg)
         const finalBal = line.finalCameraBalanceKg100 ?? 0
         entry.initialCameraBalanceKg100 += initial
         entry.palletizedBagsCount += bags
@@ -98,6 +119,10 @@ export function buildPalletizingRowsFromWeekDays(
     result.push({
       productId: item.productId,
       productName: item.productName,
+      ...(item.presentationName
+        ? { presentationName: item.presentationName }
+        : {}),
+      ...(item.sackKg !== undefined ? { sackKg: item.sackKg } : {}),
       packingKg100: kg100(item.packingKg100),
       freezingKg100: kg100(item.freezingKg100),
       videojetBagsCount: item.videojetBagsCount,

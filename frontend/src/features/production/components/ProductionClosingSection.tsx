@@ -47,7 +47,10 @@ export function ProductionClosingSection({
       description="Registra únicamente producto real de esta jornada que quedará pendiente para después."
       action={<StatusBadge tone="info">JORNADA ORIGEN ACTUAL</StatusBadge>}
     >
-      <fieldset disabled={!reportsReconciled} className="min-w-0 disabled:opacity-65">
+      <fieldset
+        aria-disabled={!reportsReconciled}
+        className="min-w-0"
+      >
         <legend className="sr-only">Saldo generado al cierre</legend>
         <ProductPicker
           items={catalogItems}

@@ -1,5 +1,6 @@
 import { StatusBadge } from '../../../../components/ui/StatusBadge'
 import { formatCentiKgValue } from '../../../../utils/formatters'
+import { getSackWeightKg, roundSackCount } from '../../model/sackPresentation'
 import type {
   PalletizingComparisonMode,
   PalletizingRowCalculation,
@@ -244,7 +245,15 @@ export function PalletizingDetailedTable({
                       {formatCentiKgValue(r.diffPackingVsFreezingKg100)}
                     </td>
                     <td className="number-tabular px-2.5 py-2.5 text-right font-medium text-slate-700 dark:text-slate-300">
-                      {r.row.videojetBagsCount ?? Math.floor(r.row.videojetQrKg100 / 2000)}
+                      {r.row.videojetBagsCount ??
+                        roundSackCount(
+                          r.row.videojetQrKg100 / 100,
+                          getSackWeightKg(
+                            r.row.productName,
+                            r.row.presentationName,
+                            r.row.sackKg,
+                          ),
+                        )}
                     </td>
                     <td className="number-tabular px-2.5 py-2.5 text-right font-medium text-slate-800 dark:text-slate-200">
                       {formatCentiKgValue(r.row.videojetQrKg100)}

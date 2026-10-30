@@ -136,6 +136,30 @@ describe('Palletizing Calculations - Table 1 (Descuadres y Control Rápido)', ()
     expect(vCalc.diffToPalletizeKg100).toBe(kg100(-640_00))
     expect(vCalc.status).toBe('DESCUADRE')
   })
+
+  it('uses the product SACO weight when the bag count is not explicitly stored', () => {
+    const anillas = calculatePalletizingRow({
+      productId: 'anillas-30',
+      productName: 'ANILLAS - SACO 3 x 10 kg',
+      presentationName: 'SACO 3 x 10 kg',
+      packingKg100: kg100(60_00),
+      freezingKg100: kg100(60_00),
+      videojetQrKg100: kg100(60_00),
+      palletizedKg100: kg100(60_00),
+    })
+    const membranas = calculatePalletizingRow({
+      productId: 'membranas-27',
+      productName: 'MEMBRANAS - SACO 3 x 9 kg',
+      presentationName: 'SACO 3 x 9 kg',
+      packingKg100: kg100(54_00),
+      freezingKg100: kg100(54_00),
+      videojetQrKg100: kg100(54_00),
+      palletizedKg100: kg100(54_00),
+    })
+
+    expect(anillas.bagsCount).toBe(2)
+    expect(membranas.bagsCount).toBe(2)
+  })
 })
 
 describe('Palletizing Calculations - Table 2 (Conciliación Exacta con Saldos de Cámara)', () => {

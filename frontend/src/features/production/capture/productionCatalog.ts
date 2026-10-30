@@ -6,6 +6,7 @@ import {
   type ProcessOrigin,
 } from '../model/businessConfig'
 import type { SummaryGroupId } from '../model/types'
+import type { ProductionProcess } from '../model/types'
 import { getActiveProducts, addActiveProduct, createStableProductId } from './productCatalogRepository'
 import { normalizeProductName } from './productNormalizer'
 
@@ -26,6 +27,21 @@ export interface ProductionCatalogItem {
   createdAt?: string
   active?: boolean
   technicalClassification?: 'POLAR' | 'USA' | 'GENERAL' | 'UNCLASSIFIED'
+  /** Base Envasado product used to preserve FIFO across downstream variants. */
+  baseProductId?: string
+  /** Full logistics presentation used by Congelamiento, Videojet and Paletizado. */
+  presentationName?: string
+  /** Total kg contained by one sack for this catalog variant. */
+  sackKg?: number
+  /** Downstream-only variants must not appear in Envasado pickers. */
+  allowedProcesses?: readonly ProductionProcess[]
+}
+
+export function isCatalogItemAllowedForProcess(
+  product: Pick<ProductionCatalogItem, 'allowedProcesses'>,
+  process: ProductionProcess,
+): boolean {
+  return product.allowedProcesses === undefined || product.allowedProcesses.includes(process)
 }
 
 const extraCatalogItems: readonly ProductionCatalogItem[] = [
@@ -93,6 +109,9 @@ for (const day of WEEK_36_2026_PRODUCTION_DAYS) {
       productId: line.productId,
       productName: line.productName,
       summaryGroupId: line.summaryGroupId,
+      // Historical catalog rows come from Envasado. Downstream imports must
+      // use the explicit SACO variant instead of reusing this base name.
+      allowedProcesses: ['PACKING'] as const,
       ...(anillaYieldClass ? { anillaYieldClass } : {}),
       ...(processOrigin ? { processOrigin } : {}),
     })
@@ -105,6 +124,7 @@ for (const item of extraCatalogItems) {
     const processOrigin = getProcessOrigin(item.productId)
     catalogByProductId.set(item.productId, {
       ...item,
+      allowedProcesses: item.allowedProcesses ?? (['PACKING'] as const),
       ...(anillaYieldClass ? { anillaYieldClass } : {}),
       ...(processOrigin ? { processOrigin } : {}),
     })

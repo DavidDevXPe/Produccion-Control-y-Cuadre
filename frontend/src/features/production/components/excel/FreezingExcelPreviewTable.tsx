@@ -5,7 +5,10 @@ import {
   isTreatmentOnlyProduct,
   type FreezingExcelPreviewRow,
 } from '../../capture/freezingExcelPreview'
-import type { ProductionCatalogItem } from '../../capture/productionCatalog'
+import {
+  isCatalogItemAllowedForProcess,
+  type ProductionCatalogItem,
+} from '../../capture/productionCatalog'
 
 export interface FreezingExcelPreviewTableProps {
   readonly rows: readonly FreezingExcelPreviewRow[]
@@ -53,8 +56,8 @@ export function FreezingExcelPreviewTable({
         </p>
         <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-ui-text-soft">
           La cantidad del archivo corresponde a aros. Para la captura
-          operativa se aplica 1 aro = 10 kg. La presentación logística se
-          muestra solo como referencia y no cambia la identidad del producto.
+          operativa se aplica 1 aro = 10 kg. La descripción completa, incluida
+          la presentación SACO, identifica el producto desde Congelamiento.
         </p>
       </div>
 
@@ -79,7 +82,7 @@ export function FreezingExcelPreviewTable({
                 className="border-t border-slate-100 text-slate-950 hover:bg-slate-50 dark:border-ui-line-dark-grid dark:text-ui-text-dark-strong dark:hover:bg-ui-surface-dark"
               >
                 <td className="px-4 py-2.5 font-semibold">
-                  {row.baseProductName}
+                  {row.rawProductName}
                 </td>
 
                 <td className="px-4 py-2.5 text-slate-600 dark:text-ui-text-dark-soft">
@@ -122,7 +125,7 @@ export function FreezingExcelPreviewTable({
                     <div className="flex min-w-[34rem] flex-col gap-2">
                       <div className="flex gap-2">
                         <select
-                          aria-label={`Asociar ${row.baseProductName} a producto existente`}
+                          aria-label={`Asociar ${row.rawProductName} a producto existente`}
                           value={
                             excelExistingProductByRow[row.rowNumber] ?? ''
                           }
@@ -139,6 +142,7 @@ export function FreezingExcelPreviewTable({
                             .filter(
                               (product) =>
                                 product.active !== false &&
+                                isCatalogItemAllowedForProcess(product, 'FREEZING') &&
                                 !isTreatmentOnlyProduct(product),
                             )
                             .map((product) => (
@@ -176,7 +180,7 @@ export function FreezingExcelPreviewTable({
 
                       <div className="flex gap-2">
                         <select
-                          aria-label={`Seleccionar familia para ${row.baseProductName}`}
+                          aria-label={`Seleccionar familia para ${row.rawProductName}`}
                           value={
                             freezingNewProductFamilyByRow[row.rowNumber] ??
                             ''
@@ -211,7 +215,7 @@ export function FreezingExcelPreviewTable({
                             onAddFreezingExcelRowToCatalog(row.rowNumber)
                           }
                           className={buttonStyles('primary')}
-                          title="Agrega el nombre base del Excel al catálogo activo; la presentación SACO no forma parte del nombre del producto."
+                          title="Agrega la descripción completa del Excel al catálogo activo, incluida su presentación SACO."
                         >
                           <Plus className="size-4" aria-hidden="true" />
                           Agregar producto
@@ -219,9 +223,9 @@ export function FreezingExcelPreviewTable({
                       </div>
 
                       <p className="text-[0.625rem] leading-4 text-slate-500 dark:text-ui-text-soft">
-                        Se guardará como producto: {row.baseProductName}.
-                        La presentación {row.packaging ?? 'del Excel'} se
-                        conserva solo como referencia logística.
+                        Se guardará como producto: {row.rawProductName}.
+                        La presentación {row.packaging ?? 'del Excel'} forma
+                        parte de la identidad usada en las etapas posteriores.
                       </p>
                     </div>
                   ) : (

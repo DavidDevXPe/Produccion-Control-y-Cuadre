@@ -1,5 +1,6 @@
 import { formatCentiKgValue } from '../../../utils/formatters'
 import { kg100, sumKg100 } from './calculations'
+import { getSackWeightKg, roundSackCount } from './sackPresentation'
 import type { Kg100 } from './types'
 import type {
   PalletizingCalculationOptions,
@@ -90,11 +91,18 @@ export function calculatePalletizingRow(
     comparisonBasisLabel = 'Envasado'
   }
 
-  // Cada saco armado = 20 kg = 2 blocks de 10 kg
+  const sackWeightKg = getSackWeightKg(
+    input.productName,
+    input.presentationName,
+    input.sackKg,
+  )
+
+  // The guide contains 20 kg, 27 kg and 30 kg sacks. Legacy rows without a
+  // presentation intentionally keep the historical 20 kg fallback.
   const bagsCount =
     input.palletizedBagsCount !== undefined
       ? input.palletizedBagsCount
-      : Math.round((input.palletizedKg100 / 100 / 20) * 10) / 10
+      : roundSackCount(input.palletizedKg100 / 100, sackWeightKg)
 
   let status: 'CUADRADO' | 'PENDIENTE' | 'DESCUADRE'
   let statusTone: 'success' | 'warning' | 'danger'

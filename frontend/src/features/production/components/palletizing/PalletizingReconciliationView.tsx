@@ -270,11 +270,11 @@ export function PalletizingReconciliationView({
         <ul className="space-y-1.5 leading-relaxed">
           <li className="flex items-start gap-2">
             <span className="font-semibold text-slate-900 dark:text-slate-200">• Presentación y Pesajes:</span>
-            <span>Envasado y congelamiento operan en blocks de 10 kg. Videojet y Paletizado operan por sacos armados de 20 kg (2 blocks por saco).</span>
+            <span>Envasado y congelamiento operan en blocks de 10 kg. Videojet y Paletizado usan la presentación SACO del producto (2 x 10 = 20 kg, 3 x 9 = 27 kg o 3 x 10 = 30 kg).</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-slate-900 dark:text-slate-200">• Saldo Inicial y Arrastre:</span>
-            <span>Los blocks sueltos (10 kg) del turno anterior se integran a la producción del turno actual para completar sacos de 20 kg (ej. Manto Estándar: 10 kg hoy + 10 kg anterior = 20 kg paletizados).</span>
+            <span>Los blocks sueltos (10 kg) del turno anterior se integran a la producción del turno actual para completar la presentación SACO correspondiente.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="font-semibold text-slate-900 dark:text-slate-200">• Dif. Videojet (kg):</span>

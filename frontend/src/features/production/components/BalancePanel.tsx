@@ -180,6 +180,7 @@ export function BalancePanel({
                         key={product.productId}
                         product={product}
                         position={positionFor(product)}
+                        originDate={originDate}
                       />
                     ))
                   : null}

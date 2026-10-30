@@ -156,14 +156,64 @@ export function useProductionDaysData() {
     [frozenPhysicalKg100, freezingLinkedKg100],
   );
 
+  // The freezing overview is a weekly operational view, independent from
+  // table filters (search/date) and from the visible rows.  The comparison
+  // keeps physical reports and FIFO-linked consumption separate, while the
+  // availability ledger attributes each remaining kilogram to its real
+  // Packing origin.
+  const freezingWeeklyComparison = useMemo(
+    () =>
+      calculateFreezingComparison(allProductionDays, {
+        startDate: activeWeek.period.startDate,
+        endDate: activeWeek.period.endDate,
+      }),
+    [
+      allProductionDays,
+      activeWeek.period.startDate,
+      activeWeek.period.endDate,
+    ],
+  );
+
+  const freezingAvailability = useMemo(
+    () => calculateFreezingAvailability(allProductionDays),
+    [allProductionDays],
+  );
+
+  const freezingWeeklyAvailableKg100 = useMemo(() => {
+    const weeklyOrigins = freezingAvailability.filter(
+      (position) =>
+        position.originDate >= activeWeek.period.startDate &&
+        position.originDate <= activeWeek.period.endDate,
+    );
+
+    return sumKg100(
+      weeklyOrigins
+        .filter((position) => position.pendingKg100 > 0)
+        .map((position) => position.pendingKg100),
+    );
+  }, [
+    freezingAvailability,
+    activeWeek.period.startDate,
+    activeWeek.period.endDate,
+  ]);
+
+  const freezingWeeklyPhysicalKg100 = freezingWeeklyComparison.physicalReportedKg100;
+  const freezingWeeklyLinkedKg100 = freezingWeeklyComparison.linkedKg100;
+  const freezingWeeklyDifferenceKg100 = kg100(
+    freezingWeeklyPhysicalKg100 - freezingWeeklyLinkedKg100,
+  );
+  const freezingHasRecords = freezingWeek.productionDays.length > 0;
+
+  // This is intentionally global: it is the remaining ledger across every
+  // Packing origin, after all known Freezing consumptions (including later
+  // weeks). It must never replace the selected-week indicators above.
   const freezingPendingKg100 = useMemo(() => {
     return sumKg100(
-      calculateFreezingAvailability(
-        allProductionDays,
-        activeWeek.period.endDate,
-      ).map((position) => position.pendingKg100),
+      freezingAvailability.map(
+        (position) => position.pendingKg100,
+      ),
     );
-  }, [allProductionDays, activeWeek.period.endDate]);
+  }, [freezingAvailability]);
 
   const missingCalendarDays = useMemo(() => {
     return activeWeek.calendarDays.filter(
@@ -271,6 +321,11 @@ export function useProductionDaysData() {
     frozenPhysicalKg100,
     freezingLinkedKg100,
     freezingDifferenceKg100,
+    freezingWeeklyAvailableKg100,
+    freezingWeeklyPhysicalKg100,
+    freezingWeeklyLinkedKg100,
+    freezingWeeklyDifferenceKg100,
+    freezingHasRecords,
     freezingPendingKg100,
     missingCalendarDays,
     isWeekFullySquared,

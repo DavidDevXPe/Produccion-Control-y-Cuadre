@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowRight } from 'lucide-react'
-import { formatCentiKg } from '../../../../utils/formatters'
+import { Link } from 'react-router-dom'
+import { formatCentiKg, formatIsoDateCompact } from '../../../../utils/formatters'
 import type { ProductReconciliation } from '../../model/types'
 import {
   type BalanceProductPosition,
@@ -9,11 +10,13 @@ import {
 export interface BalancePanelProductRowProps {
   readonly product: ProductReconciliation
   readonly position: BalanceProductPosition
+  readonly originDate: string
 }
 
 export function BalancePanelProductRow({
   product,
   position,
+  originDate,
 }: BalancePanelProductRowProps) {
   return (
     <tr
@@ -21,11 +24,15 @@ export function BalancePanelProductRow({
       className="border-t border-slate-100 hover:bg-slate-50/75"
     >
       <th scope="row" className="max-w-xl px-4 py-2.5 pl-10 sm:px-5 sm:pl-11">
-        <span
-          className="line-clamp-2 text-xs font-medium leading-4 text-slate-700"
-          title={product.productName}
+        <Link
+          to={`/jornadas/${originDate}?process=PACKING`}
+          className="line-clamp-2 text-xs font-medium leading-4 text-slate-700 underline-offset-2 hover:text-brand-800 hover:underline"
+          title={`Ver jornada de origen del ${formatIsoDateCompact(originDate)}`}
         >
           {product.productName}
+        </Link>
+        <span className="mt-1 block text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-slate-400">
+          Origen Envasado {formatIsoDateCompact(originDate)}
         </span>
       </th>
       <td className="number-tabular whitespace-nowrap px-3 py-2.5 text-center align-middle text-xs font-medium text-slate-600">

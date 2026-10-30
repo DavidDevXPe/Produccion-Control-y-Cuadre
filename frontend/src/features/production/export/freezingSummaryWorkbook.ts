@@ -61,7 +61,7 @@ export function buildFreezingSummaryWorkbook(
   )
   const differenceKg100 = kg100(physicalKg100 - linkedKg100)
   const pendingKg100 = sumKg100(
-    calculateFreezingAvailability(allProductionDays, week.period.endDate).map(
+    calculateFreezingAvailability(allProductionDays).map(
       (position) => position.pendingKg100,
     ),
   )
@@ -101,7 +101,7 @@ export function buildFreezingSummaryWorkbook(
     summarySheet,
     9,
     1,
-    'Pendiente de Congelar',
+    'Pendiente global de Congelamiento (todas las semanas)',
     kg(pendingKg100),
     {
       format: '#,##0.00 "kg"',
