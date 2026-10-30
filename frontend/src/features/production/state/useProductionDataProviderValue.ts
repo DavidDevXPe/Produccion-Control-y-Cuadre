@@ -34,6 +34,7 @@ import {
   sortDays,
 } from './productionDataHelpers'
 import type {
+  ExternalDataChange,
   OperationalWeekView,
   ProductionDataValue,
   StoredWeekClosure,
@@ -52,6 +53,8 @@ export function useProductionDataProviderValue(): ProductionDataValue {
   const [currentWeekNumber, setCurrentWeekNumber] = useState(
     () => getOperationalWeekContext(new Date()).number,
   )
+  const [externalDataChange, setExternalDataChange] =
+    useState<ExternalDataChange | null>(null)
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -68,10 +71,14 @@ export function useProductionDataProviderValue(): ProductionDataValue {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea && event.storageArea !== window.localStorage) return
 
-      if (event.key === null || event.key === DAYS_STORAGE_KEY) {
+      const journeysChanged = event.key === null || event.key === DAYS_STORAGE_KEY
+      const weekClosuresChanged =
+        event.key === null || event.key === WEEK_CLOSURES_STORAGE_KEY
+
+      if (journeysChanged) {
         setUserDays(loadStoredDays())
       }
-      if (event.key === null || event.key === WEEK_CLOSURES_STORAGE_KEY) {
+      if (weekClosuresChanged) {
         setStoredWeekClosures(loadStoredWeekClosures())
       }
       if (event.key === null || event.key === ACTIVE_WEEK_STORAGE_KEY) {
@@ -80,10 +87,21 @@ export function useProductionDataProviderValue(): ProductionDataValue {
       if (event.key === null || event.key === ACTIVE_PROCESS_STORAGE_KEY) {
         setActiveProcessState(getInitialActiveProcess())
       }
+      if (journeysChanged || weekClosuresChanged) {
+        const scopes: ExternalDataChange['scopes'] = [
+          ...(journeysChanged ? (['JOURNEYS'] as const) : []),
+          ...(weekClosuresChanged ? (['WEEK_CLOSURES'] as const) : []),
+        ]
+        setExternalDataChange({ scopes, detectedAt: Date.now() })
+      }
     }
 
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  const dismissExternalDataChange = useCallback(() => {
+    setExternalDataChange(null)
   }, [])
 
   const setActiveWeekNumber = useCallback((weekNumber: number) => {
@@ -338,6 +356,8 @@ export function useProductionDataProviderValue(): ProductionDataValue {
       availableWeekNumbers,
       allProductionDays,
       subsequentBalanceLots: WEEK_36_2026_SUBSEQUENT_BALANCE_LOTS,
+      externalDataChange,
+      dismissExternalDataChange,
       setActiveWeekNumber,
       setActiveProcess,
       getWeekState,
@@ -371,6 +391,8 @@ export function useProductionDataProviderValue(): ProductionDataValue {
     closeWeekManually,
     currentWeekNumber,
     deleteProductionDay,
+    dismissExternalDataChange,
+    externalDataChange,
     getWeekState,
     getWeekView,
     setActiveProcess,

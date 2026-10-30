@@ -4,6 +4,7 @@ import {
   useRevalidator,
   useRouteError,
 } from 'react-router-dom'
+import { BrandLogo } from '../components/ui/BrandLogo'
 
 export function RootRouteErrorBoundary() {
   const error = useRouteError()
@@ -29,9 +30,12 @@ export function RootRouteErrorBoundary() {
       <section
         aria-labelledby="root-route-error-title"
         aria-describedby="root-route-error-description"
-        className="w-full max-w-xl rounded-2xl border border-ui-line-dark bg-ui-surface-dark p-6 shadow-2xl sm:p-8"
+        className="w-full max-w-[39rem] rounded-2xl border border-ui-line-dark bg-ui-surface-dark p-7 shadow-2xl sm:p-8"
       >
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+        <div className="mb-5 flex justify-start">
+          <BrandLogo compact />
+        </div>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div
             aria-hidden="true"
             className="grid size-12 shrink-0 place-items-center rounded-xl border border-ui-amber-border-dark bg-ui-amber-surface-dark-deep text-ui-amber-text-dark"

@@ -35,6 +35,8 @@ export function useAdminShell() {
     activeProcess,
     allProductionDays,
     availableWeekNumbers,
+    dismissExternalDataChange,
+    externalDataChange,
     getWeekState,
     setActiveWeekNumber,
   } = useProductionData()
@@ -186,6 +188,8 @@ export function useAdminShell() {
     toggleColorTheme,
     isOffline,
     showReconnected,
+    externalDataChange,
+    dismissExternalDataChange,
     closeButtonRef,
     mobileNavigationRef,
     isDashboard,

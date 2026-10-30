@@ -179,4 +179,42 @@ describe('ProductionExcelImportSection', () => {
     expect(screen.getByText('Vista previa de Congelamiento')).toBeInTheDocument()
     expect(screen.getAllByText('ALETA CRUDA').length).toBeGreaterThanOrEqual(1)
   })
+
+  it('keeps the Freezing import blocked when a SACO presentation needs review', () => {
+    const freezingExcelPreview: FreezingExcelPreview = {
+      fileName: 'freezing.xlsx',
+      sheetName: 'DÃA',
+      shift: 'DAY',
+      totalAros: 50,
+      totalKg: 1250,
+      sourceGrandTotalAros: null,
+      sourceGrandTotalKg: null,
+      recognizedRows: 1,
+      reviewRows: 0,
+      rows: [],
+      warnings: [],
+      presentationWarnings: [
+        'Fila 2: la presentaciÃ³n SACO no indica el peso por block.',
+      ],
+      reconciled: true,
+      status: 'EXCEL RECONCILIADO',
+    }
+
+    render(
+      <ProductionExcelImportSection
+        {...createProps({
+          isFreezing: true,
+          freezingExcelPreview,
+          canConfirmExcelImport: false,
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText('La confirmaciÃ³n permanece bloqueada hasta corregir estas filas.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Confirmar importaci.n/ }),
+    ).toBeDisabled()
+  })
 })

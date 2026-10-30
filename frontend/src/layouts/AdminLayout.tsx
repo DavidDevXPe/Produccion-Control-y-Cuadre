@@ -1,4 +1,4 @@
-import { Wifi, WifiOff } from 'lucide-react'
+import { RefreshCw, Wifi, WifiOff, X } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { AdminHeader } from './shell/AdminHeader'
 import { AdminMobileDrawer } from './shell/AdminMobileDrawer'
@@ -15,6 +15,8 @@ export function AdminLayout() {
     toggleColorTheme,
     isOffline,
     showReconnected,
+    externalDataChange,
+    dismissExternalDataChange,
     closeButtonRef,
     mobileNavigationRef,
     isDashboard,
@@ -104,6 +106,28 @@ export function AdminLayout() {
             <span>
               Conexión restablecida: trabajando en línea con almacenamiento sincronizado.
             </span>
+          </div>
+        ) : null}
+
+        {externalDataChange ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="relative z-20 flex items-center justify-center gap-2 border-b border-sky-500/30 bg-sky-500/10 px-4 py-2 text-center text-xs font-semibold text-sky-800 dark:text-sky-200"
+          >
+            <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              Se actualizaron datos desde otra pestaña. Si estabas editando una jornada, revísala antes de guardar.
+            </span>
+            <button
+              type="button"
+              onClick={dismissExternalDataChange}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-sky-900 underline-offset-2 transition hover:bg-sky-500/15 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-sky-100 dark:text-sky-100 dark:focus:ring-offset-slate-950"
+              aria-label="Cerrar aviso de actualización externa"
+            >
+              Entendido
+              <X className="size-3" aria-hidden="true" />
+            </button>
           </div>
         ) : null}
 

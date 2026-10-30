@@ -11,6 +11,7 @@ function renderFailingRoute(loader: () => unknown) {
         path: '/',
         loader,
         element: <p>Contenido recuperado</p>,
+        HydrateFallback: () => <p>Cargando…</p>,
         errorElement: <RootRouteErrorBoundary />,
       },
     ],

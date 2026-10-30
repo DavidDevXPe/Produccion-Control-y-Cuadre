@@ -111,6 +111,9 @@ export function FreezingExcelValidationSummary({
           <p className="font-extrabold uppercase tracking-[0.06em]">
             Revisar presentaciones SACO
           </p>
+          <p className="mt-1">
+            La confirmaciÃ³n permanece bloqueada hasta corregir estas filas.
+          </p>
           <ul className="mt-1 list-disc space-y-0.5 pl-4">
             {preview.presentationWarnings.map((warning) => (
               <li key={warning}>{warning}</li>

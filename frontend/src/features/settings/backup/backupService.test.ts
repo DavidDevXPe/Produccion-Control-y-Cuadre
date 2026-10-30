@@ -20,7 +20,7 @@ describe('Trabunda backup service', () => {
 
     expect(backup).toMatchObject({
       format: 'TRABUNDA_BACKUP',
-      version: 1,
+      version: 2,
       data: {
         [TRABUNDA_STORAGE_KEYS.productionDays]: '[]',
         [TRABUNDA_STORAGE_KEYS.colorTheme]: 'dark',
@@ -49,6 +49,21 @@ describe('Trabunda backup service', () => {
       format: 'TRABUNDA_BACKUP', version: 99,
       [TRABUNDA_STORAGE_KEYS.productionDays]: '[]',
     }))).toThrow(/respaldo/)
+  })
+
+  it('accepts a version 1 backup and normalizes it before restore', () => {
+    const preview = parseTrabundaBackup(JSON.stringify({
+      format: 'TRABUNDA_BACKUP',
+      version: 1,
+      exportedAt: '2026-10-01T12:00:00.000Z',
+      data: { [TRABUNDA_STORAGE_KEYS.productionDays]: '[]' },
+    }))
+
+    expect(preview.migratedFromVersion).toBe(1)
+    expect(preview.backup.version).toBe(2)
+    expect(preview.warnings).toContain(
+      'Respaldo v1 detectado: se validar\u00e1 y restaurar\u00e1 con el formato v2.',
+    )
   })
 
   it('accepts the legacy raw localStorage JSON shape and previews external origins', () => {

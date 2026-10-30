@@ -1,15 +1,14 @@
 import type { KeyboardEvent } from 'react'
-import { Trash2 } from 'lucide-react'
-import { StatusBadge } from '../../../../components/ui/StatusBadge'
-import { formatCentiKg, formatIsoDate } from '../../../../utils/formatters'
+import { formatCentiKg } from '../../../../utils/formatters'
 import type { ProductionCatalogItem } from '../../capture/productionCatalog'
 import type { ProductionCaptureBalanceUse } from '../../capture/productionCapture'
-import {
-  captureBalancePosition,
-  captureQuantityKg100,
-} from '../../capture/productionEntryHelpers'
+import { captureBalancePosition } from '../../capture/productionEntryHelpers'
 import type { BalanceShiftDiagnostic } from '../../model/businessRules'
-import { QuantityInput } from '../QuantityInput'
+import {
+  BalanceUseHeader,
+  BalanceUseMetrics,
+  type BalanceUseStatus,
+} from './BalanceUseItemSections'
 
 export interface BalanceUseItemRowProps {
   readonly balance: ProductionCaptureBalanceUse
@@ -34,7 +33,7 @@ export interface BalanceUseItemRowProps {
     'data-grid-id': string
     'data-grid-row': number
     'data-grid-col': number
-    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
+    onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
   }
 }
 
@@ -42,30 +41,28 @@ function getBalanceStatus(
   requiresProductDistribution: boolean,
   position: ReturnType<typeof captureBalancePosition>,
   diagnosticCount: number,
-) {
+): BalanceUseStatus {
   if (requiresProductDistribution) {
-    return { tone: 'warning' as const, label: 'REQUIERE DISTRIBUCIÓN' }
+    return { tone: 'warning', label: 'REQUIERE DISTRIBUCIÓN' }
   }
   if (position.overusedKg100 > 0 || diagnosticCount > 0) {
-    return { tone: 'danger' as const, label: 'REVISAR' }
+    return { tone: 'danger', label: 'REVISAR' }
   }
   if (position.pendingKg100 === 0) {
-    return { tone: 'success' as const, label: 'CONSUMIDO' }
+    return { tone: 'success', label: 'CONSUMIDO' }
   }
-  return { tone: 'warning' as const, label: 'PENDIENTE' }
-}
-
-interface LegacyBalanceDistributionProps {
-  readonly balance: ProductionCaptureBalanceUse
-  readonly catalogItems: readonly ProductionCatalogItem[]
-  readonly onDistribute: (key: string, productId: string) => void
+  return { tone: 'warning', label: 'PENDIENTE' }
 }
 
 function LegacyBalanceDistribution({
   balance,
   catalogItems,
   onDistribute,
-}: LegacyBalanceDistributionProps) {
+}: {
+  readonly balance: ProductionCaptureBalanceUse
+  readonly catalogItems: readonly ProductionCatalogItem[]
+  readonly onDistribute: (key: string, productId: string) => void
+}) {
   if (balance.requiresProductDistribution !== true) return null
 
   return (
@@ -166,135 +163,39 @@ export function BalanceUseItemRow({
   getBalancesCellProps,
 }: BalanceUseItemRowProps) {
   const position = captureBalancePosition(balance)
-  const requiresProductDistribution =
-    balance.requiresProductDistribution === true
   const productShiftDiagnostics = balanceShiftDiagnostics.filter(
     (diagnostic) => diagnostic.productId === balance.productId,
   )
   const balanceStatus = getBalanceStatus(
-    requiresProductDistribution,
+    balance.requiresProductDistribution === true,
     position,
     productShiftDiagnostics.length,
   )
-  const dayInputDisabled =
-    !dayShiftAvailable && captureQuantityKg100(balance.dayKg) === 0
-  const nightInputDisabled =
-    !nightShiftAvailable && captureQuantityKg100(balance.nightKg) === 0
 
   return (
     <div className="px-4 py-4 sm:px-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-bold text-slate-900 dark:text-ui-text-dark-strong">
-            {balance.familyName} · {balance.productName}
-          </p>
-          <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-ui-text-dark-soft">
-            {isFreezing ? `Origen ${prevProcessName ?? 'Envasado'}` : 'Origen'}:{' '}
-            {balance.originDate
-              ? formatIsoDate(balance.originDate)
-              : balance.originDayId}{' '}
-            · {isFreezing ? 'Saldo disponible del origen' : 'Disponible'}:{' '}
-            {formatCentiKg(balance.availableKg100)}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onRemoveBalanceUse(balance.key)}
-          className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-          aria-label={`Quitar saldo de ${balance.productName}`}
-        >
-          <Trash2 className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-
+      <BalanceUseHeader
+        balance={balance}
+        isFreezing={isFreezing}
+        {...(prevProcessName ? { prevProcessName } : {})}
+        onRemoveBalanceUse={onRemoveBalanceUse}
+      />
       <LegacyBalanceDistribution
         balance={balance}
         catalogItems={catalogItems}
         onDistribute={onDistributeLegacyBalance}
       />
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-            {isFreezing ? 'Saldo disponible del origen' : 'Disponible'}
-          </p>
-          <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
-            {formatCentiKg(balance.availableKg100)}
-          </p>
-        </div>
-
-        <div>
-          <QuantityInput
-            label={isFreezing ? 'Congelado Turno Día' : 'Procesado Día'}
-            value={balance.dayKg}
-            disabled={dayInputDisabled}
-            onChange={(value) =>
-              onUpdateBalanceUse(balance.key, 'dayKg', value)
-            }
-            {...getBalancesCellProps(balanceIdx, 0)}
-          />
-          {!dayShiftAvailable ? (
-            <p
-              role="status"
-              className="mt-1 text-[0.6875rem] leading-4 text-amber-700 dark:text-amber-300"
-            >
-              No hay producción registrada de este producto en el turno Día.
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <QuantityInput
-            label={isFreezing ? 'Congelado Turno Noche' : 'Procesado Noche'}
-            value={balance.nightKg}
-            disabled={nightInputDisabled}
-            onChange={(value) =>
-              onUpdateBalanceUse(balance.key, 'nightKg', value)
-            }
-            {...getBalancesCellProps(balanceIdx, 1)}
-          />
-          {!nightShiftAvailable ? (
-            <p
-              role="status"
-              className="mt-1 text-[0.6875rem] leading-4 text-amber-700 dark:text-amber-300"
-            >
-              No hay producción registrada de este producto en el turno Noche.
-            </p>
-          ) : null}
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-            {isFreezing ? 'Total congelado' : 'Total procesado'}
-          </p>
-          <p className="number-tabular mt-1 text-sm font-extrabold text-slate-900 dark:text-ui-text-dark-strong">
-            {formatCentiKg(position.processedKg100)}
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.06em] text-slate-500 dark:text-ui-text-soft">
-            {isFreezing ? 'Saldo restante' : 'Pendiente'}
-          </p>
-          <p
-            className={`number-tabular mt-1 text-sm font-extrabold ${
-              position.overusedKg100 > 0
-                ? 'text-rose-700 dark:text-rose-300'
-                : 'text-slate-900 dark:text-ui-text-dark-strong'
-            }`}
-          >
-            {position.overusedKg100 > 0
-              ? `Exceso ${formatCentiKg(position.overusedKg100)}`
-              : formatCentiKg(position.pendingKg100)}
-          </p>
-        </div>
-
-        <div className="flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 dark:border-ui-line-dark dark:bg-ui-surface-dark">
-          <StatusBadge tone={balanceStatus.tone}>{balanceStatus.label}</StatusBadge>
-        </div>
-      </div>
-
+      <BalanceUseMetrics
+        balance={balance}
+        balanceIdx={balanceIdx}
+        isFreezing={isFreezing}
+        position={position}
+        balanceStatus={balanceStatus}
+        dayShiftAvailable={dayShiftAvailable}
+        nightShiftAvailable={nightShiftAvailable}
+        onUpdateBalanceUse={onUpdateBalanceUse}
+        getBalancesCellProps={getBalancesCellProps}
+      />
       <BalanceShiftDiagnostics diagnostics={productShiftDiagnostics} />
     </div>
   )

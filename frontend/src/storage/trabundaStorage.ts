@@ -32,7 +32,10 @@ export const TRABUNDA_BACKUP_STORAGE_KEYS: readonly TrabundaStorageKey[] = [
 ]
 
 export const TRABUNDA_BACKUP_FORMAT = 'TRABUNDA_BACKUP'
-export const TRABUNDA_BACKUP_VERSION = 1
+// Version 2 formalizes the migration path from the first versioned export.
+// The payload remains backward-compatible, so upgrading does not transform
+// the data kept in the browser.
+export const TRABUNDA_BACKUP_VERSION = 2
 
 export function clearTrabundaStorage(storage: Pick<Storage, 'removeItem'> = window.localStorage) {
   for (const key of [...Object.values(TRABUNDA_STORAGE_KEYS), ...Object.values(TRABUNDA_LEGACY_STORAGE_KEYS)]) {

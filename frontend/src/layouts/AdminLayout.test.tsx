@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { AdminLayout } from './AdminLayout'
+import { ProductionDataProvider } from '../features/production/state/ProductionDataContext'
+import { DAYS_STORAGE_KEY } from '../features/production/state/productionDataConstants'
 
 describe('AdminLayout theme preference', () => {
   beforeEach(() => {
@@ -76,5 +78,40 @@ describe('AdminLayout theme preference', () => {
         screen.getByText(/Conexión restablecida: trabajando en línea con almacenamiento sincronizado\./),
       ).toBeInTheDocument()
     })
+  })
+
+  it('shows and dismisses the external-update notice after another tab changes journeys', () => {
+    render(
+      <ProductionDataProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<AdminLayout />}>
+              <Route index element={<div>Contenido</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ProductionDataProvider>,
+    )
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: DAYS_STORAGE_KEY,
+          newValue: '[]',
+        }),
+      )
+    })
+
+    expect(
+      screen.getByText(/Se actualizaron datos desde otra pestaña/),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Cerrar aviso de actualización externa',
+      }),
+    )
+    expect(
+      screen.queryByText(/Se actualizaron datos desde otra pestaña/),
+    ).not.toBeInTheDocument()
   })
 })

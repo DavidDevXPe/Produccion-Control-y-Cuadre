@@ -78,7 +78,12 @@ export function BackupImportDropzone({
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <div>
                     <dt className="text-amber-800/80 dark:text-amber-200/80">Formato</dt>
-                    <dd className="font-bold text-amber-950 dark:text-white">{preview.sourceFormat}</dd>
+                    <dd className="font-bold text-amber-950 dark:text-white">
+                      {preview.sourceFormat}
+                      {preview.migratedFromVersion !== null
+                        ? ` (v${preview.migratedFromVersion} → v2)`
+                        : ''}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-amber-800/80 dark:text-amber-200/80">Jornadas</dt>

@@ -47,6 +47,12 @@ export interface OperationalWeekView {
   closureBlockers: readonly WeekClosureBlocker[];
 }
 
+export interface ExternalDataChange {
+  /** Areas that were changed by another browser tab. */
+  readonly scopes: readonly ("JOURNEYS" | "WEEK_CLOSURES")[];
+  readonly detectedAt: number;
+}
+
 export interface ProductionDataValue {
   activeWeek: OperationalWeekView;
   activeProcess: ProductionProcess;
@@ -54,6 +60,12 @@ export interface ProductionDataValue {
   availableWeekNumbers: readonly number[];
   allProductionDays: readonly ProductionDay[];
   subsequentBalanceLots: readonly BalanceLot[];
+  /**
+   * The current tab reloaded operational data changed by another tab. An
+   * in-progress draft should be reviewed before it is saved.
+   */
+  externalDataChange: ExternalDataChange | null;
+  dismissExternalDataChange: () => void;
   setActiveWeekNumber: (weekNumber: number) => void;
   setActiveProcess: (process: ProductionProcess) => void;
   getWeekState: (

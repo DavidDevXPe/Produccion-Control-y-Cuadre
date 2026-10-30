@@ -16,6 +16,8 @@ function ActiveWeekProbe() {
     activeWeekNumber,
     availableWeekNumbers,
     allProductionDays,
+    dismissExternalDataChange,
+    externalDataChange,
     findProductionDay,
     isUserManagedDay,
   } =
@@ -34,6 +36,12 @@ function ActiveWeekProbe() {
         {isUserManagedDay('2026-09-07') ? 'local' : 'permanente'}
       </span>
       <span data-testid="monday-status">{monday?.status}</span>
+      <span data-testid="external-change">
+        {externalDataChange?.scopes.join(',') ?? 'ninguno'}
+      </span>
+      <button type="button" onClick={dismissExternalDataChange}>
+        Descartar actualización externa
+      </button>
     </>
   )
 }
@@ -202,6 +210,12 @@ describe('ProductionDataProvider operational week recovery', () => {
     expect(screen.getByTestId('all-day-count')).toHaveTextContent(
       String(initialCount + 1),
     )
+    expect(screen.getByTestId('external-change')).toHaveTextContent('JOURNEYS')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Descartar actualización externa' }),
+    )
+    expect(screen.getByTestId('external-change')).toHaveTextContent('ninguno')
   })
 
   it('preserves a selected previous week as historical read-only', () => {

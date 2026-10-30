@@ -148,12 +148,15 @@ export function useProductionExcelImport({
 
   const unresolvedFreezingExcelRows =
     getUnresolvedFreezingRows(freezingExcelPreview)
+  const freezingPresentationWarnings =
+    freezingExcelPreview?.presentationWarnings ?? []
 
   const canConfirmExcelImport = isFreezing
     ? Boolean(
         freezingExcelPreview &&
           freezingExcelPreview.status === 'EXCEL RECONCILIADO' &&
-          unresolvedFreezingExcelRows.length === 0,
+          unresolvedFreezingExcelRows.length === 0 &&
+          freezingPresentationWarnings.length === 0,
       )
     : Boolean(
         excelPreview &&
@@ -421,6 +424,13 @@ export function useProductionExcelImport({
     if (unresolvedFreezingExcelRows.length > 0) {
       setSaveError(
         `${unresolvedFreezingExcelRows.length} producto(s) requieren revisión antes de importar.`,
+      )
+      return
+    }
+
+    if (freezingPresentationWarnings.length > 0) {
+      setSaveError(
+        'Corrige las presentaciones SACO observadas antes de importar el Excel de Congelamiento.',
       )
       return
     }

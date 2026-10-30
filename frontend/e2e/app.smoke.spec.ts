@@ -55,6 +55,44 @@ test.describe('TRABUNDA Producción smoke flows', () => {
     await expect(shiftCards.getByText('Túnel', { exact: true })).toHaveCount(0)
   })
 
+  test('keeps a normal report product when the same product is removed from Tunnel', async ({ page }) => {
+    await page.goto('jornadas/nueva?process=PACKING')
+
+    const reportPicker = page.getByRole('combobox', {
+      name: 'Buscar producto',
+      exact: true,
+    })
+    await reportPicker.fill('MANTO ESTANDAR')
+    await reportPicker.press('Enter')
+
+    const reportDayInput = page
+      .locator('input[data-grid-id="capture-grid"][data-grid-col="0"]')
+      .first()
+    await expect(reportDayInput).toBeVisible()
+    await reportDayInput.fill('100')
+
+    await page
+      .getByRole('checkbox', { name: /Existe producto para T.nel/ })
+      .check()
+
+    const tunnelPicker = page.getByRole('combobox', {
+      name: /Buscar producto de T.nel/,
+    })
+    await tunnelPicker.fill('MANTO ESTANDAR')
+    await tunnelPicker.press('Enter')
+
+    const tunnelInputs = page.locator('input[data-grid-id="tunnel-grid"]')
+    await expect(tunnelInputs).toHaveCount(2)
+    await tunnelInputs.first().fill('25')
+
+    await page
+      .getByRole('button', { name: /Eliminar producto de T.nel/ })
+      .click()
+
+    await expect(tunnelInputs).toHaveCount(0)
+    await expect(reportDayInput).toHaveValue('100')
+  })
+
   test('creates a catalog product and finds it through the catalog search', async ({ page }) => {
     await page.goto('catalogos')
 

@@ -19,6 +19,8 @@ export interface TrabundaBackupFile {
 export interface TrabundaBackupPreview {
   readonly backup: TrabundaBackupFile
   readonly sourceFormat: 'VERSIONED' | 'LEGACY_LOCAL_STORAGE'
+  /** Versioned exports are normalized in memory before being restored. */
+  readonly migratedFromVersion: number | null
   readonly productionDays: number
   readonly performanceRecords: number
   readonly catalogProducts: number
@@ -76,11 +78,12 @@ function validateBackupData(data: TrabundaBackupFile['data']) {
 function normalizeIncomingBackup(parsed: unknown): {
   backup: TrabundaBackupFile
   sourceFormat: TrabundaBackupPreview['sourceFormat']
+  migratedFromVersion: number | null
 } {
   if (
     isRecord(parsed) &&
     parsed.format === TRABUNDA_BACKUP_FORMAT &&
-    parsed.version === TRABUNDA_BACKUP_VERSION &&
+    (parsed.version === 1 || parsed.version === TRABUNDA_BACKUP_VERSION) &&
     isRecord(parsed.data)
   ) {
     const backupData = parsed.data
@@ -106,6 +109,8 @@ function normalizeIncomingBackup(parsed: unknown): {
         ),
       },
       sourceFormat: 'VERSIONED',
+      migratedFromVersion:
+        parsed.version === TRABUNDA_BACKUP_VERSION ? null : parsed.version,
     }
   }
 
@@ -126,6 +131,7 @@ function normalizeIncomingBackup(parsed: unknown): {
           data,
         },
         sourceFormat: 'LEGACY_LOCAL_STORAGE',
+        migratedFromVersion: null,
       }
     }
   }
@@ -190,7 +196,8 @@ export function createTrabundaBackup(storage = window.localStorage): TrabundaBac
 
 export function parseTrabundaBackup(text: string): TrabundaBackupPreview {
   const parsed = JSON.parse(text) as unknown
-  const { backup, sourceFormat } = normalizeIncomingBackup(parsed)
+  const { backup, sourceFormat, migratedFromVersion } =
+    normalizeIncomingBackup(parsed)
   validateBackupData(backup.data)
   const days = getProductionDays(backup.data)
   const dates = days.map((day) => day.date).filter(Boolean).sort()
@@ -210,6 +217,11 @@ export function parseTrabundaBackup(text: string): TrabundaBackupPreview {
   if (sourceFormat === 'LEGACY_LOCAL_STORAGE') {
     warnings.push('Formato antiguo detectado: se importará y quedará listo para exportarse en formato versionado.')
   }
+  if (migratedFromVersion !== null) {
+    warnings.push(
+      `Respaldo v${migratedFromVersion} detectado: se validar\u00e1 y restaurar\u00e1 con el formato v${TRABUNDA_BACKUP_VERSION}.`,
+    )
+  }
   if (detectedHistoricalProductIds.length > 0) {
     warnings.push('Se detectaron IDs históricos; se conservarán y se resolverán contra sus productos actuales.')
   }
@@ -220,6 +232,7 @@ export function parseTrabundaBackup(text: string): TrabundaBackupPreview {
   return {
     backup,
     sourceFormat,
+    migratedFromVersion,
     productionDays: days.length,
     performanceRecords,
     catalogProducts,

@@ -404,6 +404,8 @@ export const fallbackValue: ProductionDataValue = {
   ],
   allProductionDays: PERMANENT_PRODUCTION_DAYS,
   subsequentBalanceLots: WEEK_36_2026_SUBSEQUENT_BALANCE_LOTS,
+  externalDataChange: null,
+  dismissExternalDataChange: () => undefined,
   setActiveWeekNumber: () => undefined,
   setActiveProcess: () => undefined,
   getWeekState: (weekNumber, process = "PACKING") => {
