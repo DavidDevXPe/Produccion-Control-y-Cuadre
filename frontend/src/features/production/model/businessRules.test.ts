@@ -347,7 +347,7 @@ describe("production business rules", () => {
     );
   });
 
-  it("evaluates Nuca semilimpia and Bikini together over the same 15%", () => {
+  it("evaluates Nuca semilimpia and Bikini with the equivalent reference", () => {
     const { summary } = summaryFor(
       productionDay(
         100,
@@ -360,8 +360,105 @@ describe("production business rules", () => {
     );
 
     expect(family(summary, "NUCA").rawMaterialKg100).toBe(kg(15));
-    expect(family(summary, "NUCA").projectedProductionKg100).toBe(kg(6.75));
-    expect(family(summary, "NUCA").projectedYieldPercent).toBeCloseTo(45, 8);
+    expect(family(summary, "NUCA").projectedProductionKg100).toBe(kg(7.2));
+    expect(family(summary, "NUCA").projectedYieldPercent).toBeCloseTo(
+      48.0143,
+      4,
+    );
+    expect(family(summary, "NUCA").targetPercent).toBe(45);
+    expect(family(summary, "NUCA").status).toBe("COMPLIES");
+  });
+
+  it("uses the same equivalent reference in Control de Rendimientos for the mixed case", () => {
+    const { summary } = summaryFor(
+      productionDay(
+        83_265.84,
+        [
+          { group: "NUCA_BIKINI", day: 4_290 },
+          { group: "NUCA_SEMILIMPIA", day: 790 },
+        ],
+        { nucaBikiniOrder: true },
+      ),
+    );
+    const nuca = family(summary, "NUCA");
+
+    expect(summary.nucas.referencePercent).toBe(15);
+    expect(nuca.rawMaterialKg100).toBe(kg(12_489.88));
+    expect(nuca.projectedProductionKg100).toBe(kg(5_785.34));
+    expect(nuca.projectedYieldPercent).toBeCloseTo(46.3203, 3);
+    expect(nuca.utilizationPercent).toBeCloseTo(6.10094, 3);
+    expect(nuca.capacityToOneHundredKg100).toBe(kg(0));
+    expect(nuca.status).toBe("COMPLIES");
+    expect(summary.nucas.kgToReferenceKg100).toBe(kg(0));
+  });
+
+  it("uses the equivalent Nuca reference in the main report subtotal", () => {
+    const day = productionDay(
+      83_265.84,
+      [
+        { group: "NUCA_BIKINI", day: 4_290 },
+        { group: "NUCA_SEMILIMPIA", day: 790 },
+      ],
+      { nucaBikiniOrder: true },
+    );
+    const calculation = calculateProductionDay(day);
+    const nucaSubtotal = calculateReportFamilySubtotals(day, calculation).find(
+      (subtotal) => subtotal.key === "NUCA",
+    );
+
+    expect(nucaSubtotal).toBeDefined();
+    expect(nucaSubtotal?.totalKg100).toBe(kg(5_080));
+    expect(nucaSubtotal?.preliminaryYieldPercent).toBeCloseTo(46.3203, 3);
+    expect(nucaSubtotal?.actualYieldPercent).toBeCloseTo(6.10094, 3);
+    expect(nucaSubtotal?.targetPercent).toBe(45);
+    expect(nucaSubtotal?.missingToTargetKg100).toBe(kg(0));
+    expect(nucaSubtotal?.status).toBe("COMPLIES");
+  });
+
+  it("uses the 15% distribution for either Nuca presentation", () => {
+    const bikini = family(
+      summaryFor(
+        productionDay(100, [{ group: "NUCA_BIKINI", day: 7 }], {
+          nucaBikiniOrder: true,
+        }),
+      ).summary,
+      "NUCA",
+    );
+    const semilimpia = family(
+      summaryFor(
+        productionDay(100, [{ group: "NUCA_SEMILIMPIA", day: 15 }]),
+      ).summary,
+      "NUCA",
+    );
+
+    expect(bikini.rawMaterialKg100).toBe(kg(15));
+    expect(bikini.projectedYieldPercent).toBeCloseTo(54.3394, 3);
+    expect(bikini.targetPercent).toBe(45);
+    expect(bikini.status).toBe("COMPLIES");
+    expect(semilimpia.rawMaterialKg100).toBe(kg(15));
+    expect(semilimpia.projectedYieldPercent).toBeCloseTo(100, 8);
+    expect(semilimpia.targetPercent).toBe(45);
+    expect(semilimpia.status).toBe("COMPLIES");
+  });
+
+  it("does not calculate a Nuca percentage or warning without production", () => {
+    const day = productionDay(100, [{ group: "RECORTE_CRUDO", day: 80 }]);
+    const { calculation, summary } = summaryFor(day);
+    const nuca = family(summary, "NUCA");
+    const validation = validateProductionClosure(day, calculation, {
+      requiredDataComplete: true,
+    });
+
+    expect(nuca.rawMaterialKg100).toBe(kg(0));
+    expect(nuca.projectedYieldPercent).toBeNull();
+    expect(nuca.targetPercent).toBeNull();
+    expect(nuca.status).toBe("NO_TARGET");
+    expect(
+      validation.warnings.some(
+        (item) =>
+          item.code === "FAMILY_BELOW_TARGET" && item.familyKey === "NUCA",
+      ),
+    ).toBe(false);
   });
 
   it("includes Nuca Tunnel in the family yield and updates every stage", () => {
@@ -373,13 +470,13 @@ describe("production business rules", () => {
     );
     const nuca = family(summary, "NUCA");
 
-    expect(nuca.reportYieldPercent).toBeCloseTo(16.2, 8);
+    expect(nuca.reportYieldPercent).toBeCloseTo(45, 8);
     expect(nuca.tunnelKg100).toBe(kg(4.32));
     expect(nuca.afterTunnelYieldPercent).toBeCloseTo(45, 8);
     expect(nuca.projectedYieldPercent).toBeCloseTo(45, 8);
   });
 
-  it("shows the Bikini 7% reference as information without making it a requirement", () => {
+  it("keeps the shared Nucas reference informational without making it a requirement", () => {
     const day = productionDay(100, [{ group: "RECORTE_CRUDO", day: 80 }], {
       nucaBikiniOrder: true,
     });
@@ -388,7 +485,7 @@ describe("production business rules", () => {
       requiredDataComplete: true,
     });
 
-    expect(summary.nucaBikiniReferenceKg100).toBe(kg(7));
+    expect(summary.nucas.applicable).toBe(false);
     expect(validation.blockers.map((item) => item.code)).not.toContain(
       "NUCA_BIKINI_REFERENCE",
     );
@@ -439,6 +536,28 @@ describe("production business rules", () => {
         requiredDataComplete: true,
       }).blockers.map((blocker) => blocker.code),
     ).not.toContain("ANILLAS_MP_UNALLOCATED");
+  });
+
+  it("assigns all Tube MP to Manto on the Tuesday Manto-only case", () => {
+    const tuesday = productionDay(
+      23_892,
+      [{ group: "MANTO", day: 10_240 }],
+      { date: "2026-10-27" },
+    );
+    const { calculation, summary } = summaryFor(tuesday);
+    const balance = summary.tubeMpBalance;
+    const validation = validateProductionClosure(tuesday, calculation, {
+      requiredDataComplete: true,
+    });
+
+    expect(balance.mpTubeKg100).toBe(kg(11_946));
+    expect(balance.mpMantoEstimatedKg100).toBe(kg(11_946));
+    expect(balance.mpMantoExcessKg100).toBe(kg(0));
+    expect(balance.hasAnillasProduction).toBe(false);
+    expect(balance.tubeDifferenceKg100).toBe(kg(0));
+    expect(validation.blockers.map((item) => item.code)).not.toContain(
+      "MANTO_MP_EXCEEDS_TUBE",
+    );
   });
 
   it("calculates Monday group and overall utilization over total raw material", () => {
@@ -563,14 +682,68 @@ describe("production business rules", () => {
       ]),
     ).summary;
 
-    expect(reportOnly.tubeMpBalance.mpMantoEstimatedKg100).toBe(kg(40));
-    expect(reportOnly.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(10));
+    expect(reportOnly.tubeMpBalance.mpMantoEstimatedKg100).toBe(kg(50));
+    expect(reportOnly.tubeMpBalance.hasAnillasProduction).toBe(false);
+    expect(reportOnly.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(0));
     expect(withTunnelAndTreatment.tubeMpBalance.mpMantoEstimatedKg100).toBe(
-      kg(45),
+      kg(50),
     );
-    expect(withTunnelAndTreatment.tubeMpBalance.mpAnillaProcessKg100).toBe(
-      kg(5),
+    expect(withTunnelAndTreatment.tubeMpBalance.hasAnillasProduction).toBe(false);
+    expect(withTunnelAndTreatment.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(0));
+  });
+
+  it("activates the combined Tube method only for positive Anillas output", () => {
+    const mantoOnlyDay = productionDay(
+      100,
+      [{ group: "MANTO", day: 32 }],
+      { date: "2026-10-27" },
     );
+    const zeroAnillasDay = productionDay(100, [
+      { group: "MANTO", day: 32 },
+      { group: "ANILLAS", day: 0 },
+    ]);
+    const mantoOnly = summaryFor(mantoOnlyDay);
+    const zeroAnillas = summaryFor(zeroAnillasDay);
+    const invalidAnillasDay = productionDay(100, [
+      { group: "MANTO", day: 32 },
+      { group: "ANILLAS", day: -2 },
+    ]);
+    const invalidAnillas = summaryFor(invalidAnillasDay);
+    const combined = summaryFor(
+      productionDay(100, [
+        { group: "MANTO", day: 32 },
+        { group: "ANILLAS", day: 4.2 },
+      ]),
+    );
+    const anillasOnly = summaryFor(
+      productionDay(100, [{ group: "ANILLAS", day: 4.2 }]),
+    );
+
+    for (const { day, calculation, summary } of [
+      { day: mantoOnlyDay, ...mantoOnly },
+      { day: zeroAnillasDay, ...zeroAnillas },
+      { day: invalidAnillasDay, ...invalidAnillas },
+    ]) {
+      expect(summary.tubeMpBalance.hasAnillasProduction).toBe(false);
+      expect(summary.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(0));
+      expect(summary.tubeMpBalance.mpMainAnillasExcessKg100).toBe(kg(0));
+      expect(summary.tubeMpBalance.tubeDifferenceKg100).toBe(kg(0));
+      const validation = validateProductionClosure(day, calculation, {
+        requiredDataComplete: true,
+      });
+      expect(validation.blockers.map((item) => item.code)).not.toContain(
+        "ANILLAS_YIELD_CLASS_MISSING",
+      );
+      expect(validation.warnings.map((item) => item.code)).not.toContain(
+        "ANILLAS_MP_EXCEEDS_AVAILABLE",
+      );
+    }
+
+    expect(combined.summary.tubeMpBalance.hasAnillasProduction).toBe(true);
+    expect(combined.summary.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(10));
+    expect(anillasOnly.summary.tubeMpBalance.hasAnillasProduction).toBe(true);
+    expect(anillasOnly.summary.tubeMpBalance.mpMantoEstimatedKg100).toBe(kg(0));
+    expect(anillasOnly.summary.tubeMpBalance.mpAnillaProcessKg100).toBe(kg(50));
   });
 
   it("recalculates group and overall utilization immediately when closing balance changes", () => {
@@ -873,10 +1046,11 @@ describe("production business rules", () => {
     expect(validation.canClose).toBe(true);
   });
 
-  it("blocks when estimated Manto MP exceeds the Tube pool", () => {
+  it("blocks when estimated Manto MP exceeds the Tube pool in the combined method", () => {
     const day = productionDay(100, [
       { group: "MANTO", day: 41 },
-      { group: "RECORTE_CRUDO", day: 39 },
+      { group: "ANILLAS", day: 1 },
+      { group: "RECORTE_CRUDO", day: 38 },
     ]);
     const { calculation, summary } = summaryFor(day);
     const validation = validateProductionClosure(day, calculation, {

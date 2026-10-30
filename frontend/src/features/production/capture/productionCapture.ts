@@ -16,7 +16,7 @@ import { productIdsEquivalent } from "../model/productIdentity";
 import { calculateProductionBusinessSummary } from "../model/businessRules";
 import {
   GENERAL_MIN_YIELD_BPS,
-  NUCA_BIKINI_REFERENCE_BPS,
+  NUCA_MP_DISTRIBUTION_BPS,
 } from "../model/businessConfig";
 import type {
   BalanceLot,
@@ -688,7 +688,9 @@ export function buildProductionDayFromCapture(
         }
       : null,
     performanceReferenceBasisPoints: GENERAL_MIN_YIELD_BPS,
-    nucaBikiniReferenceBasisPoints: NUCA_BIKINI_REFERENCE_BPS,
+    // Legacy persisted field retained for schema compatibility. New captures
+    // use the shared 15% Nuca distribution; calculations ignore this field.
+    nucaBikiniReferenceBasisPoints: NUCA_MP_DISTRIBUTION_BPS,
     rawMaterialAllocationOverridesKg100: {},
   };
   const preliminaryCalculation = calculateProductionDay(preliminaryDay);

@@ -396,7 +396,7 @@ describe('capture product status labels', () => {
     expect(screen.getByLabelText(/^Reporte Día/)).toHaveValue('')
   })
 
-  it('shows the Tube MP balance and distinguishes overall utilization', () => {
+  it('hides the technical Anillas balance for Manto-only production', () => {
     renderNewEntry()
     completeShiftReport({
       rawMaterial: '100',
@@ -404,7 +404,9 @@ describe('capture product status labels', () => {
       productSearch: 'manto japonés crudo',
     })
 
-    expect(screen.getByRole('heading', { name: 'Balance MP Tubo' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Balance MP Tubo' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Aprovechamiento general' }),
     ).toBeInTheDocument()
@@ -413,8 +415,8 @@ describe('capture product status labels', () => {
         name: 'Rendimiento técnico y aprovechamiento MP',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Detalle técnico de Anillas')).toBeInTheDocument()
-    expect(screen.getByText('Salidas del proceso de Anillas')).toBeInTheDocument()
+    expect(screen.queryByText('Detalle técnico de Anillas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Salidas del proceso de Anillas')).not.toBeInTheDocument()
   })
 
   it('keeps the optional Tunnel stage hidden and at zero by default', () => {

@@ -79,9 +79,73 @@ export function buildWeeklySummaryWorkbook(input: ExportWeeklySummaryInput): Wor
   writeMetric(summarySheet, 14, 1, 'Rejos (15%)', kg(input.summary.distribution.rejosKg100), {
     format: '#,##0.00 "kg"',
   })
-  writeMetric(summarySheet, 15, 1, 'Nuca Semilimpia (15%)', kg(input.summary.distribution.nucasKg100), {
+  writeMetric(summarySheet, 15, 1, 'Nuca (15%)', kg(input.summary.distribution.nucasKg100), {
     format: '#,##0.00 "kg"',
   })
+
+  writeSectionTitle(summarySheet, 17, 3, 'RENDIMIENTO DE NUCAS')
+  writeMetric(
+    summarySheet,
+    18,
+    1,
+    'MP de referencia (15%)',
+    input.summary.nucas.applicable
+      ? kg(input.summary.nucas.referenceKg100)
+      : 'No aplica',
+    { format: '#,##0.00 "kg"' },
+  )
+  writeMetric(
+    summarySheet,
+    19,
+    1,
+    'Bikini terminado',
+    kg(input.summary.nucas.bikiniKg100),
+    { format: '#,##0.00 "kg"' },
+  )
+  writeMetric(
+    summarySheet,
+    20,
+    1,
+    'Nuca semi-limpia terminada',
+    kg(input.summary.nucas.semilimpiaKg100),
+    { format: '#,##0.00 "kg"' },
+  )
+  writeMetric(
+    summarySheet,
+    21,
+    1,
+    'Producción equivalente',
+    kg(input.summary.nucas.equivalentKg100),
+    { format: '#,##0.00 "kg"' },
+  )
+  writeMetric(
+    summarySheet,
+    22,
+    1,
+    'Cumplimiento de referencia',
+    input.summary.nucas.referenceCompliancePercent === null
+      ? 'No aplica'
+      : input.summary.nucas.referenceCompliancePercent / 100,
+    {
+      format: '0.00%',
+      tone:
+        input.summary.nucas.status === 'NOT_APPLICABLE'
+          ? 'neutral'
+          : input.summary.nucas.status === 'AT_OR_ABOVE_REFERENCE'
+            ? 'success'
+            : 'warning',
+    },
+  )
+  writeMetric(
+    summarySheet,
+    23,
+    1,
+    'Kg para alcanzar 45%',
+    input.summary.nucas.applicable
+      ? kg(input.summary.nucas.kgToReferenceKg100)
+      : 'No aplica',
+    { format: '#,##0.00 "kg"' },
+  )
 
   // Sheet 2: Products
   const productsSheet = setupWorksheet(

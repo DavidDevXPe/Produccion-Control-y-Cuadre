@@ -13,8 +13,10 @@ import {
   isProductionProcess,
   productionDayKey,
 } from "../model/productionProcess";
+import { normalizeProductName } from "../capture/productNormalizer";
 import type {
   ProductionDay,
+  ProductionLine,
   ProductionProcess,
   WeeklySummaryPeriod,
 } from "../model/types";
@@ -78,44 +80,70 @@ export function buildCalendarDays(
   });
 }
 
+type NucaClassification = Pick<
+  ProductionLine,
+  "familyId" | "familyName" | "summaryGroupId"
+>;
+
+function classifyNucaProduct(
+  productId: string,
+  productName: string,
+): NucaClassification | null {
+  const normalizedName = normalizeProductName(productName);
+  const isBikini =
+    normalizedName.includes("BIKINI") || productId.startsWith("nuca-bikini");
+  if (isBikini) {
+    return {
+      familyId: "nuca-bikini",
+      familyName: "NUCA BIKINI",
+      summaryGroupId: "NUCA_BIKINI",
+    };
+  }
+
+  const isSemilimpia =
+    productId.startsWith("nuca-semilimpia") && !isBikini;
+  const hasSemilimpiaName =
+    normalizedName.includes("NUCA") && /SEMI[-\s]?LIMPI/.test(normalizedName);
+  if (isSemilimpia || hasSemilimpiaName) {
+    return {
+      familyId: "nuca-semilimpia",
+      familyName: "NUCA SEMILIMPIA",
+      summaryGroupId: "NUCA_SEMILIMPIA",
+    };
+  }
+
+  return null;
+}
+
 export function normalizeNucaClassification(day: ProductionDay): ProductionDay {
-  const semilimpiaProductIds = new Set(
-    day.lines
-      .filter((line) => {
-        const normalizedProductName = line.productName
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLocaleUpperCase("es-PE");
+  const classificationsByProductId = new Map<string, NucaClassification>();
+  const lines = day.lines.map((line) => {
+    const classification = classifyNucaProduct(line.productId, line.productName);
+    if (!classification) return line;
 
-        return (
-          line.productId === "nuca-semilimpia-codificada" ||
-          (normalizedProductName.includes("NUCA") &&
-            normalizedProductName.includes("SEMI LIMPI"))
-        );
-      })
-      .map((line) => line.productId),
+    const existing = classificationsByProductId.get(line.productId);
+    if (
+      !existing ||
+      classification.summaryGroupId === "NUCA_BIKINI"
+    ) {
+      classificationsByProductId.set(line.productId, classification);
+    }
+    return { ...line, ...classification };
+  });
+  const receivedBalanceLots = day.receivedBalanceLots.map((lot) => {
+    const classification = classificationsByProductId.get(lot.productId);
+    return classification
+      ? { ...lot, familyId: classification.familyId }
+      : lot;
+  });
+
+  const linesChanged = lines.some((line, index) => line !== day.lines[index]);
+  const lotsChanged = receivedBalanceLots.some(
+    (lot, index) => lot !== day.receivedBalanceLots[index],
   );
-
-  if (semilimpiaProductIds.size === 0) return day;
-
-  return {
-    ...day,
-    lines: day.lines.map((line) =>
-      semilimpiaProductIds.has(line.productId)
-        ? {
-            ...line,
-            familyId: "nuca-semilimpia",
-            familyName: "NUCA SEMILIMPIA",
-            summaryGroupId: "NUCA_SEMILIMPIA",
-          }
-        : line,
-    ),
-    receivedBalanceLots: day.receivedBalanceLots.map((lot) =>
-      semilimpiaProductIds.has(lot.productId)
-        ? { ...lot, familyId: "nuca-semilimpia" }
-        : lot,
-    ),
-  };
+  return linesChanged || lotsChanged
+    ? { ...day, lines, receivedBalanceLots }
+    : day;
 }
 
 export function loadStoredDays(): readonly ProductionDay[] {

@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, Save } from 'lucide-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { buttonStyles } from '../../../components/ui/buttonStyles'
 import { formatCentiKg } from '../../../utils/formatters'
+import type { ClosureReviewItem } from '../model/closureReview'
 import { kg100 } from '../model/calculations'
 import type { Kg100 } from '../model/types'
 
@@ -18,6 +19,7 @@ export interface ProductionEntryActionBarProps {
   canClose: boolean
   footerStatus: { title: string; description: string }
   pendingClosureReasons: readonly string[]
+  reviewItems?: readonly ClosureReviewItem[]
   reviewReasons?: readonly string[]
   dayShift: ShiftSummaryData
   nightShift: ShiftSummaryData
@@ -87,6 +89,19 @@ function getPendingLabel(
   return `${pendingClosureReasons.length} ${pendingClosureReasons.length === 1 ? 'validación para el cierre' : 'validaciones para el cierre'}`
 }
 
+function getReviewPendingLabel(reviewItems: readonly ClosureReviewItem[]) {
+  const blockers = reviewItems.filter((item) => item.severity === 'BLOCKER')
+  const warnings = reviewItems.filter((item) => item.severity === 'WARNING')
+  if (blockers.length > 0 && warnings.length > 0) {
+    return `${blockers.length} validaciones / ${warnings.length} observaciones`
+  }
+  return getPendingLabel(
+    reviewItems.map((item) => item.message),
+    blockers.map((item) => item.message),
+    blockers.length === 0,
+  )
+}
+
 interface ActionBarStatusProps {
   readonly canClose: boolean
   readonly title: string
@@ -138,8 +153,7 @@ function ActionBarStatus({
 }
 
 interface ActionBarActionsProps {
-  readonly reviewReasons: readonly string[]
-  readonly pendingClosureReasons: readonly string[]
+  readonly reviewItems: readonly ClosureReviewItem[]
   readonly hasWarningsOnly: boolean
   readonly isPendingPanelOpen: boolean
   readonly pendingTriggerRef: RefObject<HTMLButtonElement | null>
@@ -153,8 +167,7 @@ interface ActionBarActionsProps {
 }
 
 function ActionBarActions({
-  reviewReasons,
-  pendingClosureReasons,
+  reviewItems,
   hasWarningsOnly,
   isPendingPanelOpen,
   pendingTriggerRef,
@@ -166,6 +179,9 @@ function ActionBarActions({
   onClosePendingPanel,
   onOpenReview,
 }: ActionBarActionsProps) {
+  const reviewReasons = reviewItems.map((item) => item.message)
+  const warningCount = reviewItems.filter((item) => item.severity === 'WARNING').length
+
   return (
     <div className="production-entry-action-bar__actions relative flex min-w-0 items-center gap-2">
       {reviewReasons.length > 0 ? (
@@ -178,8 +194,8 @@ function ActionBarActions({
           className={`${buttonStyles('ghost', 'sm')} whitespace-nowrap border-brand-500/25 bg-brand-500/5 font-semibold text-brand-700 hover:bg-brand-500/10 dark:border-sky-400/30 dark:bg-sky-400/5 dark:text-sky-300 dark:hover:bg-sky-400/10`}
         >
           {hasWarningsOnly
-            ? `Revisar observaciones (${reviewReasons.length})`
-            : `Revisar pendientes (${pendingClosureReasons.length})`}
+            ? `Revisar observaciones (${warningCount})`
+            : `Revisar pendientes (${reviewReasons.length})`}
         </button>
       ) : null}
       <button
@@ -201,7 +217,7 @@ function ActionBarActions({
       </button>
       <PendingPanel
         isOpen={isPendingPanelOpen}
-        reasons={reviewReasons}
+        items={reviewItems}
         hasWarningsOnly={hasWarningsOnly}
         pendingPanelRef={pendingPanelRef}
         onClose={onClosePendingPanel}
@@ -213,7 +229,7 @@ function ActionBarActions({
 
 interface PendingPanelProps {
   readonly isOpen: boolean
-  readonly reasons: readonly string[]
+  readonly items: readonly ClosureReviewItem[]
   readonly hasWarningsOnly: boolean
   readonly pendingPanelRef: RefObject<HTMLDialogElement | null>
   readonly onClose: () => void
@@ -222,13 +238,13 @@ interface PendingPanelProps {
 
 function PendingPanel({
   isOpen,
-  reasons,
+  items,
   hasWarningsOnly,
   pendingPanelRef,
   onClose,
   onOpenReview,
 }: PendingPanelProps) {
-  if (!isOpen || reasons.length === 0) return null
+  if (!isOpen || items.length === 0) return null
 
   const reviewTargetAvailable =
     typeof document !== 'undefined' &&
@@ -257,17 +273,17 @@ function PendingPanel({
         </button>
       </div>
       <ul className="space-y-1.5">
-        {reasons.map((reason) => (
+        {items.map((item) => (
           <li
-            key={reason}
+            key={item.id}
             className="flex items-start gap-2 rounded-lg border border-slate-200 px-2.5 py-2 dark:border-ui-line-dark"
           >
             <AlertTriangle
-              className="mt-0.5 size-3.5 shrink-0 text-amber-500"
+              className={`mt-0.5 size-3.5 shrink-0 ${item.severity === 'BLOCKER' ? 'text-rose-500' : 'text-amber-500'}`}
               aria-hidden="true"
             />
             <span className="min-w-0 flex-1 text-xs leading-4 text-slate-700 dark:text-ui-text-dark-pale">
-              {reason}
+              {item.message}
             </span>
             {reviewTargetAvailable ? (
               <button
@@ -289,6 +305,7 @@ export function ProductionEntryActionBar({
   canClose,
   footerStatus,
   pendingClosureReasons,
+  reviewItems: providedReviewItems,
   reviewReasons: providedReviewReasons,
   dayShift,
   nightShift,
@@ -297,7 +314,13 @@ export function ProductionEntryActionBar({
   onSaveDraft,
   onCloseDay,
 }: ProductionEntryActionBarProps) {
-  const reviewReasons = providedReviewReasons ?? pendingClosureReasons
+  const reviewItems: readonly ClosureReviewItem[] =
+    providedReviewItems ??
+    (providedReviewReasons ?? pendingClosureReasons).map((message) => ({
+      id: `legacy:${message}`,
+      severity: canClose ? 'WARNING' : 'BLOCKER',
+      message,
+    }))
   const [isPendingPanelOpen, setIsPendingPanelOpen] = useState(false)
   const pendingPanelRef = useRef<HTMLDialogElement>(null)
   const pendingTriggerRef = useRef<HTMLButtonElement>(null)
@@ -308,18 +331,16 @@ export function ProductionEntryActionBar({
   const productionReconciled = shifts.every(
     ({ hasData, shift }) => hasData && shift.detailDifferenceKg100 === 0,
   )
-  const hasWarningsOnly = canClose && reviewReasons.length > 0
+  const blockerCount = reviewItems.filter((item) => item.severity === 'BLOCKER').length
+  const warningCount = reviewItems.filter((item) => item.severity === 'WARNING').length
+  const hasWarningsOnly = canClose && blockerCount === 0 && warningCount > 0
   const generalTitle = getGeneralTitle(
     canClose,
     productionReconciled,
     dayHasReportData || nightHasReportData,
     hasWarningsOnly,
   )
-  const pendingLabel = getPendingLabel(
-    reviewReasons,
-    pendingClosureReasons,
-    hasWarningsOnly,
-  )
+  const pendingLabel = getReviewPendingLabel(reviewItems)
 
   useEffect(() => {
     if (!isPendingPanelOpen) return
@@ -370,8 +391,7 @@ export function ProductionEntryActionBar({
         </div>
 
         <ActionBarActions
-          reviewReasons={reviewReasons}
-          pendingClosureReasons={pendingClosureReasons}
+          reviewItems={reviewItems}
           hasWarningsOnly={hasWarningsOnly}
           isPendingPanelOpen={isPendingPanelOpen}
           pendingTriggerRef={pendingTriggerRef}

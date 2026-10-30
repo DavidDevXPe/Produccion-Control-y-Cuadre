@@ -1,10 +1,15 @@
-import type { ProductionClosureValidation, ClosureMessage } from '../model/businessRules'
+import type { ClosureMessage, ProductionClosureValidation } from '../model/businessRules'
+import {
+  buildClosureReviewItems,
+  type ClosureReviewItem,
+} from '../model/closureReview'
 
 export interface ProductionEntryPendingAlertsProps {
   canClose: boolean
   closureValidation: ProductionClosureValidation
   diagnostics: readonly ClosureMessage[]
   pendingClosureReasons: readonly string[]
+  reviewItems?: readonly ClosureReviewItem[]
   saveError: string
 }
 
@@ -13,29 +18,17 @@ export function ProductionEntryPendingAlerts({
   closureValidation,
   diagnostics,
   pendingClosureReasons,
+  reviewItems: providedReviewItems,
   saveError,
 }: ProductionEntryPendingAlertsProps) {
-  const warningCodes = new Set(
-    closureValidation.warnings.map((warning) => warning.code),
-  )
-  const reviewMessages = [
-    ...pendingClosureReasons,
-    ...closureValidation.blockers
-      .filter(
-        (blocker: ClosureMessage) => blocker.code !== 'TUNNEL_MOVEMENTS_REQUIRED',
-      )
-      .map((blocker: ClosureMessage) => blocker.message),
-    ...diagnostics
-      .filter(
-        (diagnostic: ClosureMessage) =>
-          diagnostic.code !== 'SHIFT_BALANCED' &&
-          !warningCodes.has(diagnostic.code),
-      )
-      .map((diagnostic: ClosureMessage) => diagnostic.message),
-    ...closureValidation.warnings.map((warning) => warning.message),
-  ]
-    .filter((message, index, messages) => messages.indexOf(message) === index)
-    .slice(0, 12)
+  const reviewItems =
+    providedReviewItems ??
+    buildClosureReviewItems({
+      pendingClosureReasons,
+      closureValidation,
+      diagnostics,
+    })
+  const reviewMessages = reviewItems.map((item) => item.message)
   const showReview = reviewMessages.length > 0
   const warningsOnly = canClose && closureValidation.warnings.length > 0
 

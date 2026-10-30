@@ -86,10 +86,11 @@ export function getGroupAllocation(
     REJOS: kg100(summary.distribution.rejosKg100 - reproductor),
     REPRODUCTOR: reproductor,
     PICO: kg100(0),
-    NUCA_SEMILIMPIA: summary.distribution.nucasKg100,
-    NUCA_BIKINI: summary.nucaBikini.applicable
-      ? summary.nucaBikini.referenceKg100
-      : null,
+    // Nuca has one combined reference. Do not assign the 15% distribution to
+    // one presentation or expose a second independent Bikini reference in the
+    // product-group table; the unified result is rendered below the table.
+    NUCA_SEMILIMPIA: null,
+    NUCA_BIKINI: null,
   }
 
   return allocations[groupId] ?? null
@@ -254,9 +255,6 @@ export function useWeeklySummaryData() {
     return yieldVisualStyles[weeklyYieldStatus.colorVariant]
   }, [weeklyYieldStatus])
 
-  const isNucaSemilimpiaReferenceApplicable = summary?.nucaSemilimpia.applicable ?? false
-  const isNucaBikiniReferenceApplicable = summary?.nucaBikini.applicable ?? false
-
   const aggregatedPalletizingRows = useMemo(() => {
     return buildPalletizingRowsFromWeekDays(
       activeWeek.number,
@@ -344,8 +342,6 @@ export function useWeeklySummaryData() {
     isValid,
     weeklyYieldStatus,
     weeklyYieldStyles,
-    isNucaSemilimpiaReferenceApplicable,
-    isNucaBikiniReferenceApplicable,
     handleExportExcel,
     handleExportPdf,
     packingWeek,

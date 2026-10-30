@@ -182,14 +182,27 @@ export function toggleProductActiveStatus(productId: string): boolean {
 }
 
 export function createStableProductId(canonicalName: string): string {
-  const slug = productNameSlug(canonicalName)
-  const base =
-    slug.includes('nucas-crudas-congeladas-block-stto-semi-limpias-100-300')
-      ? 'nuca-semilimpia-100-300'
-      : slug.startsWith('nuca') && slug.includes('100-300')
-        ? 'nuca-semilimpia-100-300'
-        : slug
+  const normalizedName = normalizeProductName(canonicalName)
   const active = getActiveProducts()
+  if (normalizedName.includes('NUCA')) {
+    const exactMatch = active.find(
+      (item) => normalizeProductName(item.productName) === normalizedName,
+    )
+    if (exactMatch) return exactMatch.productId
+  }
+
+  const slug = productNameSlug(canonicalName)
+  const bikiniRange = normalizedName.match(
+    /\bBIKINI\s+(100-300|300-500|500-700|700-UP)\b/,
+  )
+  const base =
+    bikiniRange
+      ? `nuca-bikini-${bikiniRange[1]!.toLocaleLowerCase('es-PE')}`
+      : normalizedName.includes('NUCA') &&
+          /SEMI[-\s]?LIMPI/.test(normalizedName) &&
+          normalizedName.includes('100-300')
+      ? 'nuca-semilimpia-100-300'
+      : slug
   if (!active.some((item) => item.productId === base)) return base
   let suffix = 2
   while (active.some((item) => item.productId === `${base}-${suffix}`)) suffix += 1

@@ -49,6 +49,8 @@ export interface AnillasProcessOutputs {
 }
 
 export interface TubeMpBalance {
+  /** True only when a valid Anillas line has positive finished output. */
+  hasAnillasProduction?: boolean
   mpTotalKg100: Kg100
   mpTubeKg100: Kg100
   ptMantoKg100: Kg100
@@ -229,17 +231,31 @@ export function getTubeMpBalance(
       .filter((position) => position.summaryGroupId === 'MANTO')
       .map((position) => position.finishedKg100),
   )
-  const mpMantoEstimatedKg100 = estimatedRawMaterial(
-    ptMantoKg100,
-    MANTO_STANDARD_YIELD,
-  )
-  const mpAnillaProcessKg100 = kg100(
-    mpTubeKg100 - mpMantoEstimatedKg100,
-  )
   const anillas = getAnillaMpAllocation(positions)
-  const processOutputs = getAnillasProcessOutputs(positions)
+  // A Manto-only day must not manufacture a theoretical Anillas process from
+  // the unused Tube pool. Activate the combined allocation only when there is
+  // positive, reconciled Anillas output.
+  // Product positions are evaluated independently. A positive line must not
+  // be hidden just because another line with the same catalog product has an
+  // integrity issue.
+  const hasAnillasProduction = positions.some(
+    (position) =>
+      position.summaryGroupId === 'ANILLAS' && position.finishedKg100 > 0,
+  )
+  const processOutputs = hasAnillasProduction
+    ? getAnillasProcessOutputs(positions)
+    : getAnillasProcessOutputs([])
+  // When Anillas has no positive production, all Tube MP belongs to Manto.
+  // The 80% technical reconstruction only applies to the combined method.
+  const mpMantoEstimatedKg100 = hasAnillasProduction
+    ? estimatedRawMaterial(ptMantoKg100, MANTO_STANDARD_YIELD)
+    : mpTubeKg100
+  const mpAnillaProcessKg100 = hasAnillasProduction
+    ? kg100(mpTubeKg100 - mpMantoEstimatedKg100)
+    : kg100(0)
 
   return {
+    hasAnillasProduction,
     mpTotalKg100,
     mpTubeKg100,
     ptMantoKg100,
@@ -251,22 +267,29 @@ export function getTubeMpBalance(
     mpAnillaGeneralEstimatedKg100: anillas.mpGeneralEstimatedKg100,
     mpAnillaUsaEstimatedKg100: anillas.mpUsaEstimatedKg100,
     mpMainAnillasEstimatedKg100: anillas.mpMainEstimatedKg100,
-    mpAnillasUnallocatedKg100: kg100(
-      Math.max(
-        mpAnillaProcessKg100 - anillas.mpMainEstimatedKg100,
-        0,
-      ),
-    ),
-    mpMantoExcessKg100: kg100(
-      Math.max(mpMantoEstimatedKg100 - mpTubeKg100, 0),
-    ),
-    mpMainAnillasExcessKg100: kg100(
-      Math.max(anillas.mpMainEstimatedKg100 - mpAnillaProcessKg100, 0),
-    ),
-    unclassifiedAnillasKg100: anillas.ptUnclassifiedKg100,
-    tubeDifferenceKg100: kg100(
-      mpTubeKg100 - (mpMantoEstimatedKg100 + mpAnillaProcessKg100),
-    ),
+    mpAnillasUnallocatedKg100: hasAnillasProduction
+      ? kg100(
+          Math.max(
+            mpAnillaProcessKg100 - anillas.mpMainEstimatedKg100,
+            0,
+          ),
+        )
+      : kg100(0),
+    mpMantoExcessKg100: hasAnillasProduction
+      ? kg100(Math.max(mpMantoEstimatedKg100 - mpTubeKg100, 0))
+      : kg100(0),
+    mpMainAnillasExcessKg100: hasAnillasProduction
+      ? kg100(
+          Math.max(anillas.mpMainEstimatedKg100 - mpAnillaProcessKg100, 0),
+        )
+      : kg100(0),
+    unclassifiedAnillasKg100: hasAnillasProduction
+      ? anillas.ptUnclassifiedKg100
+      : kg100(0),
+    // With no Anillas movement there is no combined balance to validate.
+    tubeDifferenceKg100: hasAnillasProduction
+      ? kg100(mpTubeKg100 - (mpMantoEstimatedKg100 + mpAnillaProcessKg100))
+      : kg100(0),
     processOutputs,
   }
 }

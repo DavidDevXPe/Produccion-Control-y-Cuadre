@@ -4,7 +4,7 @@ import { WEDNESDAY_PRODUCTION_DAY } from '../data/wednesday'
 import { THURSDAY_PRODUCTION_DAY } from '../data/thursday'
 import {
   calculateBalancePosition,
-  calculateNucaBikiniReference,
+  calculateNucasReference,
   calculateProductionDay,
   calculateShiftEntry,
   calculateWeeklySummary,
@@ -392,28 +392,14 @@ describe('daily integrity validation', () => {
   })
 })
 
-describe('Nuca Bikini reference', () => {
-  it('calculates the conditional 7 percent reference for Wednesday', () => {
-    const result = calculateProductionDay(WEDNESDAY_PRODUCTION_DAY).nucaBikini
+describe('Nuca production authorization', () => {
+  it('keeps the shared Nucas method independent from the washing authorization', () => {
+    const result = calculateProductionDay(WEDNESDAY_PRODUCTION_DAY)
 
-    expect(result.applicable).toBe(true)
-    expect(result.actualKg100).toBe(kg(22_750))
-    expect(result.referenceKg100).toBe(kg(22_640.8))
-    expect(result.varianceKg100).toBe(kg(109.2))
-    expect(result.shareOfRawMaterialPercent).toBeCloseTo(7.033762057878, 10)
-    expect(result.status).toBe('AT_OR_ABOVE_REFERENCE')
-  })
-
-  it('returns not applicable when there is no washing order', () => {
-    const result = calculateNucaBikiniReference(
-      kg(323_440),
-      kg(0),
-      false,
-    )
-
-    expect(result.applicable).toBe(false)
-    expect(result.referenceKg100).toBe(kg(0))
-    expect(result.status).toBe('NOT_APPLICABLE')
+    expect(result.nucas.applicable).toBe(true)
+    expect(result.nucas.referencePercent).toBe(15)
+    expect(result.nucas.bikiniKg100).toBe(kg(22_750))
+    expect(result.nucas.referencePercent).toBe(15)
   })
 
   it('invalidates Nuca production without active, documented washing', () => {
@@ -423,7 +409,7 @@ describe('Nuca Bikini reference', () => {
     }
 
     const inactiveResult = calculateProductionDay(inactiveDay)
-    expect(inactiveResult.nucaBikini.status).toBe('NOT_APPLICABLE')
+    expect(inactiveResult.nucas.status).toBe('AT_OR_ABOVE_REFERENCE')
     expect(inactiveResult.integrityIssues.map((issue) => issue.code)).toContain(
       'NUCA_PRODUCTION_WITHOUT_ACTIVE_WASH',
     )
@@ -444,14 +430,14 @@ describe('Nuca Bikini reference', () => {
   })
 })
 
-describe('Nuca semilimpia reference', () => {
-  it('uses 15 percent as an informative reference without changing the cuadre', () => {
+describe('Nuca shared reference', () => {
+  it('uses the shared 15 percent reference without changing the cuadre', () => {
     const calculation = calculateProductionDay(THURSDAY_PRODUCTION_DAY)
 
-    expect(calculation.nucaSemilimpia.applicable).toBe(true)
-    expect(calculation.nucaSemilimpia.referencePercent).toBe(15)
-    expect(calculation.nucaSemilimpia.actualKg100).toBe(kg(12_000))
-    expect(calculation.nucaSemilimpia.status).toBe('BELOW_REFERENCE')
+    expect(calculation.nucas.applicable).toBe(true)
+    expect(calculation.nucas.referencePercent).toBe(15)
+    expect(calculation.nucas.semilimpiaKg100).toBe(kg(12_000))
+    expect(calculation.nucas.status).toBe('AT_OR_ABOVE_REFERENCE')
     expect(calculation.status).toBe('BALANCED')
   })
 
@@ -556,6 +542,70 @@ describe('Nuca semilimpia reference', () => {
     expect(
       result.integrityIssues.map((issue) => issue.code),
     ).not.toContain('DUPLICATE_PRODUCT_ID')
+  })
+})
+
+describe('Equivalent Nucas reference', () => {
+  it('uses the 15% distribution and the experimental factor for Bikini-only production', () => {
+    const result = calculateNucasReference(kg(23_892), kg(1_710), kg(0))
+
+    expect(result.referencePercent).toBeCloseTo(15, 12)
+    expect(result.referenceKg100).toBe(kg(3_583.8))
+    expect(result.actualKg100).toBe(kg(1_710))
+    expect(result.equivalentKg100).toBe(kg(1_991.15))
+    expect(result.referenceCompliancePercent).toBeCloseTo(55.55975, 5)
+    expect(result.conversionFactor).toBeCloseTo(0.8588, 8)
+    expect(result.bikiniWeightPercent).toBe(100)
+    expect(result.semilimpiaWeightPercent).toBe(0)
+  })
+
+  it('uses 15% for semi-clean-only production', () => {
+    const result = calculateNucasReference(kg(10_000), kg(0), kg(790))
+
+    expect(result.referencePercent).toBe(15)
+    expect(result.referenceKg100).toBe(kg(1_500))
+    expect(result.actualKg100).toBe(kg(790))
+  })
+
+  it('converts Bikini and adds semi-clean output against the 15% reference', () => {
+    const result = calculateNucasReference(
+      kg(83_265.84),
+      kg(4_290),
+      kg(790),
+    )
+
+    expect(result.referencePercent).toBe(15)
+    expect(result.referenceKg100).toBe(kg(12_489.88))
+    expect(result.actualKg100).toBe(kg(5_080))
+    expect(result.equivalentKg100).toBe(kg(5_785.34))
+    expect(result.bikiniEquivalentKg100).toBe(kg(4_995.34))
+    expect(result.minimumProductionKg100).toBe(kg(5_620.44))
+    expect(result.kgToReferenceKg100).toBe(kg(0))
+    expect(result.varianceKg100).toBe(kg(-6_704.53))
+    expect(result.referenceCompliancePercent).toBeCloseTo(46.3202544, 7)
+    expect(result.shareOfRawMaterialPercent).toBeCloseTo(6.101, 3)
+    expect(result.bikiniWeightPercent).toBeCloseTo(84.4488, 3)
+    expect(result.semilimpiaWeightPercent).toBeCloseTo(15.5512, 3)
+  })
+
+  it('reports no methodology when both Nucas outputs are zero', () => {
+    const result = calculateNucasReference(kg(10_000), kg(0), kg(0))
+
+    expect(result.applicable).toBe(false)
+    expect(result.referencePercent).toBe(15)
+    expect(result.referenceKg100).toBe(kg(0))
+    expect(result.equivalentKg100).toBe(kg(0))
+    expect(result.status).toBe('NOT_APPLICABLE')
+  })
+
+  it('ignores negative draft quantities when inferring the methodology', () => {
+    const result = calculateNucasReference(kg(10_000), kg(-250), kg(790))
+
+    expect(result.applicable).toBe(true)
+    expect(result.bikiniKg100).toBe(kg(0))
+    expect(result.semilimpiaKg100).toBe(kg(790))
+    expect(result.referencePercent).toBe(15)
+    expect(result.actualKg100).toBe(kg(790))
   })
 })
 

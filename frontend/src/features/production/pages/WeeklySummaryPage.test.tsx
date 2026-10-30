@@ -99,35 +99,20 @@ describe('weekly summary page', () => {
     )
   })
 
-  it('separates the 15% semilimpia and 7% Bikini references', () => {
+  it('shows one shared equivalent-Nucas reference for the week', () => {
     render(<MemoryRouter><WeeklySummaryPage /></MemoryRouter>)
 
     const nucaHeading = screen.getByRole('heading', {
-      name: 'Referencias de Nuca',
+      name: 'Rendimiento de Nucas',
     })
     const nucaSection = nucaHeading.closest('section')
 
     expect(nucaSection).not.toBeNull()
-    const semilimpia = within(nucaSection!).getByRole('heading', {
-      name: 'Nuca semilimpia',
-    }).closest('article')
-    const bikini = within(nucaSection!).getByRole('heading', {
-      name: 'Nuca Bikini',
-    }).closest('article')
-
-    expect(semilimpia).not.toBeNull()
-    expect(within(semilimpia!).getByText('Referencia 15%')).toBeInTheDocument()
-    expect(within(semilimpia!).getByText('261,636.75 kg')).toBeInTheDocument()
-    expect(within(semilimpia!).getByText('45,660.00 kg')).toBeInTheDocument()
-
-    expect(bikini).not.toBeNull()
-    expect(within(bikini!).getByText('LAVADO ACTIVO')).toBeInTheDocument()
-    expect(within(bikini!).getByText('Referencia 7%')).toBeInTheDocument()
-    expect(within(bikini!).getByText('122,097.15 kg')).toBeInTheDocument()
-    expect(within(bikini!).getByText('92,360.00 kg')).toBeInTheDocument()
-    expect(
-      within(nucaSection!).getByText(/no cambia el estado CUADRADO/),
-    ).toBeInTheDocument()
+    expect(within(nucaSection!).getByText('MP de referencia (15%)')).toBeInTheDocument()
+    expect(within(nucaSection!).getByText('Producción equivalente')).toBeInTheDocument()
+    expect(within(nucaSection!).getByText(/Factor experimental:/)).toBeInTheDocument()
+    expect(within(nucaSection!).queryByText('Referencia 7%')).not.toBeInTheDocument()
+    expect(within(nucaSection!).queryByText('Nuca semilimpia usa 15%')).not.toBeInTheDocument()
   })
 
   it('keeps a past open week as a partial week instead of marking it closed', () => {

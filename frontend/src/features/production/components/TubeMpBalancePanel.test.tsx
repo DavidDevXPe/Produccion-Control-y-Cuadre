@@ -53,6 +53,18 @@ describe('TubeMpBalancePanel', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
+  it('hides the technical Anillas block for a Manto-only balance', () => {
+    const balance = createSampleBalance({
+      hasAnillasProduction: false,
+      ptAnillasKg100: kg100(0),
+      mpMantoEstimatedKg100: kg100(500000),
+      mpAnillaProcessKg100: kg100(0),
+    })
+    const { container } = render(<TubeMpBalancePanel balance={balance} />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
   it('renders section card, success badge, and primary metric cards when balanced', () => {
     const balance = createSampleBalance()
     render(<TubeMpBalancePanel balance={balance} />)

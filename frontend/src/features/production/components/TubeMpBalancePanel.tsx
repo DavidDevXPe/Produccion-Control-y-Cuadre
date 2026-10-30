@@ -45,9 +45,12 @@ function TubeIntegrityMessages({ balance }: TubeMpBalancePanelProps) {
 }
 
 export function TubeMpBalancePanel({ balance }: TubeMpBalancePanelProps) {
+  const hasAnillasProduction =
+    balance.hasAnillasProduction ?? balance.ptAnillasKg100 > 0
+
   if (
     balance.mpTotalKg100 === 0 ||
-    (balance.ptMantoKg100 === 0 && balance.ptAnillasKg100 === 0)
+    !hasAnillasProduction
   ) {
     return null
   }

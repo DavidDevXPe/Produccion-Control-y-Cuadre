@@ -111,4 +111,32 @@ describe('ProductionEntryActionBar', () => {
     expect(screen.getByText(/reconstrucción teórica de las Anillas/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cerrar jornada' })).toBeEnabled()
   })
+
+  it('uses the same review item count in the footer and its panel', () => {
+    render(
+      <ProductionEntryActionBar
+        canClose={false}
+        footerStatus={{ title: 'Requiere revisión', description: 'Hay pendientes' }}
+        pendingClosureReasons={['Pendiente 1', 'Pendiente 2']}
+        reviewItems={[
+          { id: 'one', severity: 'BLOCKER', message: 'Pendiente 1' },
+          { id: 'two', severity: 'BLOCKER', message: 'Pendiente 2' },
+          { id: 'three', severity: 'BLOCKER', message: 'Pendiente 3' },
+          { id: 'four', severity: 'WARNING', message: 'Observación 1' },
+          { id: 'five', severity: 'WARNING', message: 'Observación 2' },
+        ]}
+        dayShift={{ reportedKg100: kg100(0), declaredReportedKg100: kg100(0), detailDifferenceKg100: kg100(0) }}
+        nightShift={{ reportedKg100: kg100(0), declaredReportedKg100: kg100(0), detailDifferenceKg100: kg100(0) }}
+        dayHasReportData
+        nightHasReportData
+        onSaveDraft={vi.fn()}
+        onCloseDay={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Revisar pendientes (5)' })
+    fireEvent.click(trigger)
+    const panel = screen.getByRole('dialog', { name: 'Validaciones para el cierre' })
+    expect(panel.querySelectorAll('li')).toHaveLength(5)
+  })
 })

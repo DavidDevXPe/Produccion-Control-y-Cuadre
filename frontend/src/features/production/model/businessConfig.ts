@@ -1,8 +1,12 @@
 export const GENERAL_MIN_YIELD = 0.8
 export const ALETA_TARGET = 0.9
 export const REJO_REPRODUCTOR_TARGET = 0.97
-export const NUCA_TARGET = 0.45
-export const NUCA_BIKINI_REFERENCE = 0.07
+/** Theoretical share of total raw material assigned to the Nuca family. */
+export const NUCA_MP_DISTRIBUTION = 0.15
+/** Provisional conversion from finished Bikini to equivalent Nuca MP. */
+export const NUCA_BIKINI_TO_EQUIVALENT_FACTOR = 0.8588
+/** Minimum compliance against the Nuca reference. */
+export const NUCA_MIN_REFERENCE_YIELD = 0.45
 
 export const TUBE_MP_SHARE = 0.5
 export const MANTO_STANDARD_YIELD = 0.8
@@ -11,7 +15,6 @@ export const ANILLA_GENERAL_YIELD = 0.42
 export const ANILLA_USA_YIELD = 0.34
 export const ALETA_MP_SHARE = 0.2
 export const REJO_MP_SHARE = 0.15
-export const NUCA_MP_SHARE = 0.15
 
 export type AnillaYieldClass = 'POLAR' | 'GENERAL' | 'USA'
 export type ProcessOrigin = 'ANILLAS'
@@ -87,14 +90,12 @@ export const ALETA_TARGET_BPS = Math.round(ALETA_TARGET * BASIS_POINTS)
 export const REJO_REPRODUCTOR_TARGET_BPS = Math.round(
   REJO_REPRODUCTOR_TARGET * BASIS_POINTS,
 )
-export const NUCA_TARGET_BPS = Math.round(NUCA_TARGET * BASIS_POINTS)
-export const NUCA_BIKINI_REFERENCE_BPS = Math.round(
-  NUCA_BIKINI_REFERENCE * BASIS_POINTS,
-)
 export const TUBE_MP_SHARE_BPS = Math.round(TUBE_MP_SHARE * BASIS_POINTS)
 export const MANTO_STANDARD_YIELD_BPS = Math.round(
   MANTO_STANDARD_YIELD * BASIS_POINTS,
 )
 export const ALETA_MP_SHARE_BPS = Math.round(ALETA_MP_SHARE * BASIS_POINTS)
 export const REJO_MP_SHARE_BPS = Math.round(REJO_MP_SHARE * BASIS_POINTS)
-export const NUCA_MP_SHARE_BPS = Math.round(NUCA_MP_SHARE * BASIS_POINTS)
+export const NUCA_MP_DISTRIBUTION_BPS = Math.round(
+  NUCA_MP_DISTRIBUTION * BASIS_POINTS,
+)

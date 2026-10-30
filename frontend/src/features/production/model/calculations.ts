@@ -4,7 +4,7 @@ import type {
   BalancePosition,
   IntegrityIssue,
   Kg100,
-  NucaBikiniReferenceResult,
+  NucasCombinedReferenceResult,
   OutstandingBalancePosition,
   PerformanceResult,
   ProductionDay,
@@ -27,8 +27,9 @@ import {
   ALETA_MP_SHARE_BPS,
   GENERAL_MIN_YIELD_BPS,
   TUBE_MP_SHARE_BPS,
-  NUCA_BIKINI_REFERENCE_BPS,
-  NUCA_MP_SHARE_BPS,
+  NUCA_MP_DISTRIBUTION_BPS,
+  NUCA_BIKINI_TO_EQUIVALENT_FACTOR,
+  NUCA_MIN_REFERENCE_YIELD,
   REJO_MP_SHARE_BPS,
 } from "./businessConfig";
 import { getProductionProcess } from "./productionProcess";
@@ -37,8 +38,6 @@ import { canonicalProductId, productIdsEquivalent } from "./productIdentity";
 export const KG100_SCALE = 100;
 export const BASIS_POINTS_SCALE = 10_000;
 export const DEFAULT_PERFORMANCE_REFERENCE_BPS = GENERAL_MIN_YIELD_BPS;
-export const DEFAULT_NUCA_SEMILIMPIA_REFERENCE_BPS = NUCA_MP_SHARE_BPS;
-export const DEFAULT_NUCA_BIKINI_REFERENCE_BPS = NUCA_BIKINI_REFERENCE_BPS;
 
 const ZERO_KG100 = 0 as Kg100;
 const EMPTY_SHIFT_ENTRY: ShiftProductEntry = {
@@ -296,59 +295,92 @@ export function calculatePerformance(
   };
 }
 
-export function calculateNucaReference(
+/**
+ * Calculates the only Nucas reference used by the application.
+ *
+ * The 15% distribution and the 85.88% Bikini conversion are performance
+ * references only. The theoretical gap is deliberately kept out of physical
+ * balances, saldos and reconciliation errors.
+ */
+export function calculateNucasReference(
   rawMaterialKg100: Kg100,
-  actualKg100: Kg100,
-  active: boolean,
-  referenceBasisPoints: number,
-): NucaBikiniReferenceResult {
-  if (!active) {
-    return {
-      applicable: false,
-      applicableRawMaterialKg100: ZERO_KG100,
-      actualKg100,
-      referenceKg100: ZERO_KG100,
-      varianceKg100: ZERO_KG100,
-      shareOfRawMaterialPercent: null,
-      referencePercent: referenceBasisPoints / 100,
-      status: "NOT_APPLICABLE",
-    };
-  }
-
-  const referenceKg100 = applyBasisPoints(
-    rawMaterialKg100,
-    referenceBasisPoints,
-  );
+  bikiniKg100: Kg100,
+  semilimpiaKg100: Kg100,
+): NucasCombinedReferenceResult {
+  // Integrity issues can still contain negative draft quantities. They must
+  // never influence the methodology: only positive finished output is real
+  // production for this reference.
+  const positiveBikiniKg100 = kg100(Math.max(bikiniKg100, 0));
+  const positiveSemilimpiaKg100 = kg100(Math.max(semilimpiaKg100, 0));
+  const totalKg100 = sumKg100([
+    positiveBikiniKg100,
+    positiveSemilimpiaKg100,
+  ]);
+  const applicable = totalKg100 > 0 && rawMaterialKg100 > 0;
+  const equivalentKg100Exact =
+    positiveBikiniKg100 / NUCA_BIKINI_TO_EQUIVALENT_FACTOR +
+    positiveSemilimpiaKg100;
+  const equivalentKg100 = kg100(Math.round(equivalentKg100Exact));
+  const referenceRatio = NUCA_MP_DISTRIBUTION_BPS / BASIS_POINTS_SCALE;
+  const referenceKg100Exact = Math.max(rawMaterialKg100, 0) * referenceRatio;
+  const referenceKg100 = applicable
+    ? applyBasisPoints(
+        Math.max(rawMaterialKg100, 0) as Kg100,
+        NUCA_MP_DISTRIBUTION_BPS,
+      )
+    : ZERO_KG100;
+  const referenceCompliancePercent =
+    referenceKg100Exact === 0
+      ? null
+      : (equivalentKg100Exact / referenceKg100Exact) * 100;
 
   return {
-    applicable: true,
-    applicableRawMaterialKg100: rawMaterialKg100,
-    actualKg100,
+    applicable,
+    applicableRawMaterialKg100: applicable ? rawMaterialKg100 : ZERO_KG100,
+    actualKg100: totalKg100,
     referenceKg100,
-    varianceKg100: kg100(actualKg100 - referenceKg100),
-    shareOfRawMaterialPercent:
-      rawMaterialKg100 === 0 ? null : (actualKg100 / rawMaterialKg100) * 100,
-    referencePercent: referenceBasisPoints / 100,
-    status: referenceStatus(
-      actualKg100,
-      rawMaterialKg100,
-      referenceBasisPoints,
+    // Keep the theoretical variance precise; this value is informational and
+    // must not be converted into a physical balance or saldo.
+    varianceKg100: kg100(
+      Math.round(equivalentKg100Exact - referenceKg100Exact),
     ),
+    shareOfRawMaterialPercent:
+      rawMaterialKg100 === 0 ? null : (totalKg100 / rawMaterialKg100) * 100,
+    referencePercent: NUCA_MP_DISTRIBUTION_BPS / 100,
+    status: applicable
+      ? referenceCompliancePercent !== null &&
+        referenceCompliancePercent >= NUCA_MIN_REFERENCE_YIELD * 100
+        ? 'AT_OR_ABOVE_REFERENCE'
+        : 'BELOW_REFERENCE'
+      : 'NOT_APPLICABLE',
+    bikiniKg100: positiveBikiniKg100,
+    semilimpiaKg100: positiveSemilimpiaKg100,
+    equivalentKg100,
+    equivalentKg100Exact,
+    conversionFactor: NUCA_BIKINI_TO_EQUIVALENT_FACTOR,
+    minimumCompliancePercent: NUCA_MIN_REFERENCE_YIELD * 100,
+    bikiniWeightPercent:
+      totalKg100 === 0 ? null : (positiveBikiniKg100 / totalKg100) * 100,
+    semilimpiaWeightPercent:
+      totalKg100 === 0 ? null : (positiveSemilimpiaKg100 / totalKg100) * 100,
+    referenceCompliancePercent,
+    totalRawMaterialKg100: applicable ? rawMaterialKg100 : ZERO_KG100,
+    bikiniEquivalentKg100: kg100(
+      Math.round(positiveBikiniKg100 / NUCA_BIKINI_TO_EQUIVALENT_FACTOR),
+    ),
+    minimumProductionKg100: applicable
+      ? kg100(Math.round(referenceKg100Exact * NUCA_MIN_REFERENCE_YIELD))
+      : ZERO_KG100,
+    kgToReferenceKg100: applicable
+      ? kg100(
+          Math.max(
+            Math.round(referenceKg100Exact * NUCA_MIN_REFERENCE_YIELD) -
+              equivalentKg100Exact,
+            0,
+          ),
+        )
+      : ZERO_KG100,
   };
-}
-
-export function calculateNucaBikiniReference(
-  rawMaterialKg100: Kg100,
-  actualKg100: Kg100,
-  active: boolean,
-  referenceBasisPoints = DEFAULT_NUCA_BIKINI_REFERENCE_BPS,
-): NucaBikiniReferenceResult {
-  return calculateNucaReference(
-    rawMaterialKg100,
-    actualKg100,
-    active,
-    referenceBasisPoints,
-  );
 }
 
 function isTunnelEnabled(productionDay: ProductionDay): boolean {
@@ -847,6 +879,11 @@ export function calculateProductionDay(
   const pendingPreviousBalanceKg100 = kg100(
     Math.max(receivedPreviousBalanceKg100 - processedPreviousBalanceKg100, 0),
   );
+  const nucas = calculateNucasReference(
+    productionDay.declaredRawMaterialKg100,
+    nucaBikiniKg100,
+    nucaSemilimpiaKg100,
+  );
 
   return {
     day,
@@ -881,18 +918,7 @@ export function calculateProductionDay(
       productionDay.declaredRawMaterialKg100,
       productionDay.performanceReferenceBasisPoints,
     ),
-    nucaSemilimpia: calculateNucaReference(
-      productionDay.declaredRawMaterialKg100,
-      nucaSemilimpiaKg100,
-      nucaSemilimpiaKg100 > 0,
-      DEFAULT_NUCA_SEMILIMPIA_REFERENCE_BPS,
-    ),
-    nucaBikini: calculateNucaBikiniReference(
-      productionDay.declaredRawMaterialKg100,
-      nucaBikiniKg100,
-      isNucaWashAuthorized(productionDay),
-      productionDay.nucaBikiniReferenceBasisPoints,
-    ),
+    nucas,
     products,
     integrityIssues,
   };
@@ -1021,7 +1047,7 @@ export function calculateRawMaterialDistribution(
     tubeKg100: applyBasisPoints(rawMaterialKg100, TUBE_MP_SHARE_BPS),
     aletaKg100: applyBasisPoints(rawMaterialKg100, ALETA_MP_SHARE_BPS),
     rejosKg100: applyBasisPoints(rawMaterialKg100, REJO_MP_SHARE_BPS),
-    nucasKg100: applyBasisPoints(rawMaterialKg100, NUCA_MP_SHARE_BPS),
+    nucasKg100: applyBasisPoints(rawMaterialKg100, NUCA_MP_DISTRIBUTION_BPS),
   };
 }
 
@@ -1174,26 +1200,24 @@ export function calculateWeeklySummary(
     productionDays[0]?.performanceReferenceBasisPoints ??
     DEFAULT_PERFORMANCE_REFERENCE_BPS;
 
-  const activeNucaDays = productionDays.filter(isNucaWashAuthorized);
-  const applicableNucaRawMaterialKg100 = sumKg100(
-    activeNucaDays.map((day) => day.declaredRawMaterialKg100),
-  );
-  const activeNucaOutputKg100 = sumKg100(
-    activeNucaDays.flatMap((day) =>
-      day.lines
-        .filter((line) => line.summaryGroupId === "NUCA_BIKINI")
-        .map((line) => line.declaredFinishedKg100),
-    ),
-  );
-  const nucaReferenceBasisPoints =
-    activeNucaDays[0]?.nucaBikiniReferenceBasisPoints ??
-    DEFAULT_NUCA_BIKINI_REFERENCE_BPS;
   const nucaSemilimpiaOutputKg100 = sumKg100(
     productionDays.flatMap((day) =>
       day.lines
         .filter((line) => line.summaryGroupId === "NUCA_SEMILIMPIA")
         .map((line) => line.declaredFinishedKg100),
     ),
+  );
+  const nucaBikiniOutputKg100 = sumKg100(
+    productionDays.flatMap((day) =>
+      day.lines
+        .filter((line) => line.summaryGroupId === "NUCA_BIKINI")
+        .map((line) => line.declaredFinishedKg100),
+    ),
+  );
+  const nucas = calculateNucasReference(
+    rawMaterialKg100,
+    nucaBikiniOutputKg100,
+    nucaSemilimpiaOutputKg100,
   );
 
   return {
@@ -1215,18 +1239,7 @@ export function calculateWeeklySummary(
       rawMaterialKg100,
       performanceReferenceBasisPoints,
     ),
-    nucaSemilimpia: calculateNucaReference(
-      rawMaterialKg100,
-      nucaSemilimpiaOutputKg100,
-      nucaSemilimpiaOutputKg100 > 0,
-      DEFAULT_NUCA_SEMILIMPIA_REFERENCE_BPS,
-    ),
-    nucaBikini: calculateNucaBikiniReference(
-      applicableNucaRawMaterialKg100,
-      activeNucaOutputKg100,
-      activeNucaDays.length > 0,
-      nucaReferenceBasisPoints,
-    ),
+    nucas,
     days,
     integrityIssues,
   };

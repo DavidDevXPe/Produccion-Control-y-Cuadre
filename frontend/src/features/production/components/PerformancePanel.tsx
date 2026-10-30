@@ -1,11 +1,8 @@
-import { Droplets, Gauge, Info } from 'lucide-react'
+import { Gauge, Info } from 'lucide-react'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg, formatRatioAsPercent } from '../../../utils/formatters'
-import type {
-  NucaWashAuthorization,
-  ProductionDayCalculation,
-} from '../model/types'
+import type { NucaWashAuthorization, ProductionDayCalculation } from '../model/types'
 import { getYieldStatus, yieldVisualStyles } from '../presentation/yieldStatus'
 
 interface PerformancePanelProps {
@@ -13,18 +10,17 @@ interface PerformancePanelProps {
   washAuthorization?: NucaWashAuthorization | null
 }
 
-type NucaSemilimpiaPerformance = ProductionDayCalculation['nucaSemilimpia']
-type NucaBikiniPerformance = ProductionDayCalculation['nucaBikini']
+type NucasPerformance = ProductionDayCalculation['nucas']
 
 function NucaReferenceMetrics({
   referenceLabel,
   performance,
 }: {
   readonly referenceLabel: string
-  readonly performance: NucaSemilimpiaPerformance
+  readonly performance: NucasPerformance
 }) {
   return (
-    <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+    <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
       <div>
         <dt className="text-slate-600 dark:text-ui-text-dark-soft">
           {referenceLabel}
@@ -35,21 +31,37 @@ function NucaReferenceMetrics({
       </div>
       <div>
         <dt className="text-slate-600 dark:text-ui-text-dark-soft">
-          Producción real
+          Producción física
         </dt>
         <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
           {formatCentiKg(performance.actualKg100)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-slate-600 dark:text-ui-text-dark-soft">
+          Producción equivalente
+        </dt>
+        <dd className="number-tabular mt-1 font-bold text-slate-900 dark:text-ui-text-dark-strong">
+          {formatCentiKg(performance.equivalentKg100)}
         </dd>
       </div>
     </dl>
   )
 }
 
-function NucaSemilimpiaCard({
+function NucasCombinedCard({
   performance,
 }: {
-  readonly performance: NucaSemilimpiaPerformance
+  readonly performance: NucasPerformance
 }) {
+  const referenceCompliance = performance.referenceCompliancePercent
+  const cappedReferenceCompliance =
+    referenceCompliance === null ? null : Math.min(referenceCompliance, 100)
+  const exceedsReference =
+    referenceCompliance !== null && referenceCompliance > 100
+  const excessReferenceKg100 = exceedsReference
+    ? Math.max(performance.equivalentKg100 - performance.referenceKg100, 0)
+    : 0
   const badgeTone = !performance.applicable
     ? 'neutral'
     : performance.status === 'AT_OR_ABOVE_REFERENCE'
@@ -58,72 +70,90 @@ function NucaSemilimpiaCard({
   const badgeLabel = !performance.applicable
     ? 'NO APLICA'
     : performance.status === 'AT_OR_ABOVE_REFERENCE'
-      ? 'EN REFERENCIA'
+      ? 'CUMPLE'
       : 'BAJO REFERENCIA'
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-ui-line-dark dark:bg-ui-surface-dark/70">
+    <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-3.5 dark:border-brand-500/30 dark:bg-brand-500/10">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-ui-text-dark-strong">
-          Nuca semilimpia
+        <h3 className="text-sm font-bold text-brand-950 dark:text-brand-100">
+          Rendimiento de Nucas
         </h3>
         <StatusBadge tone={badgeTone}>{badgeLabel}</StatusBadge>
       </div>
       {performance.applicable ? (
-        <NucaReferenceMetrics
-          referenceLabel="Referencia 15%"
-          performance={performance}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-function NucaBikiniCard({
-  performance,
-  washAuthorization,
-}: {
-  readonly performance: NucaBikiniPerformance
-  readonly washAuthorization: NucaWashAuthorization | null | undefined
-}) {
-  return (
-    <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3.5 dark:border-brand-500/30 dark:bg-brand-500/10">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Droplets
-            className="size-4 text-brand-700 dark:text-brand-300"
-            aria-hidden="true"
-          />
-          <h3 className="text-sm font-bold text-brand-950 dark:text-brand-100">
-            Nuca Bikini
-          </h3>
-        </div>
-        <StatusBadge tone={performance.applicable ? 'info' : 'neutral'}>
-          {performance.applicable ? 'LAVADO ACTIVO' : 'NO APLICA'}
-        </StatusBadge>
-      </div>
-      {performance.applicable ? (
         <>
           <NucaReferenceMetrics
-            referenceLabel="Referencia 7%"
+            referenceLabel={`MP de referencia (${performance.referencePercent.toFixed(2)}%)`}
             performance={performance}
           />
-          {washAuthorization ? (
-            <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-5 font-medium text-brand-900 dark:border-brand-500/20 dark:text-brand-100">
-              {washAuthorization.kind === 'CUSTOMER_ORDER'
-                ? `Pedido: ${washAuthorization.reference}`
-                : 'Pedido confirmado; número no consignado en el Excel.'}
-            </p>
-          ) : null}
+          <dl className="mt-3 grid grid-cols-1 gap-3 border-t border-brand-100 pt-3 text-xs dark:border-brand-500/20 sm:grid-cols-3">
+            <div>
+              <dt className="text-brand-800 dark:text-brand-200">
+                Rendimiento obtenido:
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-brand-950 dark:text-brand-100">
+                {cappedReferenceCompliance === null
+                  ? '—'
+                  : `${cappedReferenceCompliance.toFixed(2)}%`}
+              </dd>
+              {exceedsReference ? (
+                <p className="mt-1 text-[0.6875rem] font-semibold text-emerald-700 dark:text-emerald-300">
+                  Supera referencia · +{formatCentiKg(excessReferenceKg100)}
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <dt className="text-brand-800 dark:text-brand-200">
+                Distribución teórica:
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-brand-950 dark:text-brand-100">
+                {performance.referencePercent.toFixed(2)}%
+              </dd>
+            </div>
+            <div>
+              <dt className="text-brand-800 dark:text-brand-200">
+                Factor experimental:
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-brand-950 dark:text-brand-100">
+                {(performance.conversionFactor * 100).toFixed(2)}%
+              </dd>
+            </div>
+          </dl>
+          <dl className="mt-3 grid grid-cols-1 gap-3 border-t border-brand-100 pt-3 text-xs dark:border-brand-500/20 sm:grid-cols-2">
+            <div>
+              <dt className="text-brand-800 dark:text-brand-200">Nuca Bikini</dt>
+              <dd className="number-tabular mt-1 font-bold text-brand-950 dark:text-brand-100">
+                {formatCentiKg(performance.bikiniKg100)} ·{' '}
+                {performance.bikiniWeightPercent?.toFixed(2)}%
+              </dd>
+            </div>
+            <div>
+              <dt className="text-brand-800 dark:text-brand-200">
+                Nuca semi-limpia
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-brand-950 dark:text-brand-100">
+                {formatCentiKg(performance.semilimpiaKg100)} ·{' '}
+                {performance.semilimpiaWeightPercent?.toFixed(2)}%
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-5 text-brand-900 dark:border-brand-500/20 dark:text-brand-100">
+            La referencia mínima es {performance.minimumCompliancePercent.toFixed(0)}%.
+            La diferencia teórica no genera saldo físico ni bloquea el cuadre.
+          </p>
         </>
-      ) : null}
+      ) : (
+        <p className="mt-3 text-xs leading-5 text-brand-900 dark:text-brand-100">
+          No hay producción positiva de Bikini ni Nuca semilimpia.
+        </p>
+      )}
     </div>
   )
 }
 
 export function PerformancePanel({
   calculation,
-  washAuthorization,
 }: PerformancePanelProps) {
   const performance = calculation.performance
   const isPerformanceApplicable = performance.status !== 'NOT_APPLICABLE'
@@ -131,8 +161,7 @@ export function PerformancePanel({
   const clampedPercentage = Math.max(0, Math.min(percentage, 100))
   const yieldStatus = getYieldStatus(performance.percent)
   const yieldStyles = yieldVisualStyles[yieldStatus.colorVariant]
-  const nucaSemilimpia = calculation.nucaSemilimpia
-  const nucaBikini = calculation.nucaBikini
+  const nucas = calculation.nucas
 
   return (
     <SectionCard
@@ -194,12 +223,7 @@ export function PerformancePanel({
         </div>
       ) : null}
 
-      <NucaSemilimpiaCard performance={nucaSemilimpia} />
-
-      <NucaBikiniCard
-        performance={nucaBikini}
-        washAuthorization={washAuthorization}
-      />
+      <NucasCombinedCard performance={nucas} />
 
       <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-ui-text-dark-soft">
         Las referencias de Nuca son informativas y no intervienen en el cuadre

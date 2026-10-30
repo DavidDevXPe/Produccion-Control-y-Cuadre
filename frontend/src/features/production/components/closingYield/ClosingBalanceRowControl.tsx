@@ -18,12 +18,21 @@ export function ClosingBalanceRowControl({
   const family = familyKey
     ? summary.families.find((metric) => metric.key === familyKey)
     : undefined
+  const isNuca = family?.key === 'NUCA'
   const group = summary.groupClosingProjections.find(
     (metric) => metric.groupId === summaryGroupId,
   )
   const yieldBeforePercent = family?.yieldBeforePercent ?? group?.yieldBeforePercent ?? null
   const projectedYieldPercent =
     family?.projectedYieldPercent ?? group?.projectedYieldPercent ?? null
+  const displayedYieldBeforePercent =
+    isNuca && yieldBeforePercent !== null
+      ? Math.min(yieldBeforePercent, 100)
+      : yieldBeforePercent
+  const displayedProjectedYieldPercent =
+    isNuca && projectedYieldPercent !== null
+      ? Math.min(projectedYieldPercent, 100)
+      : projectedYieldPercent
   const capacityToOneHundredKg100 =
     family?.capacityToOneHundredKg100 ??
     group?.capacityToOneHundredKg100 ??
@@ -37,13 +46,13 @@ export function ClosingBalanceRowControl({
       <div>
         <p className="text-slate-500">Rendimiento antes</p>
         <p className="number-tabular mt-0.5 font-extrabold text-slate-900">
-          {formatPercent(yieldBeforePercent)}
+          {formatPercent(displayedYieldBeforePercent)}
         </p>
       </div>
       <div>
         <p className="text-slate-500">Rendimiento proyectado</p>
         <p className="number-tabular mt-0.5 font-extrabold text-slate-900">
-          {formatPercent(projectedYieldPercent)}
+          {formatPercent(displayedProjectedYieldPercent)}
         </p>
       </div>
       <div>
@@ -57,15 +66,17 @@ export function ClosingBalanceRowControl({
       <div>
         <p className="text-slate-500">Faltan</p>
         <p className="number-tabular mt-0.5 font-extrabold text-slate-900">
-          {family?.targetPercent == null
+          {isNuca || family?.targetPercent == null
             ? 'No aplica'
             : formatCentiKg(family.missingToTargetKg100)}
         </p>
       </div>
       <div>
-        <p className="text-slate-500">Capacidad hasta 100%</p>
+        <p className="text-slate-500">
+          {isNuca ? 'Saldo físico por referencia' : 'Capacidad hasta 100%'}
+        </p>
         <p className="number-tabular mt-0.5 font-extrabold text-slate-900">
-          {formatCentiKg(capacityToOneHundredKg100)}
+          {isNuca ? 'No aplica' : formatCentiKg(capacityToOneHundredKg100)}
         </p>
       </div>
       <div className="sm:justify-self-end">

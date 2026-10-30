@@ -54,6 +54,34 @@ describe("production catalog filtering", () => {
   });
 });
 
+describe("Nuca catalog classification", () => {
+  it.each([
+    ["100-300", "nuca-bikini-100-300"],
+    ["300-500", "nuca-bikini-300-500"],
+    ["500-700", "nuca-bikini-500-700"],
+    ["700-UP", "nuca-bikini-700-up"],
+  ])("classifies Bikini range %s as Nuca Bikini", (range, productId) => {
+    const product = createUnconfirmedCatalogItem(
+      `NUCAS CRUDAS CONGELADAS BLOCK S/TTO BIKINI ${range} 100% P.N.`,
+    );
+
+    expect(product.productId).toBe(productId);
+    expect(product.familyId).toBe("nuca-bikini");
+    expect(product.familyName).toBe("NUCA BIKINI");
+    expect(product.summaryGroupId).toBe("NUCA_BIKINI");
+  });
+
+  it("keeps semi-clean Nucas in their own group", () => {
+    const product = createUnconfirmedCatalogItem(
+      "NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 100-300 100% P.N.",
+    );
+
+    expect(product.productId).toBe("nuca-semilimpia-100-300");
+    expect(product.familyId).toBe("nuca-semilimpia");
+    expect(product.summaryGroupId).toBe("NUCA_SEMILIMPIA");
+  });
+});
+
 describe("active capture catalog", () => {
   it("starts from the capture seed without replacing legacy resolution", () => {
     expect(CAPTURE_CATALOG_ITEMS).toEqual(

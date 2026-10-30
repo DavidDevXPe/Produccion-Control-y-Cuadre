@@ -195,7 +195,8 @@ function catalogMetadataForName(productName: string): Pick<
   if (normalized.includes('boton')) return { familyId: 'boton', familyName: 'BOTON', summaryGroupId: 'BOTON' }
   if (normalized.includes('reproductor')) return { familyId: 'reproductor-crudo', familyName: 'REPRODUCTOR CRUDO', summaryGroupId: 'REPRODUCTOR' }
   if (normalized.includes('rejo')) return { familyId: 'rejos-crudo', familyName: 'REJOS CRUDO', summaryGroupId: 'REJOS' }
-  if (normalized.includes('nuca')) return { familyId: 'nuca-semilimpia', familyName: 'NUCA SEMILIMPIA', summaryGroupId: 'NUCA_SEMILIMPIA' }
+  if (normalized.includes('nuca') && normalized.includes('bikini')) return { familyId: 'nuca-bikini', familyName: 'NUCA BIKINI', summaryGroupId: 'NUCA_BIKINI' }
+  if (normalized.includes('nuca') && /semi[-\s]?limpi/.test(normalized)) return { familyId: 'nuca-semilimpia', familyName: 'NUCA SEMILIMPIA', summaryGroupId: 'NUCA_SEMILIMPIA' }
   if (normalized.includes('pico')) return { familyId: 'pico', familyName: 'PICO', summaryGroupId: 'PICO' }
   if (normalized.includes('recorte')) return { familyId: 'recorte-crudo', familyName: 'RECORTE CRUDO', summaryGroupId: 'RECORTE_CRUDO' }
   return {

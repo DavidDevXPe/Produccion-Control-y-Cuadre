@@ -215,6 +215,7 @@ export interface ProductionDay {
   readonly receivedBalanceLots: readonly BalanceLot[]
   readonly nucaWashAuthorization: NucaWashAuthorization | null
   readonly performanceReferenceBasisPoints: number
+  /** @deprecated Legacy metadata; the Nucas calculation uses one shared 15% distribution. */
   readonly nucaBikiniReferenceBasisPoints: number
   /** Explicit allocation from the sheet; it must not be hidden in a formula. */
   readonly rawMaterialAllocationOverridesKg100: Readonly<
@@ -266,7 +267,7 @@ export interface PerformanceResult {
   readonly status: ReferenceStatus
 }
 
-export interface NucaReferenceResult {
+export interface NucasCombinedReferenceResult {
   readonly applicable: boolean
   readonly applicableRawMaterialKg100: Kg100
   readonly actualKg100: Kg100
@@ -275,9 +276,27 @@ export interface NucaReferenceResult {
   readonly shareOfRawMaterialPercent: number | null
   readonly referencePercent: number
   readonly status: ReferenceStatus
+  /** Total raw material used as the 15% theoretical basis. */
+  readonly totalRawMaterialKg100: Kg100
+  readonly bikiniKg100: Kg100
+  readonly semilimpiaKg100: Kg100
+  /** Bikini output converted to the common Nuca equivalent. */
+  readonly bikiniEquivalentKg100: Kg100
+  /** Physical Nuca output converted to the common equivalent used for the reference. */
+  readonly equivalentKg100: Kg100
+  /** Exact equivalent in Kg100 units, retained for the compliance calculation. */
+  readonly equivalentKg100Exact: number
+  readonly conversionFactor: number
+  readonly minimumCompliancePercent: number
+  /** Minimum equivalent production required to reach the 45% reference. */
+  readonly minimumProductionKg100: Kg100
+  /** Informational performance gap; never a physical saldo or balance. */
+  readonly kgToReferenceKg100: Kg100
+  readonly bikiniWeightPercent: number | null
+  readonly semilimpiaWeightPercent: number | null
+  /** Equivalent Nuca production as a percentage of the unrounded reference. */
+  readonly referenceCompliancePercent: number | null
 }
-
-export type NucaBikiniReferenceResult = NucaReferenceResult
 
 export interface ProductionDayCalculation {
   readonly day: ShiftCalculation
@@ -305,8 +324,8 @@ export interface ProductionDayCalculation {
   readonly differenceKg100: Kg100
   readonly status: ReconciliationStatus
   readonly performance: PerformanceResult
-  readonly nucaSemilimpia: NucaReferenceResult
-  readonly nucaBikini: NucaBikiniReferenceResult
+  /** Official equivalent-Nucas reference inferred from positive outputs. */
+  readonly nucas: NucasCombinedReferenceResult
   readonly products: readonly ProductReconciliation[]
   readonly integrityIssues: readonly IntegrityIssue[]
 }
@@ -372,8 +391,7 @@ export interface WeeklySummary {
   readonly status: SummaryValidationStatus
   readonly allDaysBalanced: boolean
   readonly performance: PerformanceResult
-  readonly nucaSemilimpia: NucaReferenceResult
-  readonly nucaBikini: NucaBikiniReferenceResult
+  readonly nucas: NucasCombinedReferenceResult
   readonly days: readonly ProductionDayCalculation[]
   readonly integrityIssues: readonly IntegrityIssue[]
 }

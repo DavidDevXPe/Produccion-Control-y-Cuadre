@@ -4,7 +4,7 @@ const FAMILY_YIELD_TARGETS = [
   { family: 'Aleta Cruda', target: '80.0%' },
   { family: 'Manto Crudo', target: '75.0%' },
   { family: 'Anillas', target: '65.0%' },
-  { family: 'Nuca Semilimpia', target: '70.0%' },
+  { family: 'Nucas (equivalente)', target: '45.0%' },
   { family: 'Rejos Crudo', target: '85.0%' },
 ] as const
 

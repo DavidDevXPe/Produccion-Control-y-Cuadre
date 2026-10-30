@@ -60,17 +60,41 @@ describe('ClosingBalanceYieldControl', () => {
       expect(screen.getByText(/Objetivo/i)).toBeInTheDocument()
     })
 
-    it('renders informative notice for NUCA family', () => {
+    it('renders the theoretical Nuca reference breakdown', () => {
       const nucaMetric = defaultSummary.families.find(
         (fam) => fam.key === 'NUCA',
       )!
       render(<ClosingYieldSummaryMetric metric={nucaMetric} />)
 
-      expect(
-        screen.getByText(
-          'Nuca Bikini 7%: referencia informativa; no bloquea el cierre.',
-        ),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Distribución teórica de MP')).toBeInTheDocument()
+      expect(screen.getByText('MP de referencia')).toBeInTheDocument()
+      expect(screen.getByText('Producción equivalente')).toBeInTheDocument()
+      expect(screen.getByText('Factor experimental')).toBeInTheDocument()
+    })
+
+    it('shows real Nuca yield as primary and caps over-reference visually', () => {
+      const nucaMetric = defaultSummary.families.find(
+        (fam) => fam.key === 'NUCA',
+      )!
+      render(
+        <ClosingYieldSummaryMetric
+          metric={{
+            ...nucaMetric,
+            utilizationPercent: 7.2,
+            projectedYieldPercent: 120,
+            rawMaterialKg100: kg100(10_000),
+            productionBeforeClosingKg100: kg100(12_000),
+            projectedProductionKg100: kg100(12_000),
+            referencePercent: 8.24,
+            status: 'COMPLIES',
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Rendimiento obtenido')).toBeInTheDocument()
+      expect(screen.getAllByText('100.00%').length).toBeGreaterThanOrEqual(2)
+      expect(screen.getByText('Referencia superada')).toBeInTheDocument()
+      expect(screen.getByText('+20.00 kg')).toBeInTheDocument()
     })
 
     it('renders alert message when metric has INTEGRITY_ERROR', () => {

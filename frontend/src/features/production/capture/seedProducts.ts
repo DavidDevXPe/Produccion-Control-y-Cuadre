@@ -114,6 +114,22 @@ const seedNames = [
     "NUCAS CRUDAS CONGELADAS BLOCK S/TTO SEMI-LIMPIAS 300-UP 100% P.N.",
     "NUCA_SEMILIMPIA",
   ],
+  [
+    "NUCAS CRUDAS CONGELADAS BLOCK S/TTO BIKINI 100-300 100% P.N.",
+    "NUCA_BIKINI",
+  ],
+  [
+    "NUCAS CRUDAS CONGELADAS BLOCK S/TTO BIKINI 300-500 100% P.N.",
+    "NUCA_BIKINI",
+  ],
+  [
+    "NUCAS CRUDAS CONGELADAS BLOCK S/TTO BIKINI 500-700 100% P.N.",
+    "NUCA_BIKINI",
+  ],
+  [
+    "NUCAS CRUDAS CONGELADAS BLOCK S/TTO BIKINI 700-UP 100% P.N.",
+    "NUCA_BIKINI",
+  ],
   ["MEMBRANAS COCIDAS CONGELADAS BLOCK S/TTO 100% P.N.", "MEMBRANA"],
 ] as const;
 
@@ -163,6 +179,10 @@ const seedIds = [
   "panza-ballena-cocida",
   "conos-con-piel-crudos",
   "nuca-semilimpia-codificada",
+  "nuca-bikini-100-300",
+  "nuca-bikini-300-500",
+  "nuca-bikini-500-700",
+  "nuca-bikini-700-up",
   "membranas-cocidas",
 ] as const;
 
@@ -187,6 +207,11 @@ const familyMetadata = {
     familyId: "nuca-semilimpia",
     familyName: "NUCA SEMILIMPIA",
     summaryGroupId: "NUCA_SEMILIMPIA",
+  },
+  NUCA_BIKINI: {
+    familyId: "nuca-bikini",
+    familyName: "NUCA BIKINI",
+    summaryGroupId: "NUCA_BIKINI",
   },
   REJOS: {
     familyId: "rejos-crudo",

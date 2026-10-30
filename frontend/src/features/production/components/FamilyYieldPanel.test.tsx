@@ -46,6 +46,42 @@ describe('FamilyYieldPanel', () => {
     expect(screen.getAllByText('Después de Túnel').length).toBeGreaterThan(0)
   })
 
+  it('updates the methodology indicator when positive production changes', () => {
+    const mantoOnlySummary: ProductionBusinessSummary = {
+      ...defaultSummary,
+      tubeMpBalance: {
+        ...defaultSummary.tubeMpBalance,
+        ptMantoKg100: kg100(100),
+        ptAnillasKg100: kg100(25),
+        hasAnillasProduction: false,
+      },
+    }
+    const { rerender } = render(
+      <FamilyYieldPanel summary={mantoOnlySummary} />,
+    )
+
+    const indicator = screen.getByTestId('tube-methodology-indicator')
+    expect(indicator).toHaveAttribute('data-methodology', 'MANTO_ONLY')
+    expect(screen.getByText('Manto individual')).toBeInTheDocument()
+
+    rerender(
+      <FamilyYieldPanel
+        summary={{
+          ...mantoOnlySummary,
+          tubeMpBalance: {
+            ...mantoOnlySummary.tubeMpBalance,
+            hasAnillasProduction: true,
+          },
+        }}
+      />,
+    )
+
+    expect(indicator).toHaveAttribute('data-methodology', 'MANTO_AND_ANILLAS')
+    expect(
+      screen.getByText('Manto + Anillas — cálculo conjunto'),
+    ).toBeInTheDocument()
+  })
+
   describe('FamilyYieldCard', () => {
     it('renders Aleta cruda metrics and compliance status', () => {
       const aletaMetric = defaultSummary.families.find(
@@ -96,6 +132,25 @@ describe('FamilyYieldPanel', () => {
       expect(
         screen.getByText(/Rendimiento técnico Manto:/i),
       ).toBeInTheDocument()
+    })
+
+    it('renders Nuca using the theoretical distribution and equivalent yield', () => {
+      const nucaMetric = defaultSummary.families.find(
+        (fam) => fam.key === 'NUCA',
+      )!
+
+      render(
+        <FamilyYieldCard
+          metric={nucaMetric}
+          summary={defaultSummary}
+          showTunnel={false}
+        />,
+      )
+
+      expect(screen.getByText(/MP de referencia Nucas:/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/Distribución teórica/i).length).toBeGreaterThan(0)
+      expect(screen.getByText('Rendimiento obtenido')).toBeInTheDocument()
+      expect(screen.getByText('Factor experimental')).toBeInTheDocument()
     })
 
     it('renders integrity error alert when family has excess yield', () => {

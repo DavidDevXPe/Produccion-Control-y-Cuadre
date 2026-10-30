@@ -1,4 +1,3 @@
-import { Droplets } from 'lucide-react'
 import { SectionCard } from '../../../components/ui/SectionCard'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { formatCentiKg } from '../../../utils/formatters'
@@ -6,39 +5,34 @@ import type { Kg100, WeeklySummary } from '../model/types'
 
 interface WeeklySummaryDistributionSectionProps {
   summary: WeeklySummary
-  isNucaSemilimpiaReferenceApplicable: boolean
-  isNucaBikiniReferenceApplicable: boolean
 }
+
+const percent = (value: number | null) =>
+  value === null
+    ? 'No aplica'
+    : `${value.toLocaleString('es-PE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}%`
 
 export function WeeklySummaryDistributionSection({
   summary,
-  isNucaSemilimpiaReferenceApplicable,
-  isNucaBikiniReferenceApplicable,
 }: WeeklySummaryDistributionSectionProps) {
   const distributionItems: readonly [string, string, Kg100][] = [
     ['Tubo', '50%', summary.distribution.tubeKg100],
     ['Aleta', '20%', summary.distribution.aletaKg100],
     ['Rejos', '15%', summary.distribution.rejosKg100],
-    ['Nuca semilimpia', '15%', summary.distribution.nucasKg100],
+    ['Nuca', '15%', summary.distribution.nucasKg100],
   ]
-
-  const nucaSemilimpiaBadgeTone = !isNucaSemilimpiaReferenceApplicable
-    ? ('neutral' as const)
-    : summary.nucaSemilimpia.status === 'AT_OR_ABOVE_REFERENCE'
-      ? ('success' as const)
-      : ('warning' as const)
-
-  const nucaSemilimpiaBadgeLabel = !isNucaSemilimpiaReferenceApplicable
-    ? 'NO APLICA'
-    : summary.nucaSemilimpia.status === 'AT_OR_ABOVE_REFERENCE'
-      ? 'EN REFERENCIA'
-      : 'BAJO REFERENCIA'
+  const nucas = summary.nucas
+  const isApplicable = nucas.applicable
+  const isCompliant = nucas.status === 'AT_OR_ABOVE_REFERENCE'
 
   return (
     <div className="grid gap-3 xl:grid-cols-[1fr_0.7fr]">
       <SectionCard
         title="Distribución de materia prima"
-        description="Porcentajes de referencia conservados del resumen."
+        description="Porcentajes teóricos conservados del resumen; no representan un saldo físico."
         contentClassName="grid gap-3 p-4 sm:grid-cols-2 sm:p-5"
       >
         {distributionItems.map(([label, rate, value]) => (
@@ -57,75 +51,71 @@ export function WeeklySummaryDistributionSection({
       </SectionCard>
 
       <SectionCard
-        title="Referencias de Nuca"
-        description="La Nuca semilimpia usa 15% y la Nuca Bikini 7%; ninguna referencia altera el cuadre."
+        title="Rendimiento de Nucas"
+        description="Una referencia común para Bikini y Nuca semi-limpia, sin crear saldos físicos."
         contentClassName="p-4 sm:p-5"
       >
         <div className="grid gap-3">
-          <article className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-bold text-slate-900">Nuca semilimpia</h3>
-              <StatusBadge tone={nucaSemilimpiaBadgeTone}>
-                {nucaSemilimpiaBadgeLabel}
-              </StatusBadge>
-            </div>
-            {isNucaSemilimpiaReferenceApplicable ? (
-              <dl className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Referencia 15%
-                  </dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-950">
-                    {formatCentiKg(summary.nucaSemilimpia.referenceKg100)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Resultado real
-                  </dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-950">
-                    {formatCentiKg(summary.nucaSemilimpia.actualKg100)}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-          </article>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Estado
+            </span>
+            <StatusBadge tone={!isApplicable ? 'neutral' : isCompliant ? 'success' : 'warning'}>
+              {!isApplicable ? 'NO APLICA' : isCompliant ? 'CUMPLE' : 'BAJO REFERENCIA'}
+            </StatusBadge>
+          </div>
 
-          <article className="rounded-xl border border-brand-100 bg-brand-50/60 p-3.5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Droplets className="size-4 text-brand-700" aria-hidden="true" />
-                <h3 className="text-sm font-bold text-brand-950">Nuca Bikini</h3>
-              </div>
-              <StatusBadge tone={isNucaBikiniReferenceApplicable ? 'info' : 'neutral'}>
-                {isNucaBikiniReferenceApplicable ? 'LAVADO ACTIVO' : 'NO APLICA'}
-              </StatusBadge>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                MP de referencia (15%)
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-slate-950">
+                {isApplicable ? formatCentiKg(nucas.referenceKg100) : 'No aplica'}
+              </dd>
             </div>
-            {isNucaBikiniReferenceApplicable ? (
-              <dl className="mt-3 grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Referencia 7%
-                  </dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-950">
-                    {formatCentiKg(summary.nucaBikini.referenceKg100)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Resultado real
-                  </dt>
-                  <dd className="number-tabular mt-1 font-bold text-slate-950">
-                    {formatCentiKg(summary.nucaBikini.actualKg100)}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-          </article>
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Cumplimiento
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-slate-950">
+                {percent(nucas.referenceCompliancePercent)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Producción equivalente
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-slate-950">
+                {isApplicable ? formatCentiKg(nucas.equivalentKg100) : 'No aplica'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Para alcanzar 45%
+              </dt>
+              <dd className="number-tabular mt-1 font-bold text-slate-950">
+                {isApplicable ? formatCentiKg(nucas.kgToReferenceKg100) : 'No aplica'}
+              </dd>
+            </div>
+          </dl>
 
-          <p className="rounded-lg bg-brand-50 p-3 text-xs leading-5 text-brand-900 ring-1 ring-brand-200">
-            Los porcentajes son referencias productivas. Estar por encima o por debajo no cambia el estado CUADRADO / NO CUADRADO.
-          </p>
+          <div className="rounded-lg border border-brand-100 bg-brand-50/60 p-3 text-xs leading-5 text-brand-900">
+            <p>
+              Bikini: {formatCentiKg(nucas.bikiniKg100)} · participación{' '}
+              {percent(nucas.bikiniWeightPercent)}
+            </p>
+            <p>
+              Nuca semi-limpia: {formatCentiKg(nucas.semilimpiaKg100)} · participación{' '}
+              {percent(nucas.semilimpiaWeightPercent)}
+            </p>
+            <p className="mt-1">
+              Factor experimental: {(nucas.conversionFactor * 100).toLocaleString('es-PE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}% · la diferencia teórica no crea saldo ni bloquea el cuadre.
+            </p>
+          </div>
         </div>
       </SectionCard>
     </div>

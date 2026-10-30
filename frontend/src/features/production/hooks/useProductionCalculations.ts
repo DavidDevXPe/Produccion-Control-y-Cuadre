@@ -37,6 +37,10 @@ import {
 import type { BalanceLot, ProductionDay } from '../model/types'
 import { isTreatmentOnlyProduct } from '../capture/freezingExcelPreview'
 import { captureBalancePosition } from '../capture/productionEntryHelpers'
+import {
+  buildClosureReviewItems,
+  type ClosureReviewItem,
+} from '../model/closureReview'
 
 export interface UseProductionCalculationsParams {
   draft: ProductionCaptureDraft
@@ -363,15 +367,19 @@ export function useProductionCalculations({
     ],
   )
 
-  const reviewReasons = useMemo(() => {
-    const warningMessages = closureValidation.warnings.map(
-      (warning) => warning.message,
-    )
+  const reviewItems: readonly ClosureReviewItem[] = useMemo(
+    () =>
+      buildClosureReviewItems({
+        pendingClosureReasons,
+        closureValidation,
+        diagnostics,
+      }),
+    [closureValidation, diagnostics, pendingClosureReasons],
+  )
 
-    return [...pendingClosureReasons, ...warningMessages].filter(
-      (message, index, messages) => messages.indexOf(message) === index,
-    )
-  }, [closureValidation.warnings, pendingClosureReasons])
+  const reviewReasons = useMemo(() => {
+    return reviewItems.map((item) => item.message)
+  }, [reviewItems])
 
   const footerStatus = getFooterStatus(
     canClose,
@@ -491,6 +499,7 @@ export function useProductionCalculations({
     reportsReconciled,
     tunnelMovementRequired,
     pendingClosureReasons,
+    reviewItems,
     reviewReasons,
     footerStatus,
     importedBalanceTotal,

@@ -24,8 +24,6 @@ export function WeeklySummaryPage() {
     isValid,
     weeklyYieldStatus,
     weeklyYieldStyles,
-    isNucaSemilimpiaReferenceApplicable,
-    isNucaBikiniReferenceApplicable,
     handleExportExcel,
     handleExportPdf,
     aggregatedPalletizingRows,
@@ -150,8 +148,6 @@ export function WeeklySummaryPage() {
 
       <WeeklySummaryDistributionSection
         summary={summary}
-        isNucaSemilimpiaReferenceApplicable={isNucaSemilimpiaReferenceApplicable}
-        isNucaBikiniReferenceApplicable={isNucaBikiniReferenceApplicable}
       />
 
       <WeeklyProductSummary

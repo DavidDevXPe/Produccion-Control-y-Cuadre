@@ -9,10 +9,6 @@ import {
   GENERAL_MIN_YIELD_BPS,
   MANTO_STANDARD_YIELD,
   MANTO_STANDARD_YIELD_BPS,
-  NUCA_BIKINI_REFERENCE_BPS,
-  NUCA_MP_SHARE_BPS,
-  NUCA_TARGET,
-  NUCA_TARGET_BPS,
   REJO_MP_SHARE_BPS,
   REJO_REPRODUCTOR_TARGET,
   REJO_REPRODUCTOR_TARGET_BPS,
@@ -33,6 +29,7 @@ import {
 } from "./productionProcess";
 import type {
   Kg100,
+  NucasCombinedReferenceResult,
   ProductionDay,
   ProductionDayCalculation,
   ProductionProcess,
@@ -76,6 +73,8 @@ export interface FamilyYieldProjection {
   utilizationPercent: number | null;
   targetPercent: number | null;
   targetKg100: Kg100 | null;
+  /** Weighted Nuca reference shown by the control card; absent for other families. */
+  referencePercent?: number | null;
   missingToTargetKg100: Kg100;
   capacityToOneHundredKg100: Kg100;
   excessKg100: Kg100;
@@ -102,6 +101,8 @@ export interface ReportFamilySubtotal {
   ownProductionKg100: Kg100;
 
   preliminaryYieldPercent: number | null;
+  /** Real Nuca yield over the total MP; other families leave this unset. */
+  actualYieldPercent?: number | null;
   targetPercent: number | null;
   missingToTargetKg100: Kg100;
   status: FamilyYieldStatus;
@@ -139,7 +140,7 @@ export interface ProductionBusinessSummary {
   groupClosingProjections: readonly GroupClosingProjection[];
   rejoReproductor: RejoReproductorAllocation;
   tubeMpBalance: TubeMpBalance;
-  nucaBikiniReferenceKg100: Kg100 | null;
+  nucas: NucasCombinedReferenceResult;
 }
 
 export type OverallUtilizationControlStatus =
@@ -365,6 +366,82 @@ function familyProjection(
   };
 }
 
+function nucaFamilyProjection(
+  totalRawMaterialKg100: Kg100,
+  parts: ReturnType<typeof outputParts>,
+  reference: NucasCombinedReferenceResult,
+): FamilyYieldProjection {
+  const referenceKg100 = reference.applicable ? reference.referenceKg100 : ZERO;
+  const actualKg100 = reference.applicable ? reference.actualKg100 : ZERO;
+  const equivalentKg100 = reference.applicable
+    ? reference.equivalentKg100
+    : ZERO;
+  const controlParts = reference.applicable
+    ? {
+        ...parts,
+        productionBeforeClosingKg100: actualKg100,
+        projectedProductionKg100: equivalentKg100,
+      }
+    : {
+        ...parts,
+        productionBeforeClosingKg100: ZERO,
+        projectedProductionKg100: ZERO,
+      };
+
+  const projection = familyProjection(
+    "NUCA",
+    "Nuca",
+    referenceKg100,
+    totalRawMaterialKg100,
+    controlParts,
+    reference.applicable
+      ? {
+          ratio: reference.minimumCompliancePercent / 100,
+          basisPoints: Math.round(reference.minimumCompliancePercent * 100),
+        }
+      : null,
+  );
+
+  return !reference.applicable || reference.referenceCompliancePercent === null
+    ? {
+        ...projection,
+        // No Nuca output (or no MP basis) means there is no performance
+        // percentage to evaluate. Keep the family neutral instead of
+        // exposing a calculated zero as a warning or pending balance.
+        reportYieldPercent: null,
+        afterTunnelYieldPercent: null,
+        yieldBeforePercent: null,
+        projectedYieldPercent: null,
+        utilizationPercent: null,
+        targetPercent: null,
+        targetKg100: null,
+        referencePercent: null,
+        missingToTargetKg100: ZERO,
+        capacityToOneHundredKg100: ZERO,
+        excessKg100: ZERO,
+        status: "NO_TARGET",
+      }
+    : {
+        ...projection,
+        reportYieldPercent: reference.referenceCompliancePercent,
+        afterTunnelYieldPercent: reference.referenceCompliancePercent,
+        yieldBeforePercent: reference.referenceCompliancePercent,
+        projectedYieldPercent: reference.referenceCompliancePercent,
+        referencePercent: reference.referencePercent,
+        utilizationPercent: percent(actualKg100, totalRawMaterialKg100),
+        // Nuca reference differences are informational performance data, not
+        // physical MP consumption. They must never become saldo or integrity
+        // errors; physical product-line validations remain unchanged.
+        excessKg100: ZERO,
+        missingToTargetKg100: ZERO,
+        capacityToOneHundredKg100: ZERO,
+        status:
+          reference.referenceCompliancePercent < reference.minimumCompliancePercent
+            ? "BELOW_TARGET"
+            : "COMPLIES",
+      };
+}
+
 function operationalFamily(line: ProductionDay["lines"][number]) {
   if (line.summaryGroupId === "ALETA") {
     return { key: "ALETA", label: "Aleta cruda" };
@@ -477,12 +554,7 @@ export function calculateReportFamilySubtotals(
               rawKg100: applyBasisPoints(rawMaterialKg100, REJO_MP_SHARE_BPS),
               target: REJO_REPRODUCTOR_TARGET,
             }
-          : key === "NUCA"
-            ? {
-                rawKg100: applyBasisPoints(rawMaterialKg100, NUCA_MP_SHARE_BPS),
-                target: NUCA_TARGET,
-              }
-            : key === "MANTO"
+          : key === "MANTO"
               ? {
                   rawKg100: preliminaryMantoRawKg100,
                   target: MANTO_STANDARD_YIELD,
@@ -493,23 +565,50 @@ export function calculateReportFamilySubtotals(
                     target: null,
                   }
                 : null;
-    const preliminaryYieldPercent = configured
-      ? percent(ownProductionKg100, configured.rawKg100)
-      : null;
-    const targetKg100 =
-      configured?.target == null
+    const nucaReference = key === "NUCA" ? calculation.nucas : null;
+    const nucaReferenceAvailable = Boolean(
+      nucaReference?.applicable &&
+        nucaReference.referenceCompliancePercent !== null,
+    );
+    const controlRawMaterialKg100 = nucaReference
+      ? nucaReferenceAvailable
+        ? nucaReference.referenceKg100
+        : ZERO
+      : (configured?.rawKg100 ?? ZERO);
+    const targetPercent = nucaReference
+      ? nucaReferenceAvailable
+        ? nucaReference.minimumCompliancePercent
+        : null
+      : configured?.target == null
         ? null
-        : kg100(Math.round(configured.rawKg100 * configured.target));
+        : configured.target * 100;
+    const targetKg100 =
+      targetPercent === null
+        ? null
+        : kg100(Math.round((controlRawMaterialKg100 * targetPercent) / 100));
+    const preliminaryYieldPercent = nucaReference
+      ? nucaReference.referenceCompliancePercent
+      : configured
+        ? percent(ownProductionKg100, configured.rawKg100)
+        : null;
     const status: FamilyYieldStatus =
-      configured &&
-      configured.rawKg100 > 0 &&
-      ownProductionKg100 > configured.rawKg100
-        ? "INTEGRITY_ERROR"
-        : targetKg100 !== null && ownProductionKg100 < targetKg100
-          ? "BELOW_TARGET"
-          : targetKg100 !== null
-            ? "COMPLIES"
-            : "NO_TARGET";
+      nucaReference
+        ? !nucaReferenceAvailable
+          ? "NO_TARGET"
+          : nucaReference.referenceCompliancePercent !== null &&
+              nucaReference.referenceCompliancePercent <
+                nucaReference.minimumCompliancePercent
+            ? "BELOW_TARGET"
+            : "COMPLIES"
+        : configured &&
+            configured.rawKg100 > 0 &&
+            ownProductionKg100 > configured.rawKg100
+          ? "INTEGRITY_ERROR"
+          : targetKg100 !== null && ownProductionKg100 < targetKg100
+            ? "BELOW_TARGET"
+            : targetKg100 !== null
+              ? "COMPLIES"
+              : "NO_TARGET";
 
     return {
       key,
@@ -521,10 +620,12 @@ export function calculateReportFamilySubtotals(
       previousBalanceProcessedKg100,
       ownProductionKg100,
       preliminaryYieldPercent,
-      targetPercent:
-        configured?.target == null ? null : configured.target * 100,
+      actualYieldPercent: nucaReference
+        ? percent(nucaReference.actualKg100, rawMaterialKg100)
+        : null,
+      targetPercent,
       missingToTargetKg100:
-        targetKg100 === null
+        targetKg100 === null || nucaReference !== null
           ? ZERO
           : kg100(Math.max(targetKg100 - ownProductionKg100, 0)),
       status,
@@ -650,14 +751,7 @@ export function calculateProductionBusinessSummary(
           basisPoints: REJO_REPRODUCTOR_TARGET_BPS,
         },
       ),
-      familyProjection(
-        "NUCA",
-        "Nuca",
-        applyBasisPoints(rawMaterialKg100, NUCA_MP_SHARE_BPS),
-        rawMaterialKg100,
-        nucaParts,
-        { ratio: NUCA_TARGET, basisPoints: NUCA_TARGET_BPS },
-      ),
+      nucaFamilyProjection(rawMaterialKg100, nucaParts, calculation.nucas),
       familyProjection(
         "MANTO",
         "Manto",
@@ -681,9 +775,7 @@ export function calculateProductionBusinessSummary(
       sharedYieldPercent: sharedRatio === null ? null : sharedRatio * 100,
     },
     tubeMpBalance,
-    nucaBikiniReferenceKg100: productionDay.nucaWashAuthorization
-      ? applyBasisPoints(rawMaterialKg100, NUCA_BIKINI_REFERENCE_BPS)
-      : null,
+    nucas: calculation.nucas,
   };
 }
 

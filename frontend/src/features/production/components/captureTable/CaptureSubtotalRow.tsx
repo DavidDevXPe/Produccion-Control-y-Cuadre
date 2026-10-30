@@ -56,15 +56,45 @@ function SubtotalYieldCell({
       </span>
     )
   } else {
+    const isNuca = subtotal.key === 'NUCA'
+    // Nuca's subtotal uses the same equivalent-production compliance as the
+    // detail card. The physical yield remains a secondary datum so the table
+    // never falls back to the old 15% denominator.
+    const displayedYieldPercent = isNuca
+      ? Math.min(subtotal.preliminaryYieldPercent, 100)
+      : subtotal.preliminaryYieldPercent
+    const exceedsReference =
+      isNuca &&
+      subtotal.preliminaryYieldPercent !== null &&
+      subtotal.preliminaryYieldPercent > 100
     const yieldClass =
       subtotal.totalKg100 > 0 && subtotal.targetPercent !== null
         ? subtotal.status === 'COMPLIES'
           ? 'font-bold text-emerald-700 dark:text-emerald-400'
           : 'font-bold text-amber-700 dark:text-amber-400'
         : 'font-semibold text-slate-800 dark:text-white'
-    content = (
-      <span className={yieldClass}>
-        {`${subtotal.preliminaryYieldPercent.toFixed(2)}%`}
+    content = displayedYieldPercent === null ? (
+      <span className={yieldClass}>—</span>
+    ) : (
+      <span
+        className={`inline-flex flex-col items-end ${yieldClass}`}
+        title={
+          isNuca && subtotal.preliminaryYieldPercent !== null
+            ? `Cumplimiento de referencia: ${subtotal.preliminaryYieldPercent.toFixed(2)}%${
+                subtotal.actualYieldPercent == null
+                  ? ''
+                  : ` · Rendimiento físico: ${subtotal.actualYieldPercent.toFixed(2)}%`
+              }`
+            : undefined
+        }
+      >
+        <span>{`${displayedYieldPercent.toFixed(2)}%`}</span>
+        {isNuca && subtotal.actualYieldPercent != null ? (
+          <span className="text-[0.625rem] font-medium text-slate-500 dark:text-slate-400">
+            Real {subtotal.actualYieldPercent.toFixed(2)}%
+            {exceedsReference ? ' · supera' : ''}
+          </span>
+        ) : null}
       </span>
     )
   }
@@ -141,6 +171,7 @@ function SubtotalDifferenceCell({
     )
   } else if (
     isBalanceOnly ||
+    subtotal.key === 'NUCA' ||
     subtotal.targetPercent === null ||
     subtotal.totalKg100 === 0
   ) {

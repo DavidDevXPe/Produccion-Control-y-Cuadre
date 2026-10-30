@@ -282,6 +282,7 @@ export function ProductionEntryContent({
         closureValidation={closureValidation}
         diagnostics={calculations.diagnostics}
         pendingClosureReasons={calculations.pendingClosureReasons}
+        reviewItems={calculations.reviewItems}
         saveError={saveError}
       />
 
@@ -313,6 +314,7 @@ export function ProductionEntryContent({
         canClose={calculations.canClose}
         footerStatus={calculations.footerStatus}
         pendingClosureReasons={calculations.pendingClosureReasons}
+        reviewItems={calculations.reviewItems}
         reviewReasons={calculations.reviewReasons}
         dayShift={buildResult.calculation.day}
         nightShift={buildResult.calculation.night}
